@@ -1062,10 +1062,11 @@ dependencies = [
 [[package]]
 name = "bindings_wasm"
 version = "1.10.0"
-source = "git+https://github.com/floscodes/libxmtp#95fb1e217bfd50d80aa47674a84b23d2d51186e9"
+source = "git+https://github.com/floscodes/libxmtp#801c57210f32f2b6a46982b2077032679dd642af"
 dependencies = [
  "async-trait",
  "bindings_wasm_macros",
+ "cc",
  "chrono",
  "console_error_panic_hook",
  "const-hex",
@@ -1087,6 +1088,7 @@ dependencies = [
  "wasm-bindgen-futures",
  "wasm-streams 0.5.0",
  "web-sys",
+ "which",
  "xmtp-workspace-hack",
  "xmtp_api",
  "xmtp_api_d14n",
@@ -1104,7 +1106,7 @@ dependencies = [
 [[package]]
 name = "bindings_wasm_macros"
 version = "1.10.0"
-source = "git+https://github.com/floscodes/libxmtp#95fb1e217bfd50d80aa47674a84b23d2d51186e9"
+source = "git+https://github.com/floscodes/libxmtp#801c57210f32f2b6a46982b2077032679dd642af"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4528,9 +4530,9 @@ dependencies = [
 
 [[package]]
 name = "inventory"
-version = "0.3.23"
+version = "0.3.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8062b737e5389949f477d4760a2ebbff0c366f97798f2419b8d8f366363d3342"
+checksum = "a4f0c30c76f2f4ccee3fe55a2435f691ca00c0e4bd87abe4f4a851b1d4dac39b"
 dependencies = [
  "rustversion",
 ]
@@ -9511,6 +9513,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "which"
+version = "8.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "81995fafaaaf6ae47a7d0cc83c67caf92aeb7e5331650ae6ff856f7c0c60c459"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "winapi"
 version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10164,6 +10175,7 @@ version = "0.1.0"
 dependencies = [
  "bindings_wasm",
  "dioxus",
+ "which",
 ]
 
 [[package]]
@@ -10175,7 +10187,7 @@ checksum = "5aaec370bdbb0298848c0569d34f9911db45ed00f45310fae055dd9109304888"
 [[package]]
 name = "xmtp_api"
 version = "1.10.0"
-source = "git+https://github.com/floscodes/libxmtp#95fb1e217bfd50d80aa47674a84b23d2d51186e9"
+source = "git+https://github.com/floscodes/libxmtp#801c57210f32f2b6a46982b2077032679dd642af"
 dependencies = [
  "async-trait",
  "const-hex",
@@ -10193,7 +10205,7 @@ dependencies = [
 [[package]]
 name = "xmtp_api_d14n"
 version = "1.10.0"
-source = "git+https://github.com/floscodes/libxmtp#95fb1e217bfd50d80aa47674a84b23d2d51186e9"
+source = "git+https://github.com/floscodes/libxmtp#801c57210f32f2b6a46982b2077032679dd642af"
 dependencies = [
  "arc-swap",
  "async-trait",
@@ -10228,7 +10240,7 @@ dependencies = [
 [[package]]
 name = "xmtp_api_grpc"
 version = "1.10.0"
-source = "git+https://github.com/floscodes/libxmtp#95fb1e217bfd50d80aa47674a84b23d2d51186e9"
+source = "git+https://github.com/floscodes/libxmtp#801c57210f32f2b6a46982b2077032679dd642af"
 dependencies = [
  "async-trait",
  "futures",
@@ -10253,7 +10265,7 @@ dependencies = [
 [[package]]
 name = "xmtp_archive"
 version = "1.10.0"
-source = "git+https://github.com/floscodes/libxmtp#95fb1e217bfd50d80aa47674a84b23d2d51186e9"
+source = "git+https://github.com/floscodes/libxmtp#801c57210f32f2b6a46982b2077032679dd642af"
 dependencies = [
  "aes-gcm",
  "async-compression",
@@ -10283,7 +10295,7 @@ dependencies = [
 [[package]]
 name = "xmtp_common"
 version = "1.10.0"
-source = "git+https://github.com/floscodes/libxmtp#95fb1e217bfd50d80aa47674a84b23d2d51186e9"
+source = "git+https://github.com/floscodes/libxmtp#801c57210f32f2b6a46982b2077032679dd642af"
 dependencies = [
  "async-trait",
  "const-hex",
@@ -10313,7 +10325,7 @@ dependencies = [
 [[package]]
 name = "xmtp_configuration"
 version = "1.10.0"
-source = "git+https://github.com/floscodes/libxmtp#95fb1e217bfd50d80aa47674a84b23d2d51186e9"
+source = "git+https://github.com/floscodes/libxmtp#801c57210f32f2b6a46982b2077032679dd642af"
 dependencies = [
  "openmls",
  "xmtp-workspace-hack",
@@ -10324,7 +10336,7 @@ dependencies = [
 [[package]]
 name = "xmtp_content_types"
 version = "1.10.0"
-source = "git+https://github.com/floscodes/libxmtp#95fb1e217bfd50d80aa47674a84b23d2d51186e9"
+source = "git+https://github.com/floscodes/libxmtp#801c57210f32f2b6a46982b2077032679dd642af"
 dependencies = [
  "aes-gcm",
  "base64",
@@ -10345,7 +10357,7 @@ dependencies = [
 [[package]]
 name = "xmtp_cryptography"
 version = "1.10.0"
-source = "git+https://github.com/floscodes/libxmtp#95fb1e217bfd50d80aa47674a84b23d2d51186e9"
+source = "git+https://github.com/floscodes/libxmtp#801c57210f32f2b6a46982b2077032679dd642af"
 dependencies = [
  "alloy",
  "const-hex",
@@ -10373,7 +10385,7 @@ dependencies = [
 [[package]]
 name = "xmtp_db"
 version = "1.10.0"
-source = "git+https://github.com/floscodes/libxmtp#95fb1e217bfd50d80aa47674a84b23d2d51186e9"
+source = "git+https://github.com/floscodes/libxmtp#801c57210f32f2b6a46982b2077032679dd642af"
 dependencies = [
  "arc-swap",
  "bincode",
@@ -10413,7 +10425,7 @@ dependencies = [
 [[package]]
 name = "xmtp_id"
 version = "1.10.0"
-source = "git+https://github.com/floscodes/libxmtp#95fb1e217bfd50d80aa47674a84b23d2d51186e9"
+source = "git+https://github.com/floscodes/libxmtp#801c57210f32f2b6a46982b2077032679dd642af"
 dependencies = [
  "alloy",
  "async-trait",
@@ -10445,7 +10457,7 @@ dependencies = [
 [[package]]
 name = "xmtp_macro"
 version = "1.10.0"
-source = "git+https://github.com/floscodes/libxmtp#95fb1e217bfd50d80aa47674a84b23d2d51186e9"
+source = "git+https://github.com/floscodes/libxmtp#801c57210f32f2b6a46982b2077032679dd642af"
 dependencies = [
  "num_cpus",
  "proc-macro2",
@@ -10457,7 +10469,7 @@ dependencies = [
 [[package]]
 name = "xmtp_mls"
 version = "1.10.0"
-source = "git+https://github.com/floscodes/libxmtp#95fb1e217bfd50d80aa47674a84b23d2d51186e9"
+source = "git+https://github.com/floscodes/libxmtp#801c57210f32f2b6a46982b2077032679dd642af"
 dependencies = [
  "aes-gcm",
  "async-trait",
@@ -10516,7 +10528,7 @@ dependencies = [
 [[package]]
 name = "xmtp_mls_common"
 version = "1.10.0"
-source = "git+https://github.com/floscodes/libxmtp#95fb1e217bfd50d80aa47674a84b23d2d51186e9"
+source = "git+https://github.com/floscodes/libxmtp#801c57210f32f2b6a46982b2077032679dd642af"
 dependencies = [
  "const-hex",
  "openmls",
@@ -10535,7 +10547,7 @@ dependencies = [
 [[package]]
 name = "xmtp_proto"
 version = "1.10.0"
-source = "git+https://github.com/floscodes/libxmtp#95fb1e217bfd50d80aa47674a84b23d2d51186e9"
+source = "git+https://github.com/floscodes/libxmtp#801c57210f32f2b6a46982b2077032679dd642af"
 dependencies = [
  "async-trait",
  "bytes",
