@@ -7,7 +7,7 @@ edition = "2024"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bindings_wasm = { git = "https://github.com/floscodes/libxmtp", subdir = "bindings/wasm" }
+bindings_wasm = { git = "https://github.com/xmtp/libxmtp", subdir = "bindings/wasm" }
 dioxus = { version = "0.7.1", features = [] }
 
 [features]
