@@ -4,11 +4,12 @@ version = "0.1.0"
 authors = ["flopetautschnig (floscodes) <mail@floscodes.net>"]
 edition = "2024"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bindings_wasm = { git = "https://github.com/xmtp/libxmtp", subdir = "bindings/wasm" }
-dioxus = { version = "0.7.1", features = [] }
+dioxus = { version = "*", features = [] }
+k256 = { version = "0.13", features = ["ecdsa"] }
+sha3 = "0.10.8"
+xmtp-rs = { path = "crates/xmtp-rs" }
 
 [features]
 default = ["web"]
@@ -18,6 +19,3 @@ web = ["dioxus/web"]
 desktop = ["dioxus/desktop"]
 # The feature that are only required for the mobile = ["dioxus/mobile"] build target should be optional and only enabled in the mobile = ["dioxus/mobile"] feature
 mobile = ["dioxus/mobile"]
-
-[build-dependencies]
-which = "8.0.2"

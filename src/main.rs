@@ -1,12 +1,12 @@
 // The dioxus prelude contains a ton of common items used in dioxus apps. It's a good idea to import wherever you
 // need dioxus
 use dioxus::prelude::*;
+use xmtp_rs::create_profile;
 
 use components::Hero;
 
 /// Define a components module that contains all shared components for our app.
 mod components;
-mod xmtp;
 
 // We can import assets in dioxus with the `asset!` macro. This macro takes a path to an asset relative to the crate root.
 // The macro returns an `Asset` type that will display as the path to the asset in the browser or a local path in desktop bundles.
@@ -16,8 +16,6 @@ const MAIN_CSS: Asset = asset!("/assets/styling/main.css");
 const TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
 
 fn main() {
-    // The `launch` function is the main entry point for a dioxus app. It takes a component and renders it with the platform feature
-    // you have enabled
     dioxus::launch(App);
 }
 
@@ -34,6 +32,7 @@ fn App() -> Element {
         document::Link { rel: "icon", href: FAVICON }
         document::Link { rel: "stylesheet", href: MAIN_CSS }
         document::Link { rel: "stylesheet", href: TAILWIND_CSS }
+        button { onclick: move |_| async move {let _ = create_profile().await.unwrap(); }, "CREATE PROFILE" }
         Hero {}
 
     }
