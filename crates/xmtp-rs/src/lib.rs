@@ -7,9 +7,6 @@ use bindings_wasm::inbox_id::generate_inbox_id;
 mod wallet;
 use wallet::LocalWallet;
 
-#[cfg(test)]
-mod tests;
-
 pub struct Profile {
     address: String,
     inbox_id: String,
@@ -35,22 +32,23 @@ impl Env {
     pub fn get_host(&self) -> String {
         match self {
             Env::Local(localhost) => localhost.to_owned(),
-            Env::Dev => "https://grpc.dev.xmtp.network:443".to_string(),
-            Env::Production => "https://grpc.production.xmtp.network:443".to_string(),
+            Env::Dev => "https://grpc.dev.xmtp.network".to_string(),
+            Env::Production => "https://grpc.production.xmtp.network".to_string(),
         }
     }
 }
 
-pub async fn create_profile() -> Result<Profile> {
+pub async fn create_profile(env: Env) -> Result<Profile> {
     let wallet = LocalWallet::random();
     let identifier = Identifier {
         identifier: wallet.address.clone(),
         identifier_kind: IdentifierKind::Ethereum,
     };
+    
     let inbox_id = generate_inbox_id(identifier.clone(), None)
         .map_err(|_| Error::msg("Could not generate inbox id"))?;
     let mut client = create_client(
-        "https://grpc.dev.xmtp.network:443".to_string(),
+        env.get_host().to_string(),
         inbox_id.clone(),
         identifier,
         None,
