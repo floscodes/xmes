@@ -1,21 +1,6 @@
-[package]
-name = "xmes"
-version = "0.1.0"
-authors = ["flopetautschnig (floscodes) <mail@floscodes.net>"]
-edition = "2024"
+[workspace]
 
+members = ["xmes-xmtp", "xmes-pwa"]
 
-[dependencies]
-dioxus = { version = "*", features = [] }
-k256 = { version = "0.13", features = ["ecdsa"] }
-sha3 = "0.10.8"
-xmtp-rs = { path = "crates/xmtp-rs" }
-
-[features]
-default = ["web"]
-# The feature that are only required for the web = ["dioxus/web"] build target should be optional and only enabled in the web = ["dioxus/web"] feature
-web = ["dioxus/web"]
-# The feature that are only required for the desktop = ["dioxus/desktop"] build target should be optional and only enabled in the desktop = ["dioxus/desktop"] feature
-desktop = ["dioxus/desktop"]
-# The feature that are only required for the mobile = ["dioxus/mobile"] build target should be optional and only enabled in the mobile = ["dioxus/mobile"] feature
-mobile = ["dioxus/mobile"]
+[workspace.dependencies]
+xmes_xmtp = { path = "xmes-xmtp" }

@@ -1,18 +1,16 @@
+use alloy::signers::local::PrivateKeySigner;
+use alloy::signers::Signer;
 use anyhow::{Error, Result};
 use bindings_wasm::client::{Client, create_client};
 use bindings_wasm::conversation::{self, Conversation};
 use bindings_wasm::identity::{Identifier, IdentifierKind};
 use bindings_wasm::inbox_id::generate_inbox_id;
 
-mod wallet;
-use wallet::LocalWallet;
-
 pub struct Profile {
     address: String,
     inbox_id: String,
     env: Env,
-    keypair: Keypair,
-    client: Client,
+    pub client: Client,
 }
 
 pub(crate) struct Keypair {
@@ -31,17 +29,22 @@ pub enum Env {
 impl Env {
     pub fn get_host(&self) -> String {
         match self {
-            Env::Local(localhost) => localhost.to_owned(),
-            Env::Dev => "https://grpc.dev.xmtp.network".to_string(),
-            Env::Production => "https://grpc.production.xmtp.network".to_string(),
+            Env::Local(localhost) => {
+                if !localhost.contains(":") {
+                    return format!("http://{}:5558", localhost);
+                }
+                localhost.to_owned()
+            },
+            Env::Dev => "https://api.dev.xmtp.network:5558".to_string(),
+            Env::Production => "https://api.production.xmtp.network:5558".to_string(),
         }
     }
 }
 
-pub async fn create_profile(env: Env) -> Result<Profile> {
-    let wallet = LocalWallet::random();
+pub async fn create_new_profile(env: Env) -> Result<Profile> {
+    let signer = PrivateKeySigner::random();
     let identifier = Identifier {
-        identifier: wallet.address.clone(),
+        identifier: signer.address().to_string(),
         identifier_kind: IdentifierKind::Ethereum,
     };
     
@@ -75,8 +78,9 @@ pub async fn create_profile(env: Env) -> Result<Profile> {
         let text = sig_request.signature_text().await
             .map_err(|_| Error::msg("Signing failed!"))?;
 
-        let sig_bytes = wallet.sign(&text);
-        let sig_uint8 = js_sys::Uint8Array::from(sig_bytes.as_slice());
+        let signature = signer.sign_message(&text.as_bytes()).await
+            .map_err(|_| Error::msg("Could not sign message"))?;
+        let sig_uint8 = js_sys::Uint8Array::from(signature.to_string().as_bytes());
 
         sig_request.add_ecdsa_signature(sig_uint8).await
             .map_err(|_| Error::msg("Could not add signature"))?;
@@ -84,13 +88,5 @@ pub async fn create_profile(env: Env) -> Result<Profile> {
             .map_err(|_| Error::msg("Could not register identity"))?;
     }
 
-    Ok(
-        Profile {
-            address: wallet.address.clone(),
-            inbox_id: inbox_id,
-            env: Env::default(),
-            keypair: wallet.keypair(),
-            client: client,
-        }
-    )
+    let convs = client.conversations().unwrap;
 }

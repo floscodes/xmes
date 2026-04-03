@@ -1,0 +1,11 @@
+error: failed to load manifest for workspace member `/root/code/github/xmes/xmes-pwa`
+referenced by workspace at `/root/code/github/xmes/Cargo.toml`
+
+Caused by:
+  failed to parse manifest at `/root/code/github/xmes/xmes-pwa/Cargo.toml`
+
+Caused by:
+  error inheriting `xmes_xmpt` from workspace root manifest's `workspace.dependencies.xmes_xmpt`
+
+Caused by:
+  `dependency.xmes_xmpt` was not found in `workspace.dependencies`
