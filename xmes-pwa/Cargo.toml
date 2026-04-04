@@ -7,7 +7,7 @@ edition = "2024"
 
 [dependencies]
 dioxus = { version = "*", features = [] }
-xmes_xmpt.workspace = true
+xmes-xmtp-lib.workspace = true
 
 [features]
 default = ["web"]

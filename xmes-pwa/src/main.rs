@@ -1,7 +1,7 @@
 // The dioxus prelude contains a ton of common items used in dioxus apps. It's a good idea to import wherever you
 // need dioxus
 use dioxus::prelude::*;
-use xmes_xmtp::{create_profile, Env};
+use xmes_xmtp_lib::{create_profile, Env};
 
 use components::Hero;
 
@@ -32,7 +32,12 @@ fn App() -> Element {
         document::Link { rel: "icon", href: FAVICON }
         document::Link { rel: "stylesheet", href: MAIN_CSS }
         document::Link { rel: "stylesheet", href: TAILWIND_CSS }
-        button { onclick: move |_| async move {let _ = create_profile(Env::default()).await.unwrap(); }, "CREATE PROFILE" }
+        button {
+            onclick: move |_| async move {
+                let _ = create_profile(Env::default()).await.unwrap();
+            },
+            "CREATE PROFILE"
+        }
         Hero {}
 
     }
