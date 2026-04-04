@@ -50,7 +50,7 @@ pub async fn create_profile(env: Env) -> Result<Profile> {
 
     let inbox_id = generate_inbox_id(identifier.clone(), None)
         .map_err(|_| Error::msg("Could not generate inbox id"))?;
-    let mut client = create_client(
+    let mut client: Client = create_client(
         env.get_host().to_string(),
         inbox_id.clone(),
         identifier,
@@ -96,5 +96,10 @@ pub async fn create_profile(env: Env) -> Result<Profile> {
             .map_err(|_| Error::msg("Could not register identity"))?;
     }
 
-    let convs = client.conversations().unwrap;
+    Ok(Profile {
+        address: signer.address().to_string(),
+        inbox_id,
+        env,
+        client,
+    })
 }

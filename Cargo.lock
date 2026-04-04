@@ -10271,11 +10271,11 @@ name = "xmes"
 version = "0.1.0"
 dependencies = [
  "dioxus",
- "xmes-xmtp-lib",
+ "xmtp-wasm",
 ]
 
 [[package]]
-name = "xmes-xmtp-lib"
+name = "xmtp-wasm"
 version = "0.1.0"
 dependencies = [
  "alloy",
