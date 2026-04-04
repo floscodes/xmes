@@ -1,0 +1,24 @@
+[package]
+name = "xmes-xmtp-lib"
+authors = ["flopetautschnig (floscodes) <mail@floscodes.net>"]
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+alloy = { version = "1", features = ["signers", "signer-local"] }
+anyhow = "1.0.102"
+bindings_wasm = { git = "https://github.com/xmtp/libxmtp", subdir = "bindings/wasm" }
+bip39 = "2.2.2"
+hex = "0.4"
+js-sys = { version = "=0.3.91" }
+k256 = "0.13.4"
+sha3 = "0.10.8"
+wasm-bindgen = "=0.2.114"
+
+[lib]
+name = "xmes_xmtp_lib"
+
+[dev-dependencies]
+wasm-bindgen-test = "=0.3.64"
+
+
