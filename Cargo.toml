@@ -1,6 +1,6 @@
 [workspace]
 
-members = ["xmes-xmtp", "xmes-pwa"]
+members = ["xmes-xmtp-lib", "xmes-pwa"]
 
 [workspace.dependencies]
-xmes_xmtp = { path = "xmes-xmtp" }
+xmes-xmtp-lib = { path = "xmes-xmtp-lib" }
