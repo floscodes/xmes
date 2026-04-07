@@ -1,7 +1,7 @@
 // The dioxus prelude contains a ton of common items used in dioxus apps. It's a good idea to import wherever you
 // need dioxus
 use dioxus::prelude::*;
-use xmes_xmtp_lib::{create_profile, Env};
+use xmes_xmtp_lib::{Env, create_profile};
 
 use components::Hero;
 
@@ -39,6 +39,5 @@ fn App() -> Element {
             "CREATE PROFILE"
         }
         Hero {}
-
     }
 }
