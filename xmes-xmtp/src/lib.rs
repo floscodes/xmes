@@ -62,7 +62,7 @@ impl Profile {
                 .sign_message(&text.as_bytes())
                 .await
                 .map_err(|_| Error::msg("Could not sign message"))?;
-            let sig_uint8 = js_sys::Uint8Array::from(signature.to_string().as_bytes());
+            let sig_uint8 = js_sys::Uint8Array::from(signature.as_bytes().as_slice());
 
             sig_request
                 .add_ecdsa_signature(sig_uint8)

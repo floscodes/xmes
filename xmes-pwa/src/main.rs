@@ -21,13 +21,11 @@ fn main() {
 fn App() -> Element {
     let mut profile_toml = use_signal(|| "".to_string());
     use_resource(move || async move {
-        let profile = Profile::new(Env::default()).await;
-        if let Ok(profile) = profile {
-            profile_toml.set(format!("TOML:\n{}", profile.to_toml()));
-        } else {
-            profile_toml.set("Failed to create profile".to_string());
-        }
-        
+        let profile = Profile::new(Env::Dev(Some("https://xmtp-dev.floscodes.net".to_string()))).await;
+        match profile {
+            Ok(profile) => profile_toml.set(format!("TOML:\n{}", profile.to_toml())),
+            Err(e) => profile_toml.set(format!("Failed to create profile: {}", e)),
+        }     
     });
 
     rsx! {
