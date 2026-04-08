@@ -19,7 +19,5 @@ wasm-bindgen = "=0.2.114"
 [lib]
 name = "xmes_xmtp"
 
-[dev-dependencies]
-wasm-bindgen-test = "=0.3.64"
 
 
