@@ -15,12 +15,11 @@ fn main() {
 
 #[component]
 fn App() -> Element {
-    let mut identities_toml = use_persistent("identities", || "".to_string());
+    let mut identities_toml: Signal<Option<String>> = use_persistent("identities", || None);
     use_resource(move || async move {
-        let identities = Identity::new(Env::Dev(Some("https://xmtp-dev.floscodes.net".to_string()))).await;
-        match identities {
-            Ok(identities) => identities_toml.set(format!("{}", identities.to_toml())),
-            Err(e) => identities_toml.set(format!("Failed to create profile: {}", e)),
+        if identities_toml().is_none() {
+            let new_identity = Identity::new(Env::Dev(Some("https://xmtp-dev.floscodes.net".to_string()))).await.unwrap();
+            identities_toml.set(Some(new_identity.to_toml()));
         }
     });
 

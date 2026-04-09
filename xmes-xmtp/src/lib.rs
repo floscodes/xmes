@@ -5,7 +5,6 @@ use bindings_wasm::client::{Client, create_client};
 use bindings_wasm::conversation::{self, Conversation};
 use bindings_wasm::identity::{Identifier, IdentifierKind};
 use bindings_wasm::inbox_id::generate_inbox_id;
-use std::fs;
 use toml::Table;
 
 const DEFAULT_DEV_ENV_HOST: &'static str = "https://api.dev.xmtp.network:5558";
@@ -22,7 +21,9 @@ impl Identity {
     pub async fn new(env: Env) -> Result<Identity> {
         let signer = PrivateKeySigner::random();
         let identifier = Identifier {
-            identifier: signer.address().to_string(),
+            identifier: signer
+                .address()
+                .to_string(),
             identifier_kind: IdentifierKind::Ethereum,
         };
 
@@ -75,18 +76,17 @@ impl Identity {
         }
 
         Ok(Identity {
-            address: signer.address().to_string(),
+            address: signer.address().to_string().to_lowercase(),
             inbox_id,
             env,
             client,
         })
     }
-    pub async fn from_toml(file_path: &str) -> Result<Vec<Self>> {
-        let toml_file = fs::read_to_string(file_path)
-            .map_err(|_| Error::msg("Failed to open TOML file."))?
+    pub async fn from_toml(toml_str: String) -> Result<Vec<Self>> {
+        let toml = toml_str
             .parse::<Table>()
             .map_err(|e| Error::msg(format!("Failed to parse TOML: {}", e)))?;
-        let identities = toml_file["identities"].as_array().ok_or(Error::msg(
+        let identities = toml["identities"].as_array().ok_or(Error::msg(
             "Failed to parse Identities - are there any Identitys set?",
         ))?;
 
@@ -134,7 +134,7 @@ impl Identity {
             .map_err(|_| Error::msg("Failed to create client"))?;
 
             identity_vec.push(Identity {
-                address: address.to_string(),
+                address: address.to_string().to_lowercase(),
                 inbox_id: inbox_id.to_string(),
                 env: environment,
                 client,
@@ -154,7 +154,7 @@ impl Identity {
             environment = "{}"
             host = "{}"
             "#,
-            self.address, self.inbox_id, self.env.name(), self.env.host()
+            self.address.to_lowercase(), self.inbox_id, self.env.name(), self.env.host()
         )
     }
 
