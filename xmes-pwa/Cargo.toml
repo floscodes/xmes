@@ -7,7 +7,7 @@ edition = "2024"
 
 [dependencies]
 dioxus = { version = "*", features = [] }
-dioxus_storage = "0.0.4"
+dioxus-sdk = { version = "0.7.0", features = ["storage"] }
 xmes-xmtp.workspace = true
 
 [features]

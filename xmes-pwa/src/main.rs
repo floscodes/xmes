@@ -1,7 +1,5 @@
-// The dioxus prelude contains a ton of common items used in dioxus apps. It's a good idea to import wherever you
-// need dioxus
 use dioxus::prelude::*;
-use dioxus_storage::use_persistent;
+use dioxus_sdk::storage::use_persistent;
 use xmes_xmtp::{Env, Identity};
 
 mod components;
@@ -17,13 +15,13 @@ fn main() {
 
 #[component]
 fn App() -> Element {
-    let mut identity_toml = use_signal(|| "".to_string());
+    let mut identities_toml = use_persistent("identities", || "".to_string());
     use_resource(move || async move {
-        let identity = Identity::new(Env::Dev(Some("https://xmtp-dev.floscodes.net".to_string()))).await;
-        match identity {
-            Ok(identity) => identity_toml.set(format!("TOML:\n{}", identity.to_toml())),
-            Err(e) => identity_toml.set(format!("Failed to create profile: {}", e)),
-        }     
+        let identities = Identity::new(Env::Dev(Some("https://xmtp-dev.floscodes.net".to_string()))).await;
+        match identities {
+            Ok(identities) => identities_toml.set(format!("{}", identities.to_toml())),
+            Err(e) => identities_toml.set(format!("Failed to create profile: {}", e)),
+        }
     });
 
     rsx! {
@@ -31,7 +29,7 @@ fn App() -> Element {
         document::Link { rel: "stylesheet", href: MAIN_CSS }
         document::Link { rel: "stylesheet", href: TAILWIND_CSS }
         h1 {
-            {identity_toml}
+            {identities_toml}
         }
     }
 }
