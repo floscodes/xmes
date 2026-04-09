@@ -11,15 +11,15 @@ use toml::Table;
 const DEFAULT_DEV_ENV_HOST: &'static str = "https://api.dev.xmtp.network:5558";
 const DEFAULT_PRODUCTION_ENV_HOST: &'static str = "https://api.production.xmtp.network:5558";
 
-pub struct Profile {
-    address: String,
+pub struct Identity {
     inbox_id: String,
+    addresses: Vec<String>,
     env: Env,
     client: Client,
 }
 
-impl Profile {
-    pub async fn new(env: Env) -> Result<Profile> {
+impl Identity {
+    pub async fn new(env: Env) -> Result<Identity> {
         let signer = PrivateKeySigner::random();
         let identifier = Identifier {
             identifier: signer.address().to_string(),
@@ -74,8 +74,8 @@ impl Profile {
                 .map_err(|_| Error::msg("Could not register identity"))?;
         }
 
-        Ok(Profile {
-            address: signer.address().to_string(),
+        Ok(Identity {
+            addresses: vec![signer.address().to_string()],
             inbox_id,
             env,
             client,
@@ -86,22 +86,22 @@ impl Profile {
             .map_err(|_| Error::msg("Failed to open TOML file."))?
             .parse::<Table>()
             .map_err(|e| Error::msg(format!("Failed to parse TOML: {}", e)))?;
-        let profiles = toml_file["profiles"].as_array().ok_or(Error::msg(
-            "Failed to parse profiles - are there any profiles set?",
+        let Identitys = toml_file["Identitys"].as_array().ok_or(Error::msg(
+            "Failed to parse Identitys - are there any Identitys set?",
         ))?;
 
-        let mut profile_vec = Vec::new();
+        let mut Identity_vec = Vec::new();
 
-        for profile in profiles {
-            let address = profile["address"]
+        for Identity in Identitys {
+            let address = Identity["address"]
                 .as_str()
-                .ok_or(Error::msg("Failed to parse profile"))?;
-            let inbox_id = profile["inbox_id"]
+                .ok_or(Error::msg("Failed to parse Identity"))?;
+            let inbox_id = Identity["inbox_id"]
                 .as_str()
-                .ok_or(Error::msg("Failed to parse profile"))?;
-            let env = profile["env"]
+                .ok_or(Error::msg("Failed to parse Identity"))?;
+            let env = Identity["env"]
                 .as_table()
-                .ok_or(Error::msg("Failed to parse profile"))?;
+                .ok_or(Error::msg("Failed to parse Identity"))?;
             let env_name = env["environment"].as_str().unwrap_or_default();
             let host = env["host"].as_str().unwrap_or_default();
             let environment = match env_name {
@@ -133,63 +133,38 @@ impl Profile {
             .await
             .map_err(|_| Error::msg("Failed to create client"))?;
 
-            profile_vec.push(Profile {
-                address: address.to_string(),
+            Identity_vec.push(Identity {
+                addresses: vec![address.to_string()],
                 inbox_id: inbox_id.to_string(),
                 env: environment,
                 client,
             });
         }
 
-        Ok(profile_vec)
-    }
-
-    pub async fn save_to_file(&self, path: &str) -> Result<()> {
-        let toml_file: Option<String> = fs::read_to_string(path).ok();
-        let new_config = format!(
-            r#"
-            [[profiles]]
-            address = "{}"
-            inbox_id = "{}"
-            [env]
-            environment = "{}"
-            host = "{}"
-            "#,
-            self.address,
-            self.inbox_id,
-            self.env.name(),
-            self.env.host()
-        );
-
-        if toml_file.is_none() {
-            fs::write(path, new_config)
-                .map_err(|e| Error::msg(format!("Failed to write to file: {}", e)))?;
-            return Ok(());
-        }
-
-        let config = format!("{}\n\n{}", toml_file.unwrap(), new_config);
-        fs::write(path, config)
-            .map_err(|e| Error::msg(format!("Failed to write to file: {}", e)))?;
-
-        Ok(())
+        Ok(Identity_vec)
     }
 
     pub fn to_toml(&self) -> String {
+        let mut addresses_str = String::from("addresses = [");
+        for address in &self.addresses {
+            addresses_str.push_str(&format!("\"{}\",", address));
+        }
+        addresses_str.push_str("]");
         format!(
             r#"
-            [[profiles]]
-            address = "{}"
+            [[identity]]
             inbox_id = "{}"
+            {}
             [env]
             environment = "{}"
             host = "{}"
             "#,
-            self.address, self.inbox_id, self.env.name(), self.env.host()
+            self.inbox_id, addresses_str, self.env.name(), self.env.host()
         )
     }
 
-    pub fn address(&self) -> String {
-        self.address.clone()
+    pub fn addresses(&self) -> Vec<String> {
+        self.addresses.clone()
     }
     pub fn client(&self) -> &Client {
         &self.client
