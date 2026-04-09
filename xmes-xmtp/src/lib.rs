@@ -12,8 +12,8 @@ const DEFAULT_DEV_ENV_HOST: &'static str = "https://api.dev.xmtp.network:5558";
 const DEFAULT_PRODUCTION_ENV_HOST: &'static str = "https://api.production.xmtp.network:5558";
 
 pub struct Identity {
+    address: String,
     inbox_id: String,
-    addresses: Vec<String>,
     env: Env,
     client: Client,
 }
@@ -75,7 +75,7 @@ impl Identity {
         }
 
         Ok(Identity {
-            addresses: vec![signer.address().to_string()],
+            address: signer.address().to_string(),
             inbox_id,
             env,
             client,
@@ -86,20 +86,20 @@ impl Identity {
             .map_err(|_| Error::msg("Failed to open TOML file."))?
             .parse::<Table>()
             .map_err(|e| Error::msg(format!("Failed to parse TOML: {}", e)))?;
-        let Identitys = toml_file["Identitys"].as_array().ok_or(Error::msg(
-            "Failed to parse Identitys - are there any Identitys set?",
+        let identities = toml_file["identities"].as_array().ok_or(Error::msg(
+            "Failed to parse Identities - are there any Identitys set?",
         ))?;
 
-        let mut Identity_vec = Vec::new();
+        let mut identity_vec = Vec::new();
 
-        for Identity in Identitys {
-            let address = Identity["address"]
+        for identity in identities {
+            let address = identity["address"]
                 .as_str()
                 .ok_or(Error::msg("Failed to parse Identity"))?;
-            let inbox_id = Identity["inbox_id"]
+            let inbox_id = identity["inbox_id"]
                 .as_str()
                 .ok_or(Error::msg("Failed to parse Identity"))?;
-            let env = Identity["env"]
+            let env = identity["env"]
                 .as_table()
                 .ok_or(Error::msg("Failed to parse Identity"))?;
             let env_name = env["environment"].as_str().unwrap_or_default();
@@ -133,38 +133,33 @@ impl Identity {
             .await
             .map_err(|_| Error::msg("Failed to create client"))?;
 
-            Identity_vec.push(Identity {
-                addresses: vec![address.to_string()],
+            identity_vec.push(Identity {
+                address: address.to_string(),
                 inbox_id: inbox_id.to_string(),
                 env: environment,
                 client,
             });
         }
 
-        Ok(Identity_vec)
+        Ok(identity_vec)
     }
 
     pub fn to_toml(&self) -> String {
-        let mut addresses_str = String::from("addresses = [");
-        for address in &self.addresses {
-            addresses_str.push_str(&format!("\"{}\",", address));
-        }
-        addresses_str.push_str("]");
         format!(
             r#"
-            [[identity]]
+            [[identities]]
+            address = "{}"
             inbox_id = "{}"
-            {}
             [env]
             environment = "{}"
             host = "{}"
             "#,
-            self.inbox_id, addresses_str, self.env.name(), self.env.host()
+            self.address, self.inbox_id, self.env.name(), self.env.host()
         )
     }
 
-    pub fn addresses(&self) -> Vec<String> {
-        self.addresses.clone()
+    pub fn address(&self) -> String {
+        self.address.clone()
     }
     pub fn client(&self) -> &Client {
         &self.client
