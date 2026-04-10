@@ -16,11 +16,17 @@ fn main() {
 #[component]
 fn App() -> Element {
     let mut identities_toml: Signal<Option<String>> = use_persistent("identities", || None);
+    let mut identities: Signal<Vec<Identity>> = use_signal(||vec![]);
     use_resource(move || async move {
-        if identities_toml().is_none() {
-            let new_identity = Identity::new(Env::Dev(Some("https://xmtp-dev.floscodes.net".to_string()))).await.unwrap();
-            identities_toml.set(Some(new_identity.to_toml()));
-        }
+    let Some(toml) = identities_toml() else {
+        let new_identity = Identity::new(Env::Dev(Some("https://xmtp-dev.floscodes.net".to_string()))).await.unwrap();
+        identities_toml.set(Some(new_identity.to_toml()));
+        return;
+    };
+
+    identities.set(
+        Identity::from_toml(toml).await.unwrap()
+    );
     });
 
     rsx! {
