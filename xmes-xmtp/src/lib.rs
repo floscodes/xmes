@@ -1,7 +1,7 @@
-use alloy::signers::Signer;
 use alloy::signers::local::PrivateKeySigner;
+use alloy::signers::Signer;
 use anyhow::{Error, Result};
-use bindings_wasm::client::{Client, create_client};
+use bindings_wasm::client::{create_client, Client};
 use bindings_wasm::conversation::{self, Conversation};
 use bindings_wasm::identity::{Identifier, IdentifierKind};
 use bindings_wasm::inbox_id::generate_inbox_id;
@@ -21,9 +21,7 @@ impl Identity {
     pub async fn new(env: Env) -> Result<Identity> {
         let signer = PrivateKeySigner::random();
         let identifier = Identifier {
-            identifier: signer
-                .address()
-                .to_string(),
+            identifier: signer.address().to_string(),
             identifier_kind: IdentifierKind::Ethereum,
         };
 
@@ -101,7 +99,7 @@ impl Identity {
                 .ok_or(Error::msg("Failed to parse Identity"))?;
             let env = identity["env"]
                 .as_table()
-                .ok_or(Error::msg("Failed to parse Identity"))?;
+                .ok_or(Error::msg("Failed to parse environment"))?;
             let env_name = env["environment"].as_str().unwrap_or_default();
             let host = env["host"].as_str().unwrap_or_default();
             let environment = match env_name {
@@ -150,11 +148,12 @@ impl Identity {
             [[identities]]
             address = "{}"
             inbox_id = "{}"
-            [env]
-            environment = "{}"
-            host = "{}"
+            env = {{ environment = "{}", host = "{}" }}
             "#,
-            self.address.to_lowercase(), self.inbox_id, self.env.name(), self.env.host()
+            self.address.to_lowercase(),
+            self.inbox_id,
+            self.env.name(),
+            self.env.host()
         )
     }
 
@@ -209,16 +208,20 @@ impl Env {
                 }
                 host.to_owned()
             }
-            Self::Dev(host) => if let Some(host) = host {
-                host.clone()
-            } else {
-                DEFAULT_DEV_ENV_HOST.to_string()
-            },
-            Self::Production(host) => if let Some(host) = host {
-                host.clone()
-            } else {
-                DEFAULT_PRODUCTION_ENV_HOST.to_string()
-            },
+            Self::Dev(host) => {
+                if let Some(host) = host {
+                    host.clone()
+                } else {
+                    DEFAULT_DEV_ENV_HOST.to_string()
+                }
+            }
+            Self::Production(host) => {
+                if let Some(host) = host {
+                    host.clone()
+                } else {
+                    DEFAULT_PRODUCTION_ENV_HOST.to_string()
+                }
+            }
         }
     }
 }
