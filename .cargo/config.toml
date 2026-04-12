@@ -1,6 +1,0 @@
-[build]
-target = "wasm32-unknown-unknown"
-
-[host.aarch64-apple-darwin]
-ar = "/opt/homebrew/opt/llvm/bin/llvm-ar"
-linker = "/opt/homebrew/opt/llvm/bin/wasm-ld"
