@@ -1,8 +1,15 @@
+#![recursion_limit = "256"]
+
 use alloy::signers::local::PrivateKeySigner;
 use alloy::signers::Signer;
 use anyhow::{Error, Result};
 use bindings_wasm::client::{create_client, Client};
-use bindings_wasm::conversation::{self, Conversation};
+use bindings_wasm::conversation::Conversation;
+use bindings_wasm::conversations::{
+    Conversations,
+    ListConversationsOptions,
+    ListConversationsOrderBy
+};
 use bindings_wasm::identity::{Identifier, IdentifierKind};
 use bindings_wasm::inbox_id::generate_inbox_id;
 use toml::Table;
@@ -166,14 +173,37 @@ impl Identity {
     pub fn client_mut(&mut self) -> &mut Client {
         &mut self.client
     }
-    pub fn inbox_id(&self) -> String {
-        self.inbox_id.clone()
+    pub fn conversations(&self) -> Conversations {
+        self.client.conversations()
+    }
+    pub async fn create_group(&self) -> Result<Conversation> {
+        let inbox_ids = vec![self.inbox_id().clone()];
+        let convo = self.conversations()
+            .create_group(inbox_ids, None)
+            .await
+            .map_err(|_| Error::msg("Could not create group"))?;
+        Ok(convo)
     }
     pub fn env(&self) -> &Env {
         &self.env
     }
     pub fn env_mut(&mut self) -> &mut Env {
         &mut self.env
+    }
+    pub fn inbox_id(&self) -> String {
+        self.inbox_id.clone()
+    }
+    pub fn list_conversations(&self) -> Result<js_sys::Array> {
+        let convos_array = self.conversations()
+            .list(Some(
+                ListConversationsOptions {
+                    order_by: Some(ListConversationsOrderBy::LastActivity),
+                    ..Default::default()
+                }
+            )
+            )
+            .map_err(|_| Error::msg("Could not list conversations"))?;
+        Ok(convos_array)
     }
 }
 

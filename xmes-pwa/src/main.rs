@@ -16,6 +16,7 @@ fn main() {
 fn App() -> Element {
     let mut identities_toml: Signal<Option<String>> = use_persistent("identities", || None);
     let mut identities: Signal<Vec<Identity>> = use_signal(|| vec![]);
+    let mut active_identity: Signal<Option<Identity>> = use_signal(|| None);
     use_resource(move || async move {
         let Some(toml) = identities_toml() else {
             let new_identity =
@@ -33,6 +34,6 @@ fn App() -> Element {
         document::Link { rel: "icon", href: FAVICON }
         document::Link { rel: "stylesheet", href: MAIN_CSS }
         document::Link { rel: "stylesheet", href: TAILWIND_CSS }
-        components::conversations::Conversations {}
+        components::conversations::Conversations { identity: active_identity }
     }
 }
