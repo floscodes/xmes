@@ -144,14 +144,12 @@ impl Identity {
             .await
             .map_err(|_| Error::msg("Failed to create client"))?;
 
-            if client.is_registered() {
-                identity_vec.push(Identity {
-                    address: address.to_string().to_lowercase(),
-                    inbox_id: inbox_id.to_string(),
-                    env: environment,
-                    client,
-                });
-            }
+            identity_vec.push(Identity {
+                address: address.to_string().to_lowercase(),
+                inbox_id: inbox_id.to_string(),
+                env: environment,
+                client,
+            });
         }
 
         Ok(identity_vec)
