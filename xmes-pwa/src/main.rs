@@ -1,6 +1,6 @@
 use dioxus::prelude::*;
 use dioxus_sdk::storage::use_persistent;
-use xmes_xmtp::{Env, Identity};
+use xmes_xmtp_wasm::{Env, Identity};
 
 mod components;
 

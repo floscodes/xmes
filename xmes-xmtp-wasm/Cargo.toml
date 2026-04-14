@@ -1,5 +1,5 @@
 [package]
-name = "xmes-xmtp"
+name = "xmes-xmtp-wasm"
 authors = ["flopetautschnig (floscodes) <mail@floscodes.net>"]
 version = "0.1.0"
 edition = "2024"
@@ -17,7 +17,7 @@ toml = "1.1.2"
 wasm-bindgen = "=0.2.114"
 
 [lib]
-name = "xmes_xmtp"
+name = "xmes_xmtp_wasm"
 
 [profile.dev]
 debug = 0

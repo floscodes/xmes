@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
-use xmes_xmtp::Identity;
+use xmes_xmtp_wasm::Identity;
 
 mod conversation;
 

@@ -10411,11 +10411,11 @@ dependencies = [
  "dioxus",
  "dioxus-primitives",
  "dioxus-sdk",
- "xmes-xmtp",
+ "xmes-xmtp-wasm",
 ]
 
 [[package]]
-name = "xmes-xmtp"
+name = "xmes-xmtp-wasm"
 version = "0.1.0"
 dependencies = [
  "alloy",

@@ -31,7 +31,7 @@ The `.cargo/config.toml` sets `wasm32-unknown-unknown` as the default build targ
 
 The workspace has two crates:
 
-**`xmes-xmtp`** — domain library, no UI. Contains:
+**`xmes-xmtp-wasm`** — XMTP integration library, WASM target only, no UI. Contains:
 - `Identity` struct wrapping an XMTP client with its Ethereum-based keypair
 - `Env` enum for switching between XMTP environments (Local / Dev / Production)
 - Identity serialization/deserialization via TOML (for local persistence)
@@ -41,7 +41,7 @@ The workspace has two crates:
 - `main.rs`: entry point — loads or creates an `Identity` via `dioxus-sdk` local storage, provides it to the component tree via context
 - `components/conversations/`: UI for listing and displaying conversations
 
-The flow is: `App` initializes identity → provides it as context → `Conversations` component calls `xmes_xmtp` to fetch data → renders with Dioxus reactivity.
+The flow is: `App` initializes identity → provides it as context → `Conversations` component calls `xmes_xmtp_wasm` to fetch data → renders with Dioxus reactivity.
 
 ## Dioxus 0.7 Patterns
 
@@ -57,4 +57,4 @@ See `xmes-pwa/AGENTS.md` for full Dioxus 0.7 reference with examples.
 
 ## XMTP Identity
 
-Identities are Ethereum keypairs generated via `alloy` + `k256`. Each identity has an inbox ID derived from the Ethereum address. Identities are persisted as TOML strings in browser local storage (via `dioxus-sdk`). The `xmes-xmtp` crate uses `bindings_wasm` (libxmtp WASM bindings sourced from GitHub) for all XMTP protocol operations.
+Identities are Ethereum keypairs generated via `alloy` + `k256`. Each identity has an inbox ID derived from the Ethereum address. Identities are persisted as TOML strings in browser local storage (via `dioxus-sdk`). The `xmes-xmtp-wasm` crate uses `bindings_wasm` (libxmtp WASM bindings sourced from GitHub) for all XMTP protocol operations.
