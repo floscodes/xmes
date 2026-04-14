@@ -54,30 +54,7 @@ impl Identity {
         .map_err(|_| Error::msg("Could not create client"))?;
 
         if !client.is_registered() {
-            let sig_request = client
-                .create_inbox_signature_request()
-                .map_err(|_| Error::msg("Could not create signature request"))?
-                .unwrap();
-
-            let text = sig_request
-                .signature_text()
-                .await
-                .map_err(|_| Error::msg("Signing failed!"))?;
-
-            let signature = signer
-                .sign_message(&text.as_bytes())
-                .await
-                .map_err(|_| Error::msg("Could not sign message"))?;
-            let sig_uint8 = js_sys::Uint8Array::from(signature.as_bytes().as_slice());
-
-            sig_request
-                .add_ecdsa_signature(sig_uint8)
-                .await
-                .map_err(|_| Error::msg("Could not add signature"))?;
-            client
-                .register_identity(sig_request)
-                .await
-                .map_err(|_| Error::msg("Could not register identity"))?;
+            Self::register(&mut client, &signer).await?;
         }
 
         Ok(Identity {
@@ -87,6 +64,35 @@ impl Identity {
             client,
         })
     }
+    async fn register(client: &mut Client, signer: &PrivateKeySigner) -> Result<()> {
+        let sig_request = client
+            .create_inbox_signature_request()
+            .map_err(|_| Error::msg("Could not create signature request"))?
+            .unwrap();
+
+        let text = sig_request
+            .signature_text()
+            .await
+            .map_err(|_| Error::msg("Signing failed!"))?;
+
+        let signature = signer
+            .sign_message(text.as_bytes())
+            .await
+            .map_err(|_| Error::msg("Could not sign message"))?;
+        let sig_uint8 = js_sys::Uint8Array::from(signature.as_bytes().as_slice());
+
+        sig_request
+            .add_ecdsa_signature(sig_uint8)
+            .await
+            .map_err(|_| Error::msg("Could not add signature"))?;
+        client
+            .register_identity(sig_request)
+            .await
+            .map_err(|_| Error::msg("Could not register identity"))?;
+
+        Ok(())
+    }
+
     pub async fn from_toml(toml_str: String) -> Result<Vec<Self>> {
         let toml = toml_str
             .parse::<Table>()
@@ -138,12 +144,14 @@ impl Identity {
             .await
             .map_err(|_| Error::msg("Failed to create client"))?;
 
-            identity_vec.push(Identity {
-                address: address.to_string().to_lowercase(),
-                inbox_id: inbox_id.to_string(),
-                env: environment,
-                client,
-            });
+            if client.is_registered() {
+                identity_vec.push(Identity {
+                    address: address.to_string().to_lowercase(),
+                    inbox_id: inbox_id.to_string(),
+                    env: environment,
+                    client,
+                });
+            }
         }
 
         Ok(identity_vec)
