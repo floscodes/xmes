@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use dioxus::prelude::*;
 use dioxus_sdk::storage::use_persistent;
 use xmes_xmtp_wasm::{Env, Identity};
@@ -17,8 +19,8 @@ fn App() -> Element {
     let mut identities_toml: Signal<Option<String>> = use_persistent("identities", || None);
     let mut active_identity_address: Signal<Option<String>> = use_persistent("active_identity", || None);
 
-    let mut identities: Signal<Vec<Identity>> = use_signal(|| vec![]);
-    let mut active_identity: Signal<Option<Identity>> = use_signal(|| None);
+    let mut identities: Signal<Vec<Rc<Identity>>> = use_signal(|| vec![]);
+    let mut active_identity: Signal<Option<Rc<Identity>>> = use_signal(|| None);
 
     use_resource(move || async move {
         let Some(toml) = identities_toml() else {
@@ -28,11 +30,12 @@ fn App() -> Element {
                     .unwrap();
             active_identity_address.set(Some(new_identity.address()));
             identities_toml.set(Some(new_identity.to_toml()));
-            active_identity.set(Some(new_identity));
+            active_identity.set(Some(Rc::new(new_identity)));
             return;
         };
 
-        let mut loaded = Identity::from_toml(toml).await.unwrap();
+        let loaded = Identity::from_toml(toml).await.unwrap();
+        let mut loaded: Vec<Rc<Identity>> = loaded.into_iter().map(Rc::new).collect();
         let active_idx = active_identity_address()
             .as_deref()
             .and_then(|addr| loaded.iter().position(|id| id.address() == addr))

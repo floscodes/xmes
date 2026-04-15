@@ -4,9 +4,16 @@ use alloy::signers::local::PrivateKeySigner;
 use alloy::signers::Signer;
 use anyhow::{Error, Result};
 use bindings_wasm::client::{create_client, Client};
-use bindings_wasm::conversation::Conversation;
+pub use bindings_wasm::conversation::Conversation;
+pub use bindings_wasm::conversations::Conversations;
+
+#[derive(Clone, PartialEq)]
+pub struct ConversationSummary {
+    pub id: String,
+    pub name: String,
+    pub last_sender: Option<String>,
+}
 use bindings_wasm::conversations::{
-    Conversations,
     ListConversationsOptions,
     ListConversationsOrderBy
 };
@@ -199,17 +206,81 @@ impl Identity {
     pub fn inbox_id(&self) -> String {
         self.inbox_id.clone()
     }
-    pub fn list_conversations(&self) -> Result<js_sys::Array> {
+    pub async fn list_conversations(&self) -> Result<Vec<ConversationSummary>> {
         let convos_array = self.conversations()
             .list(Some(
                 ListConversationsOptions {
                     order_by: Some(ListConversationsOrderBy::LastActivity),
                     ..Default::default()
                 }
-            )
-            )
+            ))
             .map_err(|_| Error::msg("Could not list conversations"))?;
-        Ok(convos_array)
+
+        let convo_key      = wasm_bindgen::JsValue::from_str("conversation");
+        let id_key         = wasm_bindgen::JsValue::from_str("id");
+        let group_name_key = wasm_bindgen::JsValue::from_str("groupName");
+        let last_msg_key   = wasm_bindgen::JsValue::from_str("lastMessage");
+        let sender_key     = wasm_bindgen::JsValue::from_str("senderInboxId");
+
+        struct RawItem {
+            id: String,
+            name: String,
+            sender_inbox_id: Option<String>,
+        }
+
+        // Sync pass: extract conversation data + sender inbox IDs
+        let mut raw_items: Vec<RawItem> = Vec::new();
+        for i in 0..convos_array.length() {
+            let item = convos_array.get(i);
+            let Ok(convo) = js_sys::Reflect::get(&item, &convo_key) else { continue };
+
+            let Ok(id_fn_val) = js_sys::Reflect::get(&convo, &id_key) else { continue };
+            let Ok(id_val) = js_sys::Function::from(id_fn_val).call0(&convo) else { continue };
+            let Some(id) = id_val.as_string() else { continue };
+
+            let name = js_sys::Reflect::get(&convo, &group_name_key)
+                .ok()
+                .and_then(|fn_val| js_sys::Function::from(fn_val).call0(&convo).ok())
+                .and_then(|v| v.as_string())
+                .filter(|s| !s.is_empty())
+                .unwrap_or_else(|| id[..8.min(id.len())].to_string());
+
+            let sender_inbox_id = js_sys::Reflect::get(&item, &last_msg_key)
+                .ok()
+                .filter(|v| !v.is_null() && !v.is_undefined())
+                .and_then(|last_msg| js_sys::Reflect::get(&last_msg, &sender_key).ok())
+                .and_then(|v| v.as_string());
+
+            raw_items.push(RawItem { id, name, sender_inbox_id });
+        }
+
+        // Async pass: batch-resolve sender inbox IDs → wallet addresses
+        let sender_ids: Vec<String> = raw_items.iter()
+            .filter_map(|it| it.sender_inbox_id.clone())
+            .collect::<std::collections::HashSet<_>>()
+            .into_iter()
+            .collect();
+
+        let mut addr_map: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+        if !sender_ids.is_empty() {
+            if let Ok(states) = self.client.inbox_state_from_inbox_ids(sender_ids, false).await {
+                for state in states {
+                    if let Some(addr) = state.account_identifiers.into_iter().next() {
+                        addr_map.insert(state.inbox_id, addr.identifier);
+                    }
+                }
+            }
+        }
+
+        let summaries = raw_items.into_iter().map(|it| {
+            let last_sender = it.sender_inbox_id
+                .as_deref()
+                .and_then(|inbox_id| addr_map.get(inbox_id))
+                .cloned();
+            ConversationSummary { id: it.id, name: it.name, last_sender }
+        }).collect();
+
+        Ok(summaries)
     }
 }
 
