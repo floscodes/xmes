@@ -16,8 +16,6 @@ pub fn Conversations(active_identity: Signal<Option<Rc<Identity>>>) -> Element {
         }
     });
 
-    let state = (*conversations.read()).clone();
-
     rsx! {
         div {
             class: "flex flex-col items-center",
@@ -30,7 +28,7 @@ pub fn Conversations(active_identity: Signal<Option<Rc<Identity>>>) -> Element {
             }
             div {
                 class: "w-[85%] mt-6",
-                if let Some(Some(convos)) = state {
+                if let Some(Some(convos)) = (*conversations.read()).clone() {
                     if convos.is_empty() {
                         div {
                             class: "text-gray-500 text-sm mt-4",
