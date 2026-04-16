@@ -234,6 +234,9 @@
   .flex {
     display: flex;
   }
+  .inline {
+    display: inline;
+  }
   .h-8 {
     height: calc(var(--spacing) * 8);
   }

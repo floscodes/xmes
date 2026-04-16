@@ -14,13 +14,21 @@ const MAIN_CSS: Asset = asset!("/assets/styling/main.css");
 const TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
 
 /// Minimal JS loaded in the Dedicated Worker.
-/// It awaits a `wasm_init` message, then dynamically imports the app's ES module.
-/// The module auto-initialises the WASM binary; `main()` detects the worker
-/// context and delegates to `worker::run()` instead of launching Dioxus.
+/// Patches `fetch` so that origin-relative paths (e.g. `/./assets/foo.wasm`)
+/// are turned into absolute URLs using the page origin passed from the main
+/// thread — Blob-URL workers have no page origin to resolve against themselves.
 const WORKER_BOOTSTRAP: &str = r#"
 self.addEventListener('message', async function(e) {
     if (e.data.type !== 'wasm_init') return;
-    await import(e.data.scriptUrl);
+    const { scriptUrl, pageOrigin } = e.data;
+    const origFetch = self.fetch.bind(self);
+    self.fetch = function(input, init) {
+        if (typeof input === 'string' && input.startsWith('/')) {
+            input = pageOrigin + input;
+        }
+        return origFetch(input, init);
+    };
+    await import(scriptUrl);
 }, { once: true });
 "#;
 
@@ -127,8 +135,12 @@ fn App() -> Element {
         onmessage.forget();
 
         // Bootstrap the WASM inside the worker.
+        let page_origin = web_sys::window()
+            .and_then(|w| w.location().origin().ok())
+            .unwrap_or_default();
         let msg = js_obj("wasm_init");
         js_set(&msg, "scriptUrl", &script_url);
+        js_set(&msg, "pageOrigin", &page_origin);
         worker.post_message(&msg).unwrap_throw();
 
         worker_handle.set(Some(worker));
