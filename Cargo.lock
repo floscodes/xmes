@@ -10411,6 +10411,10 @@ dependencies = [
  "dioxus",
  "dioxus-primitives",
  "dioxus-sdk",
+ "js-sys",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
  "xmes-xmtp-wasm",
 ]
 

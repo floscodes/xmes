@@ -10,6 +10,22 @@ dioxus = { version = "*", features = [] }
 dioxus-primitives = { git = "https://github.com/DioxusLabs/components", version = "0.0.1", default-features = false }
 dioxus-sdk = { version = "0.7.0", features = ["storage"] }
 xmes-xmtp-wasm.workspace = true
+js-sys = { version = "=0.3.91" }
+wasm-bindgen = { version = "=0.2.114" }
+wasm-bindgen-futures = { version = "=0.4.64" }
+
+[dependencies.web-sys]
+version = "=0.3.91"
+features = [
+    "Blob",
+    "BlobPropertyBag",
+    "DedicatedWorkerGlobalScope",
+    "HtmlScriptElement",
+    "MessageEvent",
+    "Url",
+    "Window",
+    "Worker",
+]
 
 [features]
 default = ["web"]

@@ -1,20 +1,23 @@
-use std::rc::Rc;
-
 use dioxus::prelude::*;
-use xmes_xmtp_wasm::Identity;
+use js_sys::Reflect;
+use wasm_bindgen::prelude::*;
+use xmes_xmtp_wasm::ConversationSummary;
 
 mod conversation;
 
 #[component]
-pub fn Conversations(active_identity: Signal<Option<Rc<Identity>>>) -> Element {
-    let mut conversations = use_resource(move || async move {
-        // Rc::clone while holding the guard, then release the guard before .await
-        let rc_id = active_identity.read().as_ref().map(Rc::clone);
-        match rc_id {
-            None => None,
-            Some(id) => Some(id.list_conversations().await.unwrap_or_default()),
+pub fn Conversations() -> Element {
+    let worker = use_context::<Signal<Option<web_sys::Worker>>>();
+    let conversations = use_context::<Signal<Option<Vec<ConversationSummary>>>>();
+    let identity_ready = use_context::<Signal<bool>>();
+
+    let send = move |msg_type: &str| {
+        if let Some(w) = worker.read().as_ref() {
+            let msg = js_sys::Object::new();
+            Reflect::set(&msg, &"type".into(), &msg_type.into()).unwrap_throw();
+            w.post_message(&msg).unwrap_throw();
         }
-    });
+    };
 
     rsx! {
         div {
@@ -28,50 +31,43 @@ pub fn Conversations(active_identity: Signal<Option<Rc<Identity>>>) -> Element {
             }
             div {
                 class: "w-[85%] mt-6",
-                if let Some(Some(convos)) = (*conversations.read()).clone() {
-                    if convos.is_empty() {
+                match conversations.read().as_ref() {
+                    None => rsx! {
+                        div {
+                            class: "animate-spin rounded-full h-8 w-8 border-4 border-gray-200 border-t-gray-600 mt-6 mx-auto"
+                        }
+                    },
+                    Some(convos) if convos.is_empty() => rsx! {
                         div {
                             class: "text-gray-500 text-sm mt-4",
                             "No conversations found for this identity."
                         }
-                    } else {
-                        for summary in convos {
+                    },
+                    Some(convos) => rsx! {
+                        for summary in convos.clone() {
                             conversation::Convo {
                                 summary,
                                 on_delete: move |id: String| {
-                                    let rc_id = active_identity.read().as_ref().map(Rc::clone);
-                                    spawn(async move {
-                                        if let Some(identity) = rc_id {
-                                            let _ = identity.leave_conversation(id).await;
-                                            conversations.restart();
-                                        }
-                                    });
+                                    if let Some(w) = worker.read().as_ref() {
+                                        let msg = js_sys::Object::new();
+                                        Reflect::set(&msg, &"type".into(), &"leave".into()).unwrap_throw();
+                                        Reflect::set(&msg, &"id".into(), &id.into()).unwrap_throw();
+                                        w.post_message(&msg).unwrap_throw();
+                                    }
                                 }
                             }
                         }
-                    }
-                } else {
-                    div {
-                        class: "animate-spin rounded-full h-8 w-8 border-4 border-gray-200 border-t-gray-600 mt-6 mx-auto"
-                    }
+                    },
                 }
             }
         }
 
-        // Floating action button
+        // Floating action button — create a new group conversation
         button {
             class: "fixed bottom-6 right-6 w-14 h-14 rounded-full bg-gray-900 text-white shadow-lg flex items-center justify-center hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
             title: "Create Conversation",
-            disabled: active_identity.read().is_none(),
-            onclick: move |_| {
-                let rc_id = active_identity.read().as_ref().map(Rc::clone);
-                spawn(async move {
-                    if let Some(id) = rc_id {
-                        let _ = id.create_group().await;
-                        conversations.restart();
-                    }
-                });
-            },
+            disabled: !identity_ready(),
+            onclick: move |_| send("create_group"),
             svg {
                 xmlns: "http://www.w3.org/2000/svg",
                 width: "22",
