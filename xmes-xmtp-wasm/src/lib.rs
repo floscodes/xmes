@@ -3,7 +3,8 @@
 use alloy::signers::local::PrivateKeySigner;
 use alloy::signers::Signer;
 use anyhow::{Error, Result};
-use bindings_wasm::client::{create_client, Client};
+use k256::ecdsa::SigningKey;
+use bindings_wasm::client::{create_client, Client, DeviceSyncMode};
 pub use bindings_wasm::conversation::Conversation;
 pub use bindings_wasm::conversations::Conversations;
 
@@ -29,6 +30,7 @@ pub struct Identity {
     inbox_id: String,
     env: Env,
     client: Client,
+    signing_key: SigningKey,
 }
 
 impl Identity {
@@ -45,9 +47,9 @@ impl Identity {
             env.host(),
             inbox_id.clone(),
             identifier,
-            Some(inbox_id.clone()),
             None,
             None,
+            Some(DeviceSyncMode::Disabled),
             None,
             None,
             None,
@@ -69,6 +71,7 @@ impl Identity {
             inbox_id,
             env,
             client,
+            signing_key: signer.credential().clone(),
         })
     }
     async fn register(client: &mut Client, signer: &PrivateKeySigner) -> Result<()> {
@@ -128,17 +131,27 @@ impl Identity {
                 "production" => Env::Production(Some(host.to_string())),
                 _ => Env::default(),
             };
+            let signing_key_hex = identity["signing_key"]
+                .as_str()
+                .ok_or(Error::msg("Failed to parse signing key"))?;
+            let signing_key_bytes = hex::decode(signing_key_hex)
+                .map_err(|_| Error::msg("Invalid signing key hex"))?;
+            let signing_key = SigningKey::from_bytes(
+                k256::FieldBytes::from_slice(&signing_key_bytes),
+            )
+            .map_err(|_| Error::msg("Invalid signing key bytes"))?;
+
             let identifier = Identifier {
                 identifier: address.to_string(),
                 identifier_kind: IdentifierKind::Ethereum,
             };
-            let client: Client = create_client(
+            let mut client: Client = create_client(
                 environment.host().to_string(),
                 inbox_id.to_string(),
                 identifier,
-                Some(inbox_id.to_string()),
                 None,
                 None,
+                Some(DeviceSyncMode::Disabled),
                 None,
                 None,
                 None,
@@ -151,11 +164,17 @@ impl Identity {
             .await
             .map_err(|_| Error::msg("Failed to create client"))?;
 
+            if !client.is_registered() {
+                let signer = PrivateKeySigner::from_signing_key(signing_key.clone());
+                Self::register(&mut client, &signer).await?;
+            }
+
             identity_vec.push(Identity {
                 address: address.to_string().to_lowercase(),
                 inbox_id: inbox_id.to_string(),
                 env: environment,
                 client,
+                signing_key,
             });
         }
 
@@ -163,18 +182,25 @@ impl Identity {
     }
 
     pub fn to_toml(&self) -> String {
+        let signing_key_hex = hex::encode(self.signing_key.to_bytes());
         format!(
             r#"
             [[identities]]
             address = "{}"
             inbox_id = "{}"
+            signing_key = "{}"
             env = {{ environment = "{}", host = "{}" }}
             "#,
             self.address.to_lowercase(),
             self.inbox_id,
+            signing_key_hex,
             self.env.name(),
             self.env.host()
         )
+    }
+
+    pub fn signer(&self) -> PrivateKeySigner {
+        PrivateKeySigner::from_signing_key(self.signing_key.clone())
     }
 
     pub fn address(&self) -> String {
@@ -189,6 +215,16 @@ impl Identity {
     pub fn conversations(&self) -> Conversations {
         self.client.conversations()
     }
+    pub async fn leave_conversation(&self, id: String) -> Result<()> {
+        let conversation = self.conversations()
+            .find_group_by_id(id)
+            .map_err(|_| Error::msg("Conversation not found"))?;
+        conversation.leave_group()
+            .await
+            .map_err(|_| Error::msg("Could not leave conversation"))?;
+        Ok(())
+    }
+
     pub async fn create_group(&self) -> Result<Conversation> {
         let inbox_ids = vec![self.inbox_id().clone()];
         let convo = self.conversations()
