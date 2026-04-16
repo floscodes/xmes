@@ -14,6 +14,20 @@ js-sys = { version = "=0.3.91" }
 k256 = "0.13.4"
 sha3 = "0.10.8"
 wasm-bindgen = "=0.2.114"
+wasm-bindgen-futures = "=0.4.64"
+
+[dependencies.web-sys]
+version = "=0.3.91"
+features = [
+    "Blob",
+    "BlobPropertyBag",
+    "DedicatedWorkerGlobalScope",
+    "HtmlScriptElement",
+    "MessageEvent",
+    "Url",
+    "Window",
+    "Worker",
+]
 
 [lib]
 name = "xmes_xmtp_wasm"

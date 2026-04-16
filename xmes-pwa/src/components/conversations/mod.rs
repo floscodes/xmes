@@ -1,23 +1,13 @@
 use dioxus::prelude::*;
-use js_sys::Reflect;
-use wasm_bindgen::prelude::*;
-use xmes_xmtp_wasm::ConversationSummary;
+use xmes_xmtp_wasm::{ConversationSummary, XmtpHandle};
 
 mod conversation;
 
 #[component]
 pub fn Conversations() -> Element {
-    let worker = use_context::<Signal<Option<web_sys::Worker>>>();
+    let xmtp = use_context::<Signal<Option<XmtpHandle>>>();
     let conversations = use_context::<Signal<Option<Vec<ConversationSummary>>>>();
     let identity_ready = use_context::<Signal<bool>>();
-
-    let send = move |msg_type: &str| {
-        if let Some(w) = worker.read().as_ref() {
-            let msg = js_sys::Object::new();
-            Reflect::set(&msg, &"type".into(), &msg_type.into()).unwrap_throw();
-            w.post_message(&msg).unwrap_throw();
-        }
-    };
 
     rsx! {
         div {
@@ -48,11 +38,8 @@ pub fn Conversations() -> Element {
                             conversation::Convo {
                                 summary,
                                 on_delete: move |id: String| {
-                                    if let Some(w) = worker.read().as_ref() {
-                                        let msg = js_sys::Object::new();
-                                        Reflect::set(&msg, &"type".into(), &"leave".into()).unwrap_throw();
-                                        Reflect::set(&msg, &"id".into(), &id.into()).unwrap_throw();
-                                        w.post_message(&msg).unwrap_throw();
+                                    if let Some(h) = xmtp.read().as_ref() {
+                                        h.request_leave(id);
                                     }
                                 }
                             }
@@ -67,7 +54,11 @@ pub fn Conversations() -> Element {
             class: "fixed bottom-6 right-6 w-14 h-14 rounded-full bg-gray-900 text-white shadow-lg flex items-center justify-center hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
             title: "Create Conversation",
             disabled: !identity_ready(),
-            onclick: move |_| send("create_group"),
+            onclick: move |_| {
+                if let Some(h) = xmtp.read().as_ref() {
+                    h.request_create_group();
+                }
+            },
             svg {
                 xmlns: "http://www.w3.org/2000/svg",
                 width: "22",
