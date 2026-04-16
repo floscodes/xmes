@@ -47,7 +47,7 @@ impl Identity {
             env.host(),
             inbox_id.clone(),
             identifier,
-            None,
+            Some(inbox_id.clone()),
             None,
             Some(DeviceSyncMode::Disabled),
             None,
@@ -149,7 +149,7 @@ impl Identity {
                 environment.host().to_string(),
                 inbox_id.to_string(),
                 identifier,
-                None,
+                Some(inbox_id.to_string()),
                 None,
                 Some(DeviceSyncMode::Disabled),
                 None,
@@ -243,6 +243,11 @@ impl Identity {
         self.inbox_id.clone()
     }
     pub async fn list_conversations(&self) -> Result<Vec<ConversationSummary>> {
+        self.conversations()
+            .sync_all_conversations(None)
+            .await
+            .map_err(|_| Error::msg("Could not sync conversations"))?;
+
         let convos_array = self.conversations()
             .list(Some(
                 ListConversationsOptions {

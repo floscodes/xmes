@@ -10,7 +10,7 @@ XMES is a decentralized messaging PWA built with Rust/Dioxus targeting WebAssemb
 
 ```bash
 # Start development server with hot reload
-dx serve --addr 0.0.0.0 --port 9000
+dx serve --addr 0.0.0.0 --port 9000 --cross-origin-policy
 
 # Build for web
 dx build

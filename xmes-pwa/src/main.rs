@@ -25,6 +25,14 @@ fn App() -> Element {
     let mut active_identity: Signal<Option<Rc<Identity>>> = use_signal(|| None);
 
     use_resource(move || async move {
+        // Already initialized — a signal change triggered a re-run, but there's nothing to do.
+        // Without this guard, setting identities_toml inside this resource would cause it to
+        // re-run and call from_toml() while the client from new() still holds the OPFS file open,
+        // leading to a conflict and an identity reset loop.
+        if active_identity().is_some() {
+            return;
+        }
+
         let Some(toml) = identities_toml() else {
             let new_identity =
                 Identity::new(Env::Dev(Some("https://xmtp-dev.floscodes.net".to_string())))
@@ -36,7 +44,12 @@ fn App() -> Element {
             return;
         };
 
-        let loaded = Identity::from_toml(toml).await.unwrap();
+        let Ok(loaded) = Identity::from_toml(toml).await else {
+            // TOML is outdated or corrupt — reset and create a fresh identity
+            identities_toml.set(None);
+            active_identity_address.set(None);
+            return;
+        };
         let mut loaded: Vec<Rc<Identity>> = loaded.into_iter().map(Rc::new).collect();
         let active_idx = active_identity_address()
             .as_deref()

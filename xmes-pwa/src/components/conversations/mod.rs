@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use dioxus::prelude::*;
-use xmes_xmtp_wasm::{ConversationSummary, Identity};
+use xmes_xmtp_wasm::Identity;
 
 mod conversation;
 
@@ -36,7 +36,18 @@ pub fn Conversations(active_identity: Signal<Option<Rc<Identity>>>) -> Element {
                         }
                     } else {
                         for summary in convos {
-                            conversation::Convo { summary }
+                            conversation::Convo {
+                                summary,
+                                on_delete: move |id: String| {
+                                    let rc_id = active_identity.read().as_ref().map(Rc::clone);
+                                    spawn(async move {
+                                        if let Some(identity) = rc_id {
+                                            let _ = identity.leave_conversation(id).await;
+                                            conversations.restart();
+                                        }
+                                    });
+                                }
+                            }
                         }
                     }
                 } else {
