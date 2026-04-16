@@ -1,5 +1,6 @@
 #![recursion_limit = "256"]
 
+use std::rc::Rc;
 use alloy::signers::local::PrivateKeySigner;
 use alloy::signers::Signer;
 use anyhow::{Error, Result};
@@ -24,11 +25,12 @@ use bindings_wasm::inbox_id::generate_inbox_id;
 const DEFAULT_DEV_ENV_HOST: &'static str = "https://api.dev.xmtp.network:5558";
 const DEFAULT_PRODUCTION_ENV_HOST: &'static str = "https://api.production.xmtp.network:5558";
 
+#[derive(Clone)]
 pub struct Identity {
     address: String,
     inbox_id: String,
     env: Env,
-    client: Client,
+    client: Rc<Client>,
     signing_key: SigningKey,
 }
 
@@ -69,7 +71,7 @@ impl Identity {
             address: signer.address().to_string().to_lowercase(),
             inbox_id,
             env,
-            client,
+            client: Rc::new(client),
             signing_key: signer.credential().clone(),
         })
     }
@@ -136,7 +138,7 @@ impl Identity {
             Self::register(&mut client, &signer).await?;
         }
 
-        Ok(Identity { address, inbox_id, env, client, signing_key })
+        Ok(Identity { address, inbox_id, env, client: Rc::new(client), signing_key })
     }
 
     /// Serialize to a 64-character hex string (the raw private key bytes).
@@ -153,9 +155,6 @@ impl Identity {
     }
     pub fn client(&self) -> &Client {
         &self.client
-    }
-    pub fn client_mut(&mut self) -> &mut Client {
-        &mut self.client
     }
     pub fn conversations(&self) -> Conversations {
         self.client.conversations()
@@ -180,9 +179,6 @@ impl Identity {
     }
     pub fn env(&self) -> &Env {
         &self.env
-    }
-    pub fn env_mut(&mut self) -> &mut Env {
-        &mut self.env
     }
     pub fn inbox_id(&self) -> String {
         self.inbox_id.clone()
@@ -272,6 +268,7 @@ impl Identity {
 
 pub type EnvHost = String;
 
+#[derive(Clone)]
 pub enum Env {
     Local(EnvHost),
     Dev(Option<EnvHost>),

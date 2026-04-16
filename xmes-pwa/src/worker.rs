@@ -4,7 +4,7 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 use xmes_xmtp_wasm::{ConversationSummary, Env, Identity};
 
-type IdentityRef = Rc<RefCell<Option<Rc<Identity>>>>;
+type IdentityRef = Rc<RefCell<Option<Identity>>>;
 
 const XMTP_HOST: &str = "https://xmtp-dev.floscodes.net";
 
@@ -57,7 +57,7 @@ async fn handle_init(
 ) {
     let identity = match toml {
         Some(hex) => match Identity::from_key_hex(hex, Env::Dev(Some(XMTP_HOST.to_string()))).await {
-            Ok(id) => Some(Rc::new(id)),
+            Ok(id) => Some(id),
             Err(_) => new_identity().await,
         },
         None => new_identity().await,
@@ -118,11 +118,10 @@ async fn handle_leave(
     }
 }
 
-async fn new_identity() -> Option<Rc<Identity>> {
+async fn new_identity() -> Option<Identity> {
     Identity::new(Env::Dev(Some(XMTP_HOST.to_string())))
         .await
         .ok()
-        .map(Rc::new)
 }
 
 // --- serialization helpers ---
