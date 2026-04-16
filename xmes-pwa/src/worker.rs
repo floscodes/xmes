@@ -56,16 +56,16 @@ async fn handle_init(
     toml: Option<String>,
 ) {
     let identity = match toml {
-        Some(t) => match Identity::from_toml(t).await {
-            Ok(mut ids) if !ids.is_empty() => Some(Rc::new(ids.remove(0))),
-            _ => new_identity().await,
+        Some(hex) => match Identity::from_key_hex(hex, Env::Dev(Some(XMTP_HOST.to_string()))).await {
+            Ok(id) => Some(Rc::new(id)),
+            Err(_) => new_identity().await,
         },
         None => new_identity().await,
     };
 
     match identity {
         Some(id) => {
-            let new_toml = id.to_toml();
+            let new_toml = id.to_key_hex();
             *state.borrow_mut() = Some(id);
             let msg = typed_obj("ready");
             set_str(&msg, "toml", &new_toml);

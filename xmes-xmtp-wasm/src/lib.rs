@@ -20,7 +20,6 @@ use bindings_wasm::conversations::{
 };
 use bindings_wasm::identity::{Identifier, IdentifierKind};
 use bindings_wasm::inbox_id::generate_inbox_id;
-use toml::Table;
 
 const DEFAULT_DEV_ENV_HOST: &'static str = "https://api.dev.xmtp.network:5558";
 const DEFAULT_PRODUCTION_ENV_HOST: &'static str = "https://api.production.xmtp.network:5558";
@@ -103,100 +102,46 @@ impl Identity {
         Ok(())
     }
 
-    pub async fn from_toml(toml_str: String) -> Result<Vec<Self>> {
-        let toml = toml_str
-            .parse::<Table>()
-            .map_err(|e| Error::msg(format!("Failed to parse TOML: {}", e)))?;
-        let identities = toml["identities"].as_array().ok_or(Error::msg(
-            "Failed to parse Identities - are there any Identitys set?",
-        ))?;
-
-        let mut identity_vec = Vec::new();
-
-        for identity in identities {
-            let address = identity["address"]
-                .as_str()
-                .ok_or(Error::msg("Failed to parse Identity"))?;
-            let inbox_id = identity["inbox_id"]
-                .as_str()
-                .ok_or(Error::msg("Failed to parse Identity"))?;
-            let env = identity["env"]
-                .as_table()
-                .ok_or(Error::msg("Failed to parse environment"))?;
-            let env_name = env["environment"].as_str().unwrap_or_default();
-            let host = env["host"].as_str().unwrap_or_default();
-            let environment = match env_name {
-                "local" => Env::Local(host.to_string()),
-                "dev" => Env::Dev(Some(host.to_string())),
-                "production" => Env::Production(Some(host.to_string())),
-                _ => Env::default(),
-            };
-            let signing_key_hex = identity["signing_key"]
-                .as_str()
-                .ok_or(Error::msg("Failed to parse signing key"))?;
-            let signing_key_bytes = hex::decode(signing_key_hex)
-                .map_err(|_| Error::msg("Invalid signing key hex"))?;
-            let signing_key = SigningKey::from_bytes(
-                k256::FieldBytes::from_slice(&signing_key_bytes),
-            )
+    /// Restore an identity from a previously stored private key hex string.
+    /// `address` and `inbox_id` are re-derived from the key — nothing else is stored.
+    pub async fn from_key_hex(hex_str: String, env: Env) -> Result<Self> {
+        let key_bytes = hex::decode(&hex_str)
+            .map_err(|_| Error::msg("Invalid signing key hex"))?;
+        let signing_key = SigningKey::from_bytes(k256::FieldBytes::from_slice(&key_bytes))
             .map_err(|_| Error::msg("Invalid signing key bytes"))?;
 
-            let identifier = Identifier {
-                identifier: address.to_string(),
-                identifier_kind: IdentifierKind::Ethereum,
-            };
-            let mut client: Client = create_client(
-                environment.host().to_string(),
-                inbox_id.to_string(),
-                identifier,
-                Some(inbox_id.to_string()),
-                None,
-                Some(DeviceSyncMode::Disabled),
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-            )
-            .await
-            .map_err(|_| Error::msg("Failed to create client"))?;
+        let signer = PrivateKeySigner::from_signing_key(signing_key.clone());
+        let address = signer.address().to_string().to_lowercase();
 
-            if !client.is_registered() {
-                let signer = PrivateKeySigner::from_signing_key(signing_key.clone());
-                Self::register(&mut client, &signer).await?;
-            }
+        let identifier = Identifier {
+            identifier: address.clone(),
+            identifier_kind: IdentifierKind::Ethereum,
+        };
+        let inbox_id = generate_inbox_id(identifier.clone(), None)
+            .map_err(|_| Error::msg("Could not generate inbox id"))?;
 
-            identity_vec.push(Identity {
-                address: address.to_string().to_lowercase(),
-                inbox_id: inbox_id.to_string(),
-                env: environment,
-                client,
-                signing_key,
-            });
+        let mut client: Client = create_client(
+            env.host(),
+            inbox_id.clone(),
+            identifier,
+            Some(inbox_id.clone()),
+            None,
+            Some(DeviceSyncMode::Disabled),
+            None, None, None, None, None, None, None, None,
+        )
+        .await
+        .map_err(|_| Error::msg("Could not create client"))?;
+
+        if !client.is_registered() {
+            Self::register(&mut client, &signer).await?;
         }
 
-        Ok(identity_vec)
+        Ok(Identity { address, inbox_id, env, client, signing_key })
     }
 
-    pub fn to_toml(&self) -> String {
-        let signing_key_hex = hex::encode(self.signing_key.to_bytes());
-        format!(
-            r#"
-            [[identities]]
-            address = "{}"
-            inbox_id = "{}"
-            signing_key = "{}"
-            env = {{ environment = "{}", host = "{}" }}
-            "#,
-            self.address.to_lowercase(),
-            self.inbox_id,
-            signing_key_hex,
-            self.env.name(),
-            self.env.host()
-        )
+    /// Serialize to a 64-character hex string (the raw private key bytes).
+    pub fn to_key_hex(&self) -> String {
+        hex::encode(self.signing_key.to_bytes())
     }
 
     pub fn signer(&self) -> PrivateKeySigner {

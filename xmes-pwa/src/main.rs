@@ -49,7 +49,7 @@ fn main() {
 #[component]
 fn App() -> Element {
     // Persisted across page loads via localStorage.
-    let mut identities_toml: Signal<Option<String>> = use_persistent("identities", || None);
+    let mut identities_toml: Signal<Option<String>> = use_persistent("signing_key", || None);
 
     // In-memory state, reset on every page load.
     let mut worker_handle: Signal<Option<web_sys::Worker>> = use_signal(|| None);
