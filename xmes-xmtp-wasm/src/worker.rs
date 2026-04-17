@@ -13,15 +13,38 @@ use wasm_bindgen_futures::spawn_local;
 
 use crate::{ConversationSummary, Env, Identity};
 
-/// Identity metadata sent to the host thread after successful initialisation.
+/// Per-identity metadata sent to the host thread.
 #[derive(Clone)]
 pub struct IdentityInfo {
-    pub key_hex: String,
-    pub address: String,
+    pub key_hex:  String,
+    pub address:  String,
     pub inbox_id: String,
 }
 
-type IdentityRef = Rc<RefCell<Option<Identity>>>;
+/// Sent whenever the identity list or active selection changes.
+#[derive(Clone)]
+pub struct IdentityListUpdate {
+    pub identities:  Vec<IdentityInfo>,
+    pub active_idx:  usize,
+}
+
+// ── Worker-side state ─────────────────────────────────────────────────────────
+
+struct WorkerState {
+    identities: Vec<Identity>,
+    active: usize,
+}
+
+impl WorkerState {
+    fn active(&self) -> Option<&Identity> {
+        self.identities.get(self.active)
+    }
+    fn active_clone(&self) -> Option<Identity> {
+        self.identities.get(self.active).cloned()
+    }
+}
+
+type StateRef = Rc<RefCell<WorkerState>>;
 
 const XMTP_HOST: &str = "https://xmtp-dev.floscodes.net";
 
@@ -43,7 +66,7 @@ self.addEventListener('message', async function(e) {
 }, { once: true });
 "#;
 
-// ── worker-side ──────────────────────────────────────────────────────────────
+// ── worker-side ───────────────────────────────────────────────────────────────
 
 /// Returns `true` when this WASM instance is running inside a Dedicated Worker.
 pub fn is_worker_context() -> bool {
@@ -62,27 +85,44 @@ async fn worker_run() {
     let scope: web_sys::DedicatedWorkerGlobalScope =
         js_sys::global().dyn_into().unwrap_throw();
 
-    let identity: IdentityRef = Rc::new(RefCell::new(None));
+    let state: StateRef = Rc::new(RefCell::new(WorkerState {
+        identities: vec![],
+        active: 0,
+    }));
 
-    let scope_cb = scope.clone();
-    let identity_cb = identity.clone();
+    let scope_cb  = scope.clone();
+    let state_cb  = state.clone();
 
     let handler = Closure::wrap(Box::new(move |e: web_sys::MessageEvent| {
-        let data = e.data();
+        let data     = e.data();
         let msg_type = str_field(&data, "type");
-        let scope = scope_cb.clone();
-        let identity = identity_cb.clone();
+        let scope    = scope_cb.clone();
+        let state    = state_cb.clone();
 
         match msg_type.as_str() {
             "init" => {
-                let key_hex = opt_str_field(&data, "key_hex");
-                spawn_local(handle_init(scope, identity, key_hex));
+                let arr = Reflect::get(&data, &"key_hexes".into())
+                    .ok()
+                    .and_then(|v| v.dyn_into::<js_sys::Array>().ok())
+                    .unwrap_or_default();
+                let key_hexes: Vec<String> = (0..arr.length())
+                    .filter_map(|i| arr.get(i).as_string())
+                    .collect();
+                spawn_local(handle_init(scope, state, key_hexes));
             }
-            "list" => spawn_local(handle_list(scope, identity)),
-            "create_group" => spawn_local(handle_create_group(scope, identity)),
+            "create_identity" => spawn_local(handle_create_identity(scope, state)),
+            "switch_identity" => {
+                let idx = Reflect::get(&data, &"index".into())
+                    .ok()
+                    .and_then(|v| v.as_f64())
+                    .unwrap_or(0.0) as usize;
+                spawn_local(handle_switch_identity(scope, state, idx));
+            }
+            "list"         => spawn_local(handle_list(scope, state)),
+            "create_group" => spawn_local(handle_create_group(scope, state)),
             "leave" => {
                 let id = str_field(&data, "id");
-                spawn_local(handle_leave(scope, identity, id));
+                spawn_local(handle_leave(scope, state, id));
             }
             _ => {}
         }
@@ -95,69 +135,109 @@ async fn worker_run() {
     scope.post_message(&msg).unwrap_throw();
 }
 
+// ── message handlers ──────────────────────────────────────────────────────────
+
 async fn handle_init(
     scope: web_sys::DedicatedWorkerGlobalScope,
-    state: IdentityRef,
-    key_hex: Option<String>,
+    state: StateRef,
+    key_hexes: Vec<String>,
 ) {
-    let identity = match key_hex {
-        Some(hex) => match Identity::from_key_hex(hex, Env::Dev(Some(XMTP_HOST.to_string()))).await {
-            Ok(id) => Some(id),
-            Err(_) => new_identity().await,
-        },
-        None => new_identity().await,
-    };
+    let env = Env::Dev(Some(XMTP_HOST.to_string()));
 
-    match identity {
-        Some(id) => {
-            let key_hex  = id.to_key_hex();
-            let address  = id.address();
-            let inbox_id = id.inbox_id();
-            *state.borrow_mut() = Some(id);
-            let msg = typed_obj("ready");
-            set_str(&msg, "key_hex",  &key_hex);
-            set_str(&msg, "address",  &address);
-            set_str(&msg, "inbox_id", &inbox_id);
-            scope.post_message(&msg).unwrap_throw();
+    let mut identities: Vec<Identity> = Vec::new();
+    for hex in key_hexes {
+        match Identity::from_key_hex(hex, env.clone()).await {
+            Ok(id)  => identities.push(id),
+            Err(_)  => {} // skip corrupt keys
         }
-        None => post_error(&scope, "Failed to initialize identity"),
+    }
+
+    // Always have at least one identity
+    if identities.is_empty() {
+        if let Some(id) = new_identity().await {
+            identities.push(id);
+        }
+    }
+
+    state.borrow_mut().identities = identities;
+    state.borrow_mut().active     = 0;
+
+    post_identity_list(&scope, &state.borrow());
+}
+
+async fn handle_create_identity(
+    scope: web_sys::DedicatedWorkerGlobalScope,
+    state: StateRef,
+) {
+    if let Some(id) = new_identity().await {
+        let new_idx = {
+            let mut s = state.borrow_mut();
+            s.identities.push(id);
+            s.identities.len() - 1
+        };
+        state.borrow_mut().active = new_idx;
+        post_identity_list(&scope, &state.borrow());
+        handle_list(scope, state).await;
+    } else {
+        post_error(&scope, "Failed to create new identity");
     }
 }
 
-async fn handle_list(scope: web_sys::DedicatedWorkerGlobalScope, state: IdentityRef) {
-    let id = state.borrow().clone();
+async fn handle_switch_identity(
+    scope: web_sys::DedicatedWorkerGlobalScope,
+    state: StateRef,
+    idx: usize,
+) {
+    {
+        let mut s = state.borrow_mut();
+        if idx < s.identities.len() {
+            s.active = idx;
+        }
+    }
+    post_identity_list(&scope, &state.borrow());
+    handle_list(scope, state).await;
+}
+
+async fn handle_list(
+    scope: web_sys::DedicatedWorkerGlobalScope,
+    state: StateRef,
+) {
+    let id = state.borrow().active_clone();
     match id {
         Some(id) => match id.list_conversations().await {
             Ok(convos) => post_conversations(&scope, &convos),
-            Err(e) => post_error(&scope, &e.to_string()),
+            Err(e)     => post_error(&scope, &e.to_string()),
         },
-        None => post_error(&scope, "Identity not initialized"),
+        None => post_error(&scope, "No identity available"),
     }
 }
 
-async fn handle_create_group(scope: web_sys::DedicatedWorkerGlobalScope, state: IdentityRef) {
-    let id = state.borrow().clone();
+async fn handle_create_group(
+    scope: web_sys::DedicatedWorkerGlobalScope,
+    state: StateRef,
+) {
+    let id = state.borrow().active_clone();
     match id {
         Some(id) => match id.create_group().await {
-            Ok(_) => handle_list(scope, state).await,
+            Ok(_)  => handle_list(scope, state).await,
             Err(e) => post_error(&scope, &e.to_string()),
         },
-        None => post_error(&scope, "Identity not initialized"),
+        None => post_error(&scope, "No identity available"),
     }
 }
 
 async fn handle_leave(
     scope: web_sys::DedicatedWorkerGlobalScope,
-    state: IdentityRef,
+    state: StateRef,
     conversation_id: String,
 ) {
-    let id = state.borrow().clone();
+    let id = state.borrow().active_clone();
     match id {
         Some(id) => match id.leave_conversation(conversation_id).await {
-            Ok(_) => handle_list(scope, state).await,
+            Ok(_)  => handle_list(scope, state).await,
             Err(e) => post_error(&scope, &e.to_string()),
         },
-        None => post_error(&scope, "Identity not initialized"),
+        None => post_error(&scope, "No identity available"),
     }
 }
 
@@ -165,23 +245,23 @@ async fn new_identity() -> Option<Identity> {
     Identity::new(Env::Dev(Some(XMTP_HOST.to_string()))).await.ok()
 }
 
-// ── host-side ────────────────────────────────────────────────────────────────
+// ── host-side ─────────────────────────────────────────────────────────────────
 
 /// A handle to the XMTP Dedicated Worker.
-/// Methods send typed commands to the worker; results arrive via the
-/// callbacks passed to `spawn_xmtp_worker`.
 #[derive(Clone)]
 pub struct XmtpHandle {
     worker: web_sys::Worker,
 }
 
 impl XmtpHandle {
-    pub fn request_list(&self) {
-        self.send("list");
-    }
+    pub fn request_list(&self)                        { self.send("list"); }
+    pub fn request_create_group(&self)                { self.send("create_group"); }
+    pub fn request_create_identity(&self)             { self.send("create_identity"); }
 
-    pub fn request_create_group(&self) {
-        self.send("create_group");
+    pub fn request_switch_identity(&self, idx: usize) {
+        let msg = typed_obj("switch_identity");
+        Reflect::set(&msg, &"index".into(), &JsValue::from_f64(idx as f64)).unwrap_throw();
+        self.worker.post_message(&msg).unwrap_throw();
     }
 
     pub fn request_leave(&self, id: String) {
@@ -197,23 +277,20 @@ impl XmtpHandle {
 
 /// Spawn the XMTP Dedicated Worker and return a handle to it.
 ///
-/// * `key_hex` – stored private key hex from localStorage, or `None`
-///   to generate a fresh identity.
-/// * `on_ready` – called with the (possibly new) key hex once the
-///   identity is ready. Persist this value to localStorage.
-/// * `on_conversations` – called whenever the worker sends a
-///   conversation list.
+/// * `key_hexes` – stored private keys (from localStorage), empty for first run.
+/// * `on_identity_update` – called whenever the identity list or active changes.
+/// * `on_conversations` – called whenever a conversation list arrives.
 pub fn spawn_xmtp_worker(
-    key_hex: Option<String>,
-    on_ready: impl Fn(IdentityInfo) + 'static,
-    on_conversations: impl Fn(Vec<ConversationSummary>) + 'static,
+    key_hexes: Vec<String>,
+    on_identity_update: impl Fn(IdentityListUpdate) + 'static,
+    on_conversations:   impl Fn(Vec<ConversationSummary>) + 'static,
 ) -> XmtpHandle {
     let arr = js_sys::Array::of1(&JsValue::from_str(WORKER_BOOTSTRAP));
     let mut props = web_sys::BlobPropertyBag::new();
     props.type_("application/javascript");
-    let blob = web_sys::Blob::new_with_str_sequence_and_options(&arr, &props).unwrap_throw();
-    let blob_url = web_sys::Url::create_object_url_with_blob(&blob).unwrap_throw();
-    let worker = web_sys::Worker::new(&blob_url).unwrap_throw();
+    let blob      = web_sys::Blob::new_with_str_sequence_and_options(&arr, &props).unwrap_throw();
+    let blob_url  = web_sys::Url::create_object_url_with_blob(&blob).unwrap_throw();
+    let worker    = web_sys::Worker::new(&blob_url).unwrap_throw();
     web_sys::Url::revoke_object_url(&blob_url).unwrap_throw();
 
     let worker_cb = worker.clone();
@@ -222,20 +299,38 @@ pub fn spawn_xmtp_worker(
         let data = e.data();
         match str_field(&data, "type").as_str() {
             "worker_ready" => {
+                // Send all stored keys to the worker for initialisation.
                 let msg = typed_obj("init");
-                match &key_hex {
-                    Some(hex) => set_str(&msg, "key_hex", hex),
-                    None => {
-                        Reflect::set(&msg, &"key_hex".into(), &JsValue::null()).unwrap_throw();
-                    }
+                let arr = js_sys::Array::new();
+                for hex in &key_hexes {
+                    arr.push(&JsValue::from_str(hex));
                 }
+                Reflect::set(&msg, &"key_hexes".into(), &arr).unwrap_throw();
                 worker_cb.post_message(&msg).unwrap_throw();
             }
-            "ready" => on_ready(IdentityInfo {
-                key_hex:  str_field(&data, "key_hex"),
-                address:  str_field(&data, "address"),
-                inbox_id: str_field(&data, "inbox_id"),
-            }),
+            "identity_list" => {
+                let raw = Reflect::get(&data, &"identities".into())
+                    .ok()
+                    .and_then(|v| v.dyn_into::<js_sys::Array>().ok())
+                    .unwrap_or_default();
+                let active_idx = Reflect::get(&data, &"active_idx".into())
+                    .ok()
+                    .and_then(|v| v.as_f64())
+                    .unwrap_or(0.0) as usize;
+
+                let identities: Vec<IdentityInfo> = (0..raw.length())
+                    .map(|i| {
+                        let item = raw.get(i);
+                        IdentityInfo {
+                            key_hex:  str_field(&item, "key_hex"),
+                            address:  str_field(&item, "address"),
+                            inbox_id: str_field(&item, "inbox_id"),
+                        }
+                    })
+                    .collect();
+
+                on_identity_update(IdentityListUpdate { identities, active_idx });
+            }
             "conversations" => {
                 let arr = Reflect::get(&data, &"data".into())
                     .ok()
@@ -250,12 +345,12 @@ pub fn spawn_xmtp_worker(
     worker.set_onmessage(Some(onmessage.as_ref().unchecked_ref()));
     onmessage.forget();
 
-    let script_url = find_script_url().unwrap_or_default();
+    let script_url  = find_script_url().unwrap_or_default();
     let page_origin = web_sys::window()
         .and_then(|w| w.location().origin().ok())
         .unwrap_or_default();
     let msg = typed_obj("wasm_init");
-    set_str(&msg, "scriptUrl", &script_url);
+    set_str(&msg, "scriptUrl",  &script_url);
     set_str(&msg, "pageOrigin", &page_origin);
     worker.post_message(&msg).unwrap_throw();
 
@@ -264,13 +359,11 @@ pub fn spawn_xmtp_worker(
 
 fn find_script_url() -> Option<String> {
     let document = web_sys::window()?.document()?;
-    let nodes = document.query_selector_all("script[src]").ok()?;
+    let nodes    = document.query_selector_all("script[src]").ok()?;
     for i in 0..nodes.length() {
         let el = nodes.item(i)?.dyn_into::<web_sys::HtmlScriptElement>().ok()?;
         let src = el.src();
-        if !src.is_empty() {
-            return Some(src);
-        }
+        if !src.is_empty() { return Some(src); }
     }
     None
 }
@@ -279,46 +372,41 @@ fn parse_conversations(arr: &js_sys::Array) -> Vec<ConversationSummary> {
     (0..arr.length())
         .filter_map(|i| {
             let item = arr.get(i);
-            let id = str_field(&item, "id");
+            let id   = str_field(&item, "id");
             if id.is_empty() { return None; }
-            let name = str_field(&item, "name");
-            let last_sender = Reflect::get(&item, &"last_sender".into())
-                .ok()
-                .and_then(|v| v.as_string());
-            Some(ConversationSummary { id, name, last_sender })
+            Some(ConversationSummary {
+                id,
+                name:        str_field(&item, "name"),
+                last_sender: Reflect::get(&item, &"last_sender".into())
+                    .ok()
+                    .and_then(|v| v.as_string()),
+            })
         })
         .collect()
 }
 
-// ── helpers ──────────────────────────────────────────────────────────────────
+// ── serialisation helpers ─────────────────────────────────────────────────────
 
-fn typed_obj(msg_type: &str) -> js_sys::Object {
-    let o = js_sys::Object::new();
-    set_str(&o, "type", msg_type);
-    o
-}
-
-fn set_str(obj: &js_sys::Object, key: &str, val: &str) {
-    Reflect::set(obj, &key.into(), &val.into()).unwrap_throw();
-}
-
-fn str_field(val: &JsValue, key: &str) -> String {
-    Reflect::get(val, &key.into())
-        .ok()
-        .and_then(|v| v.as_string())
-        .unwrap_or_default()
-}
-
-fn opt_str_field(val: &JsValue, key: &str) -> Option<String> {
-    let v = Reflect::get(val, &key.into()).ok()?;
-    if v.is_null() || v.is_undefined() { None } else { v.as_string() }
+fn post_identity_list(scope: &web_sys::DedicatedWorkerGlobalScope, state: &WorkerState) {
+    let arr = js_sys::Array::new();
+    for id in &state.identities {
+        let item = js_sys::Object::new();
+        set_str(&item, "key_hex",  &id.to_key_hex());
+        set_str(&item, "address",  &id.address());
+        set_str(&item, "inbox_id", &id.inbox_id());
+        arr.push(&item);
+    }
+    let msg = typed_obj("identity_list");
+    Reflect::set(&msg, &"identities".into(), &arr).unwrap_throw();
+    Reflect::set(&msg, &"active_idx".into(), &JsValue::from_f64(state.active as f64)).unwrap_throw();
+    scope.post_message(&msg).unwrap_throw();
 }
 
 fn post_conversations(scope: &web_sys::DedicatedWorkerGlobalScope, convos: &[ConversationSummary]) {
     let arr = js_sys::Array::new();
     for c in convos {
         let item = js_sys::Object::new();
-        set_str(&item, "id", &c.id);
+        set_str(&item, "id",   &c.id);
         set_str(&item, "name", &c.name);
         Reflect::set(
             &item,
@@ -336,4 +424,21 @@ fn post_error(scope: &web_sys::DedicatedWorkerGlobalScope, msg: &str) {
     let o = typed_obj("error");
     set_str(&o, "msg", msg);
     scope.post_message(&o).unwrap_throw();
+}
+
+fn typed_obj(msg_type: &str) -> js_sys::Object {
+    let o = js_sys::Object::new();
+    set_str(&o, "type", msg_type);
+    o
+}
+
+fn set_str(obj: &js_sys::Object, key: &str, val: &str) {
+    Reflect::set(obj, &key.into(), &val.into()).unwrap_throw();
+}
+
+fn str_field(val: &JsValue, key: &str) -> String {
+    Reflect::get(val, &key.into())
+        .ok()
+        .and_then(|v| v.as_string())
+        .unwrap_or_default()
 }
