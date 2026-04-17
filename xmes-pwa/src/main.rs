@@ -101,7 +101,7 @@ fn App() -> Element {
                 let mut sk = signing_keys;
                 sk.set(Some(keys_to_json(&keys)));
 
-                // Active identity info.
+                // Active identity.
                 let active = update.identities.get(update.active_idx).cloned();
                 let mut ii = identity_info;
                 ii.set(active);

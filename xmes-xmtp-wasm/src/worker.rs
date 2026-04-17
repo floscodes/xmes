@@ -16,9 +16,10 @@ use crate::{ConversationSummary, Env, Identity};
 /// Per-identity metadata sent to the host thread.
 #[derive(Clone)]
 pub struct IdentityInfo {
-    pub key_hex:  String,
-    pub address:  String,
-    pub inbox_id: String,
+    pub key_hex:   String,
+    pub inbox_id:  String,
+    /// All Ethereum addresses linked to this inbox (fetched from the network).
+    pub addresses: Vec<String>,
 }
 
 /// Sent whenever the identity list or active selection changes.
@@ -111,6 +112,13 @@ async fn worker_run() {
                 spawn_local(handle_init(scope, state, key_hexes));
             }
             "create_identity" => spawn_local(handle_create_identity(scope, state)),
+            "add_address" => {
+                let idx = Reflect::get(&data, &"index".into())
+                    .ok()
+                    .and_then(|v| v.as_f64())
+                    .unwrap_or(0.0) as usize;
+                spawn_local(handle_add_address(scope, state, idx));
+            }
             "switch_identity" => {
                 let idx = Reflect::get(&data, &"index".into())
                     .ok()
@@ -162,7 +170,7 @@ async fn handle_init(
     state.borrow_mut().identities = identities;
     state.borrow_mut().active     = 0;
 
-    post_identity_list(&scope, &state.borrow());
+    post_identity_list_async(&scope, &state).await;
 }
 
 async fn handle_create_identity(
@@ -176,10 +184,28 @@ async fn handle_create_identity(
             s.identities.len() - 1
         };
         state.borrow_mut().active = new_idx;
-        post_identity_list(&scope, &state.borrow());
+        post_identity_list_async(&scope, &state).await;
         handle_list(scope, state).await;
     } else {
         post_error(&scope, "Failed to create new identity");
+    }
+}
+
+async fn handle_add_address(
+    scope: web_sys::DedicatedWorkerGlobalScope,
+    state: StateRef,
+    idx: usize,
+) {
+    let id = state.borrow().identities.get(idx).cloned();
+    match id {
+        Some(id) => match id.link_new_address().await {
+            Ok(_new_key_hex) => {
+                // Refresh the identity list so the new address shows up.
+                post_identity_list_async(&scope, &state).await;
+            }
+            Err(e) => post_error(&scope, &e.to_string()),
+        },
+        None => post_error(&scope, "Identity not found"),
     }
 }
 
@@ -194,7 +220,7 @@ async fn handle_switch_identity(
             s.active = idx;
         }
     }
-    post_identity_list(&scope, &state.borrow());
+    post_identity_list_async(&scope, &state).await;
     handle_list(scope, state).await;
 }
 
@@ -256,7 +282,13 @@ pub struct XmtpHandle {
 impl XmtpHandle {
     pub fn request_list(&self)                        { self.send("list"); }
     pub fn request_create_group(&self)                { self.send("create_group"); }
-    pub fn request_create_identity(&self)             { self.send("create_identity"); }
+    pub fn request_create_identity(&self) { self.send("create_identity"); }
+
+    pub fn request_add_address(&self, identity_idx: usize) {
+        let msg = typed_obj("add_address");
+        Reflect::set(&msg, &"index".into(), &JsValue::from_f64(identity_idx as f64)).unwrap_throw();
+        self.worker.post_message(&msg).unwrap_throw();
+    }
 
     pub fn request_switch_identity(&self, idx: usize) {
         let msg = typed_obj("switch_identity");
@@ -321,10 +353,17 @@ pub fn spawn_xmtp_worker(
                 let identities: Vec<IdentityInfo> = (0..raw.length())
                     .map(|i| {
                         let item = raw.get(i);
+                        let addr_arr = Reflect::get(&item, &"addresses".into())
+                            .ok()
+                            .and_then(|v| v.dyn_into::<js_sys::Array>().ok())
+                            .unwrap_or_default();
+                        let addresses: Vec<String> = (0..addr_arr.length())
+                            .filter_map(|j| addr_arr.get(j).as_string())
+                            .collect();
                         IdentityInfo {
-                            key_hex:  str_field(&item, "key_hex"),
-                            address:  str_field(&item, "address"),
-                            inbox_id: str_field(&item, "inbox_id"),
+                            key_hex:   str_field(&item, "key_hex"),
+                            inbox_id:  str_field(&item, "inbox_id"),
+                            addresses,
                         }
                     })
                     .collect();
@@ -387,18 +426,34 @@ fn parse_conversations(arr: &js_sys::Array) -> Vec<ConversationSummary> {
 
 // ── serialisation helpers ─────────────────────────────────────────────────────
 
-fn post_identity_list(scope: &web_sys::DedicatedWorkerGlobalScope, state: &WorkerState) {
-    let arr = js_sys::Array::new();
-    for id in &state.identities {
+/// Async version — fetches linked addresses from the network for each identity.
+async fn post_identity_list_async(
+    scope: &web_sys::DedicatedWorkerGlobalScope,
+    state: &StateRef,
+) {
+    let arr        = js_sys::Array::new();
+    let active_idx = state.borrow().active;
+    let count      = state.borrow().identities.len();
+
+    for i in 0..count {
+        let id = state.borrow().identities[i].clone();
+        let addresses = id.linked_addresses().await;
+
         let item = js_sys::Object::new();
         set_str(&item, "key_hex",  &id.to_key_hex());
-        set_str(&item, "address",  &id.address());
         set_str(&item, "inbox_id", &id.inbox_id());
+
+        let addr_arr = js_sys::Array::new();
+        for a in &addresses {
+            addr_arr.push(&JsValue::from_str(a));
+        }
+        Reflect::set(&item, &"addresses".into(), &addr_arr).unwrap_throw();
         arr.push(&item);
     }
+
     let msg = typed_obj("identity_list");
     Reflect::set(&msg, &"identities".into(), &arr).unwrap_throw();
-    Reflect::set(&msg, &"active_idx".into(), &JsValue::from_f64(state.active as f64)).unwrap_throw();
+    Reflect::set(&msg, &"active_idx".into(), &JsValue::from_f64(active_idx as f64)).unwrap_throw();
     scope.post_message(&msg).unwrap_throw();
 }
 

@@ -153,6 +153,30 @@ impl Identity {
         PrivateKeySigner::from_signing_key(self.signing_key.clone())
     }
 
+    /// Returns all Ethereum addresses linked to this inbox on the XMTP network.
+    pub async fn linked_addresses(&self) -> Vec<String> {
+        match self.client.inbox_state_from_inbox_ids(vec![self.inbox_id.clone()], false).await {
+            Ok(states) => states
+                .into_iter()
+                .flat_map(|s| s.account_identifiers)
+                .map(|id| id.identifier)
+                .collect(),
+            Err(_) => vec![self.address.clone()],
+        }
+    }
+
+    /// Link a new Ethereum address to this inbox.
+    ///
+    /// NOTE: Not yet implemented — the `apply_signature_request` API in
+    /// libxmtp currently requires a `Backend` type whose internal fields
+    /// (`bundle`, `inner`) are `pub(crate)` and are not accessible from
+    /// outside the `bindings_wasm` crate.  A PR upstream or a fork is
+    /// needed before this can be wired up.  The worker surfaces a
+    /// user-visible error message in the meantime.
+    pub async fn link_new_address(&self) -> Result<String> {
+        Err(Error::msg("Address linking not yet supported — requires upstream libxmtp API change"))
+    }
+
     pub fn address(&self) -> String {
         self.address.clone()
     }
