@@ -68,16 +68,16 @@ body {
 }
 
 .app-logo-mark {
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
     background: var(--primary);
     border-radius: var(--radius-sm);
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 5px;
+    flex-shrink: 0;
 }
-
-.app-logo-mark svg { color: white; }
 
 .app-logo-name {
     font-size: 1.125rem;
