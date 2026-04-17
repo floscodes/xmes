@@ -10,29 +10,88 @@ pub fn Conversations() -> Element {
     let identity_ready = use_context::<Signal<bool>>();
 
     rsx! {
-        div {
-            class: "flex flex-col items-center",
-            div {
-                class: "w-[85%]",
-                input {
-                    class: "border border-solid rounded-md p-3 w-full",
-                    placeholder: "Search..."
+        div { class: "app-shell",
+
+            // ── Header ──────────────────────────────────────────
+            header { class: "app-header",
+                div { class: "app-logo",
+                    div { class: "app-logo-mark",
+                        svg {
+                            xmlns: "http://www.w3.org/2000/svg",
+                            width: "16", height: "16",
+                            view_box: "0 0 24 24",
+                            fill: "none",
+                            stroke: "currentColor",
+                            stroke_width: "2.5",
+                            stroke_linecap: "round",
+                            stroke_linejoin: "round",
+                            path { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" }
+                        }
+                    }
+                    span { class: "app-logo-name", "xmes" }
                 }
             }
-            div {
-                class: "w-[85%] mt-6",
+
+            // ── Search ──────────────────────────────────────────
+            div { class: "search-wrap",
+                div { class: "search-field",
+                    span { class: "search-icon",
+                        svg {
+                            xmlns: "http://www.w3.org/2000/svg",
+                            width: "16", height: "16",
+                            view_box: "0 0 24 24",
+                            fill: "none",
+                            stroke: "currentColor",
+                            stroke_width: "2",
+                            stroke_linecap: "round",
+                            stroke_linejoin: "round",
+                            circle { cx: "11", cy: "11", r: "8" }
+                            path { d: "m21 21-4.35-4.35" }
+                        }
+                    }
+                    input {
+                        class: "search-input",
+                        r#type: "text",
+                        placeholder: "Search conversations…",
+                    }
+                }
+            }
+
+            // ── Conversation list ────────────────────────────────
+            div { class: "section-label", "Conversations" }
+
+            div { class: "convo-list",
                 match conversations.read().as_ref() {
+
                     None => rsx! {
-                        div {
-                            class: "animate-spin rounded-full h-8 w-8 border-4 border-gray-200 border-t-gray-600 mt-6 mx-auto"
+                        div { class: "spinner-wrap",
+                            div { class: "spinner" }
+                            span { class: "spinner-label", "Connecting…" }
                         }
                     },
+
                     Some(convos) if convos.is_empty() => rsx! {
-                        div {
-                            class: "text-gray-500 text-sm mt-4",
-                            "No conversations found for this identity."
+                        div { class: "empty-state",
+                            div { class: "empty-icon-wrap",
+                                svg {
+                                    xmlns: "http://www.w3.org/2000/svg",
+                                    width: "26", height: "26",
+                                    view_box: "0 0 24 24",
+                                    fill: "none",
+                                    stroke: "currentColor",
+                                    stroke_width: "1.8",
+                                    stroke_linecap: "round",
+                                    stroke_linejoin: "round",
+                                    path { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" }
+                                }
+                            }
+                            p { class: "empty-title", "No conversations yet" }
+                            p { class: "empty-sub",
+                                "Tap the + button below to start your first encrypted conversation."
+                            }
                         }
                     },
+
                     Some(convos) => rsx! {
                         for summary in convos.clone() {
                             conversation::Convo {
@@ -49,10 +108,10 @@ pub fn Conversations() -> Element {
             }
         }
 
-        // Floating action button — create a new group conversation
+        // ── FAB ─────────────────────────────────────────────────
         button {
-            class: "fixed bottom-6 right-6 w-14 h-14 rounded-full bg-gray-900 text-white shadow-lg flex items-center justify-center hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
-            title: "Create Conversation",
+            class: "fab",
+            title: "New conversation",
             disabled: !identity_ready(),
             onclick: move |_| {
                 if let Some(h) = xmtp.read().as_ref() {
@@ -61,17 +120,15 @@ pub fn Conversations() -> Element {
             },
             svg {
                 xmlns: "http://www.w3.org/2000/svg",
-                width: "22",
-                height: "22",
+                width: "22", height: "22",
                 view_box: "0 0 24 24",
                 fill: "none",
                 stroke: "currentColor",
-                stroke_width: "2",
+                stroke_width: "2.2",
                 stroke_linecap: "round",
                 stroke_linejoin: "round",
-                path { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" }
-                line { x1: "12", y1: "8", x2: "12", y2: "14" }
-                line { x1: "9", y1: "11", x2: "15", y2: "11" }
+                path { d: "M12 5v14" }
+                path { d: "M5 12h14" }
             }
         }
     }

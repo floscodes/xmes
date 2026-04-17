@@ -4,6 +4,29 @@ use xmes_xmtp_wasm::ConversationSummary;
 const DELETE_WIDTH: f64 = 80.0;
 const SWIPE_THRESHOLD: f64 = 40.0;
 
+fn avatar_class(name: &str) -> &'static str {
+    let idx = name.bytes().fold(0usize, |acc, b| acc.wrapping_add(b as usize)) % 8;
+    match idx {
+        0 => "av-0", 1 => "av-1", 2 => "av-2", 3 => "av-3",
+        4 => "av-4", 5 => "av-5", 6 => "av-6", _ => "av-7",
+    }
+}
+
+fn initials(name: &str) -> String {
+    let words: Vec<&str> = name.split_whitespace().filter(|w| !w.is_empty()).collect();
+    match words.as_slice() {
+        [] => "?".into(),
+        [w] => w.chars().next()
+            .map(|c| c.to_uppercase().to_string())
+            .unwrap_or("?".into()),
+        [first, .., last] => format!(
+            "{}{}",
+            first.chars().next().map(|c| c.to_uppercase().to_string()).unwrap_or_default(),
+            last.chars().next().map(|c| c.to_uppercase().to_string()).unwrap_or_default(),
+        ),
+    }
+}
+
 #[component]
 pub fn Convo(summary: ConversationSummary, on_delete: EventHandler<String>) -> Element {
     let mut offset = use_signal(|| 0.0f64);
@@ -11,28 +34,28 @@ pub fn Convo(summary: ConversationSummary, on_delete: EventHandler<String>) -> E
     let mut dragging = use_signal(|| false);
 
     let delete_id = summary.id.clone();
+    let av_class = avatar_class(&summary.name);
+    let av_text = initials(&summary.name);
 
-    let content_style = format!(
-        "transform: translateX({}px); transition: {}; touch-action: pan-y;",
+    let row_style = format!(
+        "transform: translateX({}px); transition: {};",
         -offset(),
-        if *dragging.read() { "none" } else { "transform 0.25s cubic-bezier(0.4,0,0.2,1)" }
+        if *dragging.read() { "none" } else { "transform 0.22s cubic-bezier(0.4,0,0.2,1)" }
     );
 
     rsx! {
         div {
-            class: "relative overflow-hidden select-none",
+            class: "convo-item",
 
-            // Red delete action revealed by swiping
+            // Delete action revealed on swipe
             div {
-                class: "absolute inset-y-0 right-0 flex items-stretch",
-                style: "width: {DELETE_WIDTH}px",
+                class: "delete-reveal",
                 button {
-                    class: "flex flex-col items-center justify-center w-full bg-red-500 text-white gap-1",
+                    class: "delete-btn",
                     onclick: move |_| on_delete.call(delete_id.clone()),
                     svg {
                         xmlns: "http://www.w3.org/2000/svg",
-                        width: "20",
-                        height: "20",
+                        width: "18", height: "18",
                         view_box: "0 0 24 24",
                         fill: "none",
                         stroke: "currentColor",
@@ -45,14 +68,14 @@ pub fn Convo(summary: ConversationSummary, on_delete: EventHandler<String>) -> E
                         path { d: "M14 11v6" }
                         path { d: "M9 6V4h6v2" }
                     }
-                    span { class: "text-xs font-semibold", "Delete" }
+                    span { "Delete" }
                 }
             }
 
-            // Conversation row — slides left on swipe
+            // Conversation row (slides left on swipe)
             div {
-                class: "relative bg-white flex flex-col border-b border-gray-100 py-3 px-2",
-                style: "{content_style}",
+                class: "convo-row",
+                style: "{row_style}",
                 onpointerdown: move |e| {
                     start_x.set(e.client_coordinates().x);
                     dragging.set(true);
@@ -73,14 +96,14 @@ pub fn Convo(summary: ConversationSummary, on_delete: EventHandler<String>) -> E
                     dragging.set(false);
                     offset.set(0.0);
                 },
-                span {
-                    class: "font-medium text-gray-900 text-sm truncate",
-                    "{summary.name}"
-                }
-                if let Some(sender) = &summary.last_sender {
-                    span {
-                        class: "text-xs text-gray-400 truncate mt-0.5",
-                        "{sender}"
+
+                div { class: "convo-avatar {av_class}", "{av_text}" }
+
+                div {
+                    class: "convo-info",
+                    span { class: "convo-name", "{summary.name}" }
+                    if let Some(sender) = &summary.last_sender {
+                        span { class: "convo-sub", "{sender}" }
                     }
                 }
             }
