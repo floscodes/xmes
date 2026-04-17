@@ -11,7 +11,7 @@ pub fn Conversations() -> Element {
     let identity_ready = use_context::<Signal<bool>>();
     let view = use_context::<Signal<View>>();
     let anim = use_context::<Signal<&'static str>>();
-    let pending_open = use_context::<Signal<bool>>();
+    let pending_open = use_context::<Signal<Option<()>>>();
 
     rsx! {
         div { class: "app-shell",
@@ -134,7 +134,7 @@ pub fn Conversations() -> Element {
             disabled: !identity_ready(),
             onclick: move |_| {
                 if let Some(h) = xmtp.read().as_ref() {
-                    let mut po = pending_open; po.set(true);
+                    let mut po = pending_open; po.set(Some(()));
                     h.request_create_group();
                 }
             },

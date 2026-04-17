@@ -42,7 +42,7 @@ fn App() -> Element {
     let view: Signal<View> = use_signal(|| View::Conversations);
     let anim: Signal<&'static str> = use_signal(|| "");
     // Set to true when "create group" is tapped; cleared after opening Chat.
-    let pending_open: Signal<bool> = use_signal(|| false);
+    let pending_open: Signal<Option<()>> = use_signal(|| None);
 
     use_context_provider(|| xmtp_handle);
     use_context_provider(|| conversations);
@@ -74,9 +74,9 @@ fn App() -> Element {
             },
             move |convos| {
                 // If the user just created a group, open it in Chat right away.
-                if *pending_open.peek() {
+                if pending_open.peek().is_some() {
                     let mut po = pending_open;
-                    po.set(false);
+                    po.set(None);
                     if let Some(first) = convos.first().cloned() {
                         let mut a = anim;
                         a.set("slide-in-right");
