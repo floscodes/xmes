@@ -1,43 +1,54 @@
-# XMES
+<p align="center">
+  <img src="./Xmes.svg" alt="xmes" width="96" height="96" />
+</p>
 
-XMES is an open-source messenger built on the [XMTP](https://xmtp.org) protocol — a decentralized, blockchain-based messaging standard. It targets multiple platforms from a single Rust codebase: web (PWA), desktop, and mobile.
+<h1 align="center">xmes</h1>
 
-> **Work in progress.** The project is in early development. APIs and features are subject to change.
+<p align="center">
+  Decentralised, end-to-end encrypted messaging — built with Rust and XMTP.
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/status-early%20development-orange?style=flat-square" alt="status" />
+  <img src="https://img.shields.io/badge/rust-2024%20edition-b7410e?style=flat-square&logo=rust" alt="rust" />
+  <img src="https://img.shields.io/badge/target-WebAssembly-6366f1?style=flat-square&logo=webassembly" alt="wasm" />
+</p>
 
 ---
 
-## What is XMTP?
+## What is xmes?
 
-XMTP (Extensible Message Transport Protocol) is an open protocol for secure, decentralized messaging. Identities are Ethereum keypairs — no central server controls your account or your messages.
+xmes is an open-source messenger built on the [XMTP](https://xmtp.org) protocol — a decentralised, blockchain-based messaging standard. Identities are Ethereum keypairs: no central server controls your account or your messages.
+
+The project compiles a single Rust codebase to WebAssembly, targeting web (PWA), desktop, and mobile via [Dioxus](https://dioxus.dev).
 
 ---
 
-## Repository Structure
-
-This is a Cargo workspace with two crates:
+## Repository structure
 
 ```
 xmes/
-├── xmes-xmtp-wasm/   # XMTP API wrapper — WASM target only (no UI)
-└── xmes-pwa/         # Dioxus frontend — PWA target (WebAssembly)
+├── xmes-xmtp-wasm/   # XMTP integration layer — WASM only, no UI
+└── xmes-pwa/         # Dioxus PWA frontend — WebAssembly
 ```
 
 ### `xmes-xmtp-wasm`
 
-The XMTP integration layer, compiled exclusively to WebAssembly. It wraps the `libxmtp` WASM bindings and exposes a Rust API for all protocol operations. Responsibilities:
+The XMTP integration layer, compiled exclusively to WebAssembly. Wraps the `libxmtp` WASM bindings and exposes a clean Rust API. Responsibilities:
 
 - Ethereum keypair generation and identity management
-- Serialization / deserialization of identities (TOML)
+- Private key serialisation (hex) for local persistence
 - Conversation listing and group creation via XMTP
+- **Worker infrastructure** — spawns a Dedicated Worker so the XMTP SQLite database can use the OPFS Sync Access Handle VFS (browser main thread restriction workaround)
 - Environment switching (Local / Dev / Production)
 
 ### `xmes-pwa`
 
-The Progressive Web App frontend built with [Dioxus](https://dioxus.dev) 0.7, compiled to WebAssembly. It uses `xmes-xmtp-wasm` for all protocol operations and `dioxus-sdk` for local storage persistence of identities.
+The Progressive Web App frontend built with [Dioxus](https://dioxus.dev) 0.7, compiled to WebAssembly. A pure UI crate: no JS interop, no wasm-bindgen direct dependency — only Dioxus and `xmes-xmtp-wasm`.
 
 ---
 
-## Getting Started
+## Getting started
 
 ### Prerequisites
 
@@ -48,33 +59,34 @@ The Progressive Web App frontend built with [Dioxus](https://dioxus.dev) 0.7, co
 ### Development
 
 ```bash
-# Start the dev server with hot reload (PWA)
-dx serve --addr 0.0.0.0 --port 9000
+# Start the dev server (PWA) with hot reload
+dx serve --addr 0.0.0.0 --port 9000 --cross-origin-policy
 
 # Build for web
 dx build
 
-# Lint (targets WASM automatically via .cargo/config.toml)
+# Lint (automatically targets WASM via .cargo/config.toml)
 cargo clippy
 
 # Format
 cargo fmt
-
-# Run tests
-cargo test
 ```
+
+> `--cross-origin-policy` sets `Cross-Origin-Opener-Policy: same-origin`, which is required for the OPFS Sync Access Handle VFS used by the XMTP database in the Dedicated Worker.
 
 ---
 
 ## Roadmap
 
 - [x] XMTP identity creation and persistence
-- [x] List conversations
+- [x] Conversation list with swipe-to-delete
+- [x] Group creation
+- [x] OPFS-backed persistent MLS state via Dedicated Worker
+- [x] Installable PWA (manifest + service worker)
 - [ ] Send and receive messages
-- [ ] Group conversations
 - [ ] Push notifications
-- [ ] Desktop target (via Dioxus desktop renderer)
-- [ ] Mobile target (via Dioxus mobile renderer)
+- [ ] Desktop target (Dioxus desktop renderer)
+- [ ] Mobile target (Dioxus mobile renderer)
 
 ---
 

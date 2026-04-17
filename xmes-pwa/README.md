@@ -1,53 +1,43 @@
-# Development
+<p align="center">
+  <img src="../Xmes.svg" alt="xmes" width="80" height="80" />
+</p>
 
-Your new jumpstart project includes basic organization with an organized `assets` folder and a `components` folder.
-If you chose to develop with the router feature, you will also have a `views` folder.
+<h2 align="center">xmes-pwa</h2>
+
+<p align="center">
+  Progressive Web App frontend for xmes — pure Dioxus, no JS interop.
+</p>
+
+---
+
+The `xmes-pwa` crate is the UI layer of xmes. It is compiled to WebAssembly and runs as a Progressive Web App in the browser. All XMTP protocol operations and worker infrastructure are encapsulated in [`xmes-xmtp-wasm`](../xmes-xmtp-wasm) — this crate only contains Dioxus components and signal management.
+
+### Dependencies
+
+| Crate | Purpose |
+|---|---|
+| `dioxus` | UI framework (web renderer) |
+| `dioxus-sdk` | `use_persistent` for localStorage |
+| `dioxus-primitives` | UI primitives |
+| `xmes-xmtp-wasm` | XMTP logic + worker infrastructure |
+
+### Assets
 
 ```
-project/
-├─ assets/ # Any assets that are used by the app should be placed here
-├─ src/
-│  ├─ main.rs # The entrypoint for the app.
-│  ├─ components/
-│  │  ├─ mod.rs # Defines the components module
-│  │  ├─ hero.rs # The Hero component for use in the home page
-├─ Cargo.toml # The Cargo.toml file defines the dependencies and feature flags for your project
+assets/
+├── icons/            # PWA icons (16–512 px, iOS + Android)
+├── manifest.webmanifest
+├── register-sw.js    # Service worker registration
+├── styling/
+│   └── main.css      # Design system (CSS custom properties)
+└── tailwind.css      # Tailwind utility classes (auto-generated)
+
+public/
+└── sw.js             # Service worker (served at /sw.js)
 ```
 
-### Automatic Tailwind (Dioxus 0.7+)
-
-As of Dioxus 0.7, there no longer is a need to manually install tailwind. Simply `dx serve` and you're good to go!
-
-Automatic tailwind is supported by checking for a file called `tailwind.css` in your app's manifest directory (next to Cargo.toml). To customize the file, use the dioxus.toml:
-
-```toml
-[application]
-tailwind_input = "my.css"
-tailwind_output = "assets/out.css"
-```
-
-### Tailwind Manual Install
-
-To use tailwind plugins or manually customize tailwind, you can can install the Tailwind CLI and use it directly.
-
-1. Install npm: https://docs.npmjs.com/downloading-and-installing-node-js-and-npm
-2. Install the Tailwind CSS CLI: https://tailwindcss.com/docs/installation/tailwind-cli
-3. Run the following command in the root of the project to start the Tailwind CSS compiler:
+### Running
 
 ```bash
-npx @tailwindcss/cli -i ./input.css -o ./assets/tailwind.css --watch
+dx serve --addr 0.0.0.0 --port 9000 --cross-origin-policy
 ```
-
-### Serving Your App
-
-Run the following command in the root of your project to start developing with the default platform:
-
-```bash
-dx serve
-```
-
-To run for a different platform, use the `--platform platform` flag. E.g.
-```bash
-dx serve --platform desktop
-```
-
