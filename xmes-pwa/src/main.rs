@@ -63,7 +63,22 @@ fn App() -> Element {
     });
 
     rsx! {
+        // Icons & PWA metadata
         document::Link { rel: "icon", href: FAVICON }
+        document::Link { rel: "icon", r#type: "image/png", sizes: "32x32",  href: "/assets/icons/icon-32x32.png" }
+        document::Link { rel: "icon", r#type: "image/png", sizes: "16x16",  href: "/assets/icons/icon-16x16.png" }
+        document::Link { rel: "apple-touch-icon", sizes: "180x180", href: "/assets/icons/icon-180x180.png" }
+        document::Link { rel: "apple-touch-icon", sizes: "167x167", href: "/assets/icons/icon-167x167.png" }
+        document::Link { rel: "apple-touch-icon", sizes: "152x152", href: "/assets/icons/icon-152x152.png" }
+        document::Link { rel: "manifest", href: "/assets/manifest.webmanifest" }
+        document::Meta { name: "theme-color", content: "#4F46E5" }
+        document::Meta { name: "mobile-web-app-capable", content: "yes" }
+        document::Meta { name: "apple-mobile-web-app-capable", content: "yes" }
+        document::Meta { name: "apple-mobile-web-app-status-bar-style", content: "default" }
+        document::Meta { name: "apple-mobile-web-app-title", content: "xmes" }
+        // Service worker registration
+        document::Script { src: "/assets/register-sw.js" }
+        // Stylesheets
         document::Link { rel: "stylesheet", href: MAIN_CSS }
         document::Link { rel: "stylesheet", href: TAILWIND_CSS }
         components::conversations::Conversations {}

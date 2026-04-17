@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background -->
+  <rect width="512" height="512" rx="115" fill="#4F46E5"/>
+  <!-- Xmes logo scaled from 176x170 to fit in 360x348 centered in 512x512 -->
+  <!-- Center offset: x=(512-360)/2=76, y=(512-348)/2=82 -->
+  <!-- Scale: 360/176 = 2.045 -->
+  <g transform="translate(76, 82) scale(2.045)">
+    <!-- Envelope body (semi-transparent) -->
+    <path
+      d="M175,23L0,24L1,170L175,168L175,23L86,107"
+      fill="none"
+      stroke="rgba(255,255,255,0.55)"
+      stroke-width="14"
+      stroke-linejoin="round"
+      stroke-linecap="round"
+    />
+    <!-- X-fold (full white) -->
+    <path
+      d="M2,170L1,26L74,96L86,106L175,20L176,168L4,170L176,0"
+      fill="none"
+      stroke="white"
+      stroke-width="14"
+      stroke-linejoin="round"
+      stroke-linecap="round"
+    />
+  </g>
+</svg>
