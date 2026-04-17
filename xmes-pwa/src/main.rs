@@ -26,10 +26,10 @@ fn main() {
 
 #[component]
 fn App() -> Element {
-    let mut signing_key: Signal<Option<String>> = use_persistent("signing_key", || None);
+    let signing_key: Signal<Option<String>> = use_persistent("signing_key", || None);
     let mut xmtp_handle: Signal<Option<XmtpHandle>> = use_signal(|| None);
-    let mut conversations: Signal<Option<Vec<ConversationSummary>>> = use_signal(|| None);
-    let mut identity_ready: Signal<bool> = use_signal(|| false);
+    let conversations: Signal<Option<Vec<ConversationSummary>>> = use_signal(|| None);
+    let identity_ready: Signal<bool> = use_signal(|| false);
 
     use_context_provider(|| xmtp_handle);
     use_context_provider(|| conversations);
