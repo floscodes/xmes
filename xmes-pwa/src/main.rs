@@ -2,6 +2,7 @@
 
 mod components;
 
+use std::sync::Arc;
 use dioxus::prelude::*;
 use dioxus_sdk::storage::use_persistent;
 use xmes_xmtp_wasm::{
@@ -17,6 +18,16 @@ use xmes_xmtp_wasm::{
 const FAVICON: Asset = asset!("/assets/favicon.ico");
 const MAIN_CSS: Asset = asset!("/assets/styling/main.css");
 const TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
+
+/// A pending confirmation action. Store it in the `confirm_action` context
+/// signal to show the modal; set it back to `None` to dismiss.
+#[derive(Clone)]
+pub struct ConfirmAction {
+    pub title:         String,
+    pub message:       String,
+    pub confirm_label: String,
+    pub on_confirm:    Arc<dyn Fn() + 'static>,
+}
 
 #[derive(Clone, PartialEq)]
 pub enum View {
@@ -73,6 +84,7 @@ fn App() -> Element {
     let view:              Signal<View>                             = use_signal(|| View::Conversations);
     let anim:              Signal<&'static str>                     = use_signal(|| "");
     let pending_open:      Signal<Option<()>>                       = use_signal(|| None);
+    let confirm_action:    Signal<Option<ConfirmAction>>            = use_signal(|| None);
 
     use_context_provider(|| xmtp_handle);
     use_context_provider(|| conversations);
@@ -82,6 +94,7 @@ fn App() -> Element {
     use_context_provider(|| view);
     use_context_provider(|| anim);
     use_context_provider(|| pending_open);
+    use_context_provider(|| confirm_action);
 
     use_resource(move || async move {
         if xmtp_handle.read().is_some() {
@@ -171,6 +184,34 @@ fn App() -> Element {
                     components::chat::Chat { conversation }
                 }
             },
+        }
+
+        // ── Confirmation modal ───────────────────────────────────
+        if let Some(action) = confirm_action.read().clone() {
+            div {
+                class: "modal-backdrop",
+                onclick: move |_| { let mut ca = confirm_action; ca.set(None); },
+            }
+            div { class: "modal-card",
+                h3 { class: "modal-title", "{action.title}" }
+                p  { class: "modal-message", "{action.message}" }
+                div { class: "modal-buttons",
+                    button {
+                        class: "modal-btn modal-cancel",
+                        onclick: move |_| { let mut ca = confirm_action; ca.set(None); },
+                        "Cancel"
+                    }
+                    button {
+                        class: "modal-btn modal-confirm",
+                        onclick: move |_| {
+                            (action.on_confirm)();
+                            let mut ca = confirm_action;
+                            ca.set(None);
+                        },
+                        "{action.confirm_label}"
+                    }
+                }
+            }
         }
 
         if !in_chat {

@@ -1,5 +1,7 @@
+use std::sync::Arc;
 use dioxus::prelude::*;
-use xmes_xmtp_wasm::ConversationSummary;
+use xmes_xmtp_wasm::{ConversationSummary, XmtpHandle};
+use crate::ConfirmAction;
 
 const DELETE_WIDTH: f64 = 80.0;
 const SWIPE_THRESHOLD: f64 = 40.0;
@@ -30,17 +32,20 @@ fn initials(name: &str) -> String {
 #[component]
 pub fn Convo(
     summary: ConversationSummary,
-    on_delete: EventHandler<String>,
     on_open: EventHandler<ConversationSummary>,
 ) -> Element {
-    let mut offset = use_signal(|| 0.0f64);
-    let mut start_x = use_signal(|| 0.0f64);
+    let mut offset   = use_signal(|| 0.0f64);
+    let mut start_x  = use_signal(|| 0.0f64);
     let mut dragging = use_signal(|| false);
 
-    let delete_id = summary.id.clone();
+    let delete_id    = summary.id.clone();
     let open_summary = summary.clone();
+    let confirm       = use_context::<Signal<Option<ConfirmAction>>>();
+    let xmtp          = use_context::<Signal<Option<XmtpHandle>>>();
+    let conversations = use_context::<Signal<Option<Vec<ConversationSummary>>>>();
+
     let av_class = avatar_class(&summary.name);
-    let av_text = initials(&summary.name);
+    let av_text  = initials(&summary.name);
 
     let row_style = format!(
         "transform: translateX({}px); transition: {};",
@@ -49,24 +54,43 @@ pub fn Convo(
     );
 
     rsx! {
-        div {
-            class: "convo-item",
+        div { class: "convo-item",
 
             // Delete action revealed on swipe
-            div {
-                class: "delete-reveal",
+            div { class: "delete-reveal",
                 button {
                     class: "delete-btn",
-                    onclick: move |_| on_delete.call(delete_id.clone()),
+                    onclick: move |_| {
+                        let id = delete_id.clone();
+                        let mut c = confirm;
+                        c.set(Some(ConfirmAction {
+                            title:         "Leave conversation?".into(),
+                            message:       "You will leave this group permanently.".into(),
+                            confirm_label: "Leave".into(),
+                            on_confirm: Arc::new(move || {
+                                // Optimistic update: remove immediately from the signal
+                                // so the UI reacts instantly, independent of async sync.
+                                let mut convos = conversations;
+                                let filtered = convos.peek().as_ref().map(|list| {
+                                    let id_ref = id.clone();
+                                    list.iter().filter(|c| c.id != id_ref).cloned().collect::<Vec<_>>()
+                                });
+                                if let Some(f) = filtered {
+                                    convos.set(Some(f));
+                                }
+                                // Worker leave + refresh runs in background.
+                                if let Some(h) = xmtp.peek().as_ref() {
+                                    h.request_leave(id.clone());
+                                }
+                            }),
+                        }));
+                    },
                     svg {
                         xmlns: "http://www.w3.org/2000/svg",
                         width: "18", height: "18",
-                        view_box: "0 0 24 24",
-                        fill: "none",
-                        stroke: "currentColor",
-                        stroke_width: "2",
-                        stroke_linecap: "round",
-                        stroke_linejoin: "round",
+                        view_box: "0 0 24 24", fill: "none",
+                        stroke: "currentColor", stroke_width: "2",
+                        stroke_linecap: "round", stroke_linejoin: "round",
                         polyline { points: "3 6 5 6 21 6" }
                         path { d: "M19 6l-1 14H6L5 6" }
                         path { d: "M10 11v6" }
@@ -88,15 +112,13 @@ pub fn Convo(
                 onpointermove: move |e| {
                     if !*dragging.read() { return; }
                     let dx = (start_x() - e.client_coordinates().x)
-                        .max(0.0)
-                        .min(DELETE_WIDTH);
+                        .max(0.0).min(DELETE_WIDTH);
                     offset.set(dx);
                 },
                 onpointerup: move |_| {
                     dragging.set(false);
                     let current = *offset.read();
                     if current < SWIPE_THRESHOLD {
-                        // Snap closed — treat as a tap → open chat
                         offset.set(0.0);
                         on_open.call(open_summary.clone());
                     } else {
@@ -109,7 +131,6 @@ pub fn Convo(
                 },
 
                 div { class: "convo-avatar {av_class}", "{av_text}" }
-
                 div {
                     class: "convo-info",
                     span { class: "convo-name", "{summary.name}" }

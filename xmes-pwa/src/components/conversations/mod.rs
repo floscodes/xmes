@@ -115,11 +115,6 @@ pub fn Conversations() -> Element {
                                     let mut a = anim; a.set("slide-in-right");
                                     let mut v = view; v.set(View::Chat(s));
                                 },
-                                on_delete: move |id: String| {
-                                    if let Some(h) = xmtp.read().as_ref() {
-                                        h.request_leave(id);
-                                    }
-                                },
                             }
                         }
                     },

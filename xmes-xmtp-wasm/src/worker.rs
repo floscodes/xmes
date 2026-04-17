@@ -14,7 +14,7 @@ use wasm_bindgen_futures::spawn_local;
 use crate::{ConversationSummary, Env, Identity};
 
 /// Per-identity metadata sent to the host thread.
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct IdentityInfo {
     pub key_hex:   String,
     pub inbox_id:  String,
@@ -112,6 +112,13 @@ async fn worker_run() {
                 spawn_local(handle_init(scope, state, key_hexes));
             }
             "create_identity" => spawn_local(handle_create_identity(scope, state)),
+            "remove_identity" => {
+                let idx = Reflect::get(&data, &"index".into())
+                    .ok()
+                    .and_then(|v| v.as_f64())
+                    .unwrap_or(0.0) as usize;
+                spawn_local(handle_remove_identity(scope, state, idx));
+            }
             "add_address" => {
                 let idx = Reflect::get(&data, &"index".into())
                     .ok()
@@ -189,6 +196,33 @@ async fn handle_create_identity(
     } else {
         post_error(&scope, "Failed to create new identity");
     }
+}
+
+async fn handle_remove_identity(
+    scope: web_sys::DedicatedWorkerGlobalScope,
+    state: StateRef,
+    idx: usize,
+) {
+    {
+        let mut s = state.borrow_mut();
+        if idx >= s.identities.len() { return; }
+        s.identities.remove(idx);
+        if s.identities.is_empty() {
+            s.active = 0;
+        } else if s.active >= s.identities.len() {
+            s.active = s.identities.len() - 1;
+        } else if idx < s.active {
+            s.active -= 1;
+        }
+    }
+    // Always keep at least one identity.
+    if state.borrow().identities.is_empty() {
+        if let Some(id) = new_identity().await {
+            state.borrow_mut().identities.push(id);
+        }
+    }
+    post_identity_list_async(&scope, &state).await;
+    handle_list(scope, state).await;
 }
 
 async fn handle_add_address(
@@ -283,6 +317,12 @@ impl XmtpHandle {
     pub fn request_list(&self)                        { self.send("list"); }
     pub fn request_create_group(&self)                { self.send("create_group"); }
     pub fn request_create_identity(&self) { self.send("create_identity"); }
+
+    pub fn request_remove_identity(&self, idx: usize) {
+        let msg = typed_obj("remove_identity");
+        Reflect::set(&msg, &"index".into(), &JsValue::from_f64(idx as f64)).unwrap_throw();
+        self.worker.post_message(&msg).unwrap_throw();
+    }
 
     pub fn request_add_address(&self, identity_idx: usize) {
         let msg = typed_obj("add_address");
