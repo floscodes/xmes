@@ -1,0 +1,29 @@
+{
+  "name": "xmes",
+  "short_name": "xmes",
+  "description": "Decentralised, encrypted messaging powered by XMTP",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#4F46E5",
+  "background_color": "#4F46E5",
+  "lang": "en",
+  "categories": ["social", "communication"],
+  "icons": [
+    { "src": "/icons/icon-48x48.png",   "sizes": "48x48",   "type": "image/png" },
+    { "src": "/icons/icon-72x72.png",   "sizes": "72x72",   "type": "image/png" },
+    { "src": "/icons/icon-96x96.png",   "sizes": "96x96",   "type": "image/png" },
+    { "src": "/icons/icon-144x144.png", "sizes": "144x144", "type": "image/png" },
+    { "src": "/icons/icon-152x152.png", "sizes": "152x152", "type": "image/png" },
+    { "src": "/icons/icon-167x167.png", "sizes": "167x167", "type": "image/png" },
+    { "src": "/icons/icon-180x180.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "/icons/icon-192x192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512x512.png", "sizes": "512x512", "type": "image/png" },
+    {
+      "src": "/icons/icon-512x512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -313,9 +313,9 @@ body {
 
 .fab {
     position: fixed;
-    bottom: 1.75rem;
-    right: 50%;
-    transform: translateX(calc(50% - 240px + 1.75rem));
+    /* Always 1.75rem from the right edge of the (max-width: 480px) app shell,
+       even when the shell is narrower than the viewport. */
+    right: calc(50% - 240px + 1.75rem);
     width: 52px;
     height: 52px;
     border-radius: 50%;
@@ -333,30 +333,41 @@ body {
 
 .fab:hover {
     background: var(--primary-hover);
-    transform: translateX(calc(50% - 240px + 1.75rem)) scale(1.06);
+    transform: scale(1.06);
     box-shadow: 0 12px 28px -4px rgb(79 70 229 / 0.55);
 }
 
-.fab:active {
-    transform: translateX(calc(50% - 240px + 1.75rem)) scale(0.96);
-}
-
+.fab:active  { transform: scale(0.96); }
 .fab:disabled {
     background: var(--text-3);
     box-shadow: none;
     cursor: not-allowed;
-    transform: translateX(calc(50% - 240px + 1.75rem));
 }
 
 @media (max-width: 480px) {
     .app-shell { box-shadow: none; }
-    .fab {
-        right: 1.25rem;
-        transform: none;
-    }
-    .fab:hover  { transform: scale(1.06); }
-    .fab:active { transform: scale(0.96); }
-    .fab:disabled { transform: none; }
+    .fab { right: 1.25rem; }
+}
+
+/* ── View transitions ──────────────────────────────────────── */
+
+.slide-in-right { animation: slide-in-right 0.24s cubic-bezier(0.4, 0, 0.2, 1); }
+.slide-in-left  { animation: slide-in-left  0.24s cubic-bezier(0.4, 0, 0.2, 1); }
+.slide-in-tab   { animation: slide-in-tab   0.18s ease; }
+
+@keyframes slide-in-right {
+    from { transform: translateX(40px); opacity: 0; }
+    to   { transform: translateX(0);    opacity: 1; }
+}
+
+@keyframes slide-in-left {
+    from { transform: translateX(-40px); opacity: 0; }
+    to   { transform: translateX(0);     opacity: 1; }
+}
+
+@keyframes slide-in-tab {
+    from { transform: translateY(6px); opacity: 0; }
+    to   { transform: translateY(0);   opacity: 1; }
 }
 
 /* ── Identity list ─────────────────────────────────────────── */
@@ -676,10 +687,5 @@ body {
 .bottom-nav-tab.active:hover { color: var(--primary); }
 
 /* Lift FAB above the bottom nav */
-.fab {
-    bottom: calc(1.75rem + 62px);
-}
-
-@media (max-width: 480px) {
-    .fab { bottom: calc(1.25rem + 62px); }
-}
+.fab { bottom: calc(1.75rem + 62px); }
+@media (max-width: 480px) { .fab { bottom: calc(1.25rem + 62px); } }

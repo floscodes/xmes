@@ -40,12 +40,17 @@ fn App() -> Element {
     let identity_ready: Signal<bool> = use_signal(|| false);
     let identity_info: Signal<Option<IdentityInfo>> = use_signal(|| None);
     let view: Signal<View> = use_signal(|| View::Conversations);
+    let anim: Signal<&'static str> = use_signal(|| "");
+    // Set to true when "create group" is tapped; cleared after opening Chat.
+    let pending_open: Signal<bool> = use_signal(|| false);
 
     use_context_provider(|| xmtp_handle);
     use_context_provider(|| conversations);
     use_context_provider(|| identity_ready);
     use_context_provider(|| identity_info);
     use_context_provider(|| view);
+    use_context_provider(|| anim);
+    use_context_provider(|| pending_open);
 
     use_resource(move || async move {
         if xmtp_handle.read().is_some() {
@@ -68,6 +73,17 @@ fn App() -> Element {
                 }
             },
             move |convos| {
+                // If the user just created a group, open it in Chat right away.
+                if *pending_open.peek() {
+                    let mut po = pending_open;
+                    po.set(false);
+                    if let Some(first) = convos.first().cloned() {
+                        let mut a = anim;
+                        a.set("slide-in-right");
+                        let mut v = view;
+                        v.set(View::Chat(first));
+                    }
+                }
                 let mut c = conversations;
                 c.set(Some(convos));
             },
@@ -81,26 +97,38 @@ fn App() -> Element {
     rsx! {
         // Icons & PWA metadata
         document::Link { rel: "icon", href: FAVICON }
-        document::Link { rel: "icon", r#type: "image/png", sizes: "32x32",  href: "/assets/icons/icon-32x32.png" }
-        document::Link { rel: "icon", r#type: "image/png", sizes: "16x16",  href: "/assets/icons/icon-16x16.png" }
-        document::Link { rel: "apple-touch-icon", sizes: "180x180", href: "/assets/icons/icon-180x180.png" }
-        document::Link { rel: "apple-touch-icon", sizes: "167x167", href: "/assets/icons/icon-167x167.png" }
-        document::Link { rel: "apple-touch-icon", sizes: "152x152", href: "/assets/icons/icon-152x152.png" }
-        document::Link { rel: "manifest", href: "/assets/manifest.webmanifest" }
+        document::Link { rel: "icon", r#type: "image/png", sizes: "32x32",  href: "/icons/icon-32x32.png" }
+        document::Link { rel: "icon", r#type: "image/png", sizes: "16x16",  href: "/icons/icon-16x16.png" }
+        document::Link { rel: "apple-touch-icon", sizes: "180x180", href: "/icons/icon-180x180.png" }
+        document::Link { rel: "apple-touch-icon", sizes: "167x167", href: "/icons/icon-167x167.png" }
+        document::Link { rel: "apple-touch-icon", sizes: "152x152", href: "/icons/icon-152x152.png" }
+        document::Link { rel: "manifest", href: "/manifest.webmanifest" }
         document::Meta { name: "theme-color", content: "#4F46E5" }
         document::Meta { name: "mobile-web-app-capable", content: "yes" }
         document::Meta { name: "apple-mobile-web-app-capable", content: "yes" }
         document::Meta { name: "apple-mobile-web-app-status-bar-style", content: "default" }
         document::Meta { name: "apple-mobile-web-app-title", content: "xmes" }
-        document::Script { src: "/assets/register-sw.js" }
+        document::Script { src: "/register-sw.js" }
         document::Link { rel: "stylesheet", href: MAIN_CSS }
         document::Link { rel: "stylesheet", href: TAILWIND_CSS }
 
-        // ── Main view ────────────────────────────────────────────
+        // ── Main view (wrapped for slide animation) ───────────────
         match view.read().clone() {
-            View::Conversations      => rsx! { components::conversations::Conversations {} },
-            View::Identities         => rsx! { components::identities::Identities {} },
-            View::Chat(conversation) => rsx! { components::chat::Chat { conversation } },
+            View::Conversations => rsx! {
+                div { class: "view-slide {anim}",
+                    components::conversations::Conversations {}
+                }
+            },
+            View::Identities => rsx! {
+                div { class: "view-slide {anim}",
+                    components::identities::Identities {}
+                }
+            },
+            View::Chat(conversation) => rsx! {
+                div { class: "view-slide {anim}",
+                    components::chat::Chat { conversation }
+                }
+            },
         }
 
         // ── Bottom navigation (hidden in Chat) ───────────────────
@@ -108,7 +136,10 @@ fn App() -> Element {
             nav { class: "bottom-nav",
                 button {
                     class: if *view.read() == View::Identities { "bottom-nav-tab active" } else { "bottom-nav-tab" },
-                    onclick: move |_| { let mut v = view; v.set(View::Identities); },
+                    onclick: move |_| {
+                        let mut a = anim; a.set("slide-in-tab");
+                        let mut v = view; v.set(View::Identities);
+                    },
                     svg {
                         xmlns: "http://www.w3.org/2000/svg",
                         width: "22", height: "22",
@@ -125,7 +156,10 @@ fn App() -> Element {
                 }
                 button {
                     class: if *view.read() == View::Conversations { "bottom-nav-tab active" } else { "bottom-nav-tab" },
-                    onclick: move |_| { let mut v = view; v.set(View::Conversations); },
+                    onclick: move |_| {
+                        let mut a = anim; a.set("slide-in-tab");
+                        let mut v = view; v.set(View::Conversations);
+                    },
                     svg {
                         xmlns: "http://www.w3.org/2000/svg",
                         width: "22", height: "22",

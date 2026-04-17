@@ -10,6 +10,8 @@ pub fn Conversations() -> Element {
     let conversations = use_context::<Signal<Option<Vec<ConversationSummary>>>>();
     let identity_ready = use_context::<Signal<bool>>();
     let view = use_context::<Signal<View>>();
+    let anim = use_context::<Signal<&'static str>>();
+    let pending_open = use_context::<Signal<bool>>();
 
     rsx! {
         div { class: "app-shell",
@@ -110,8 +112,8 @@ pub fn Conversations() -> Element {
                             conversation::Convo {
                                 summary,
                                 on_open: move |s: ConversationSummary| {
-                                    let mut v = view;
-                                    v.set(View::Chat(s));
+                                    let mut a = anim; a.set("slide-in-right");
+                                    let mut v = view; v.set(View::Chat(s));
                                 },
                                 on_delete: move |id: String| {
                                     if let Some(h) = xmtp.read().as_ref() {
@@ -132,6 +134,7 @@ pub fn Conversations() -> Element {
             disabled: !identity_ready(),
             onclick: move |_| {
                 if let Some(h) = xmtp.read().as_ref() {
+                    let mut po = pending_open; po.set(true);
                     h.request_create_group();
                 }
             },

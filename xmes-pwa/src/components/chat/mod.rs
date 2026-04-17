@@ -43,6 +43,7 @@ fn initials(name: &str) -> String {
 pub fn Chat(conversation: ConversationSummary) -> Element {
     let mut message = use_signal(|| String::new());
     let view = use_context::<Signal<View>>();
+    let anim = use_context::<Signal<&'static str>>();
     let av = av_class(&conversation.name);
     let av_text = initials(&conversation.name);
 
@@ -53,7 +54,10 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
             header { class: "chat-header",
                 button {
                     class: "chat-back-btn",
-                    onclick: move |_| { let mut v = view; v.set(View::Conversations); },
+                    onclick: move |_| {
+                        let mut a = anim; a.set("slide-in-left");
+                        let mut v = view; v.set(View::Conversations);
+                    },
                     svg {
                         xmlns: "http://www.w3.org/2000/svg",
                         width: "20", height: "20",
