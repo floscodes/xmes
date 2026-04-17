@@ -28,12 +28,17 @@ fn initials(name: &str) -> String {
 }
 
 #[component]
-pub fn Convo(summary: ConversationSummary, on_delete: EventHandler<String>) -> Element {
+pub fn Convo(
+    summary: ConversationSummary,
+    on_delete: EventHandler<String>,
+    on_open: EventHandler<ConversationSummary>,
+) -> Element {
     let mut offset = use_signal(|| 0.0f64);
     let mut start_x = use_signal(|| 0.0f64);
     let mut dragging = use_signal(|| false);
 
     let delete_id = summary.id.clone();
+    let open_summary = summary.clone();
     let av_class = avatar_class(&summary.name);
     let av_text = initials(&summary.name);
 
@@ -89,8 +94,14 @@ pub fn Convo(summary: ConversationSummary, on_delete: EventHandler<String>) -> E
                 },
                 onpointerup: move |_| {
                     dragging.set(false);
-                    let snap = if *offset.read() >= SWIPE_THRESHOLD { DELETE_WIDTH } else { 0.0 };
-                    offset.set(snap);
+                    let current = *offset.read();
+                    if current < SWIPE_THRESHOLD {
+                        // Snap closed — treat as a tap → open chat
+                        offset.set(0.0);
+                        on_open.call(open_summary.clone());
+                    } else {
+                        offset.set(DELETE_WIDTH);
+                    }
                 },
                 onpointercancel: move |_| {
                     dragging.set(false);

@@ -13,6 +13,14 @@ use wasm_bindgen_futures::spawn_local;
 
 use crate::{ConversationSummary, Env, Identity};
 
+/// Identity metadata sent to the host thread after successful initialisation.
+#[derive(Clone)]
+pub struct IdentityInfo {
+    pub key_hex: String,
+    pub address: String,
+    pub inbox_id: String,
+}
+
 type IdentityRef = Rc<RefCell<Option<Identity>>>;
 
 const XMTP_HOST: &str = "https://xmtp-dev.floscodes.net";
@@ -102,10 +110,14 @@ async fn handle_init(
 
     match identity {
         Some(id) => {
-            let key_hex = id.to_key_hex();
+            let key_hex  = id.to_key_hex();
+            let address  = id.address();
+            let inbox_id = id.inbox_id();
             *state.borrow_mut() = Some(id);
             let msg = typed_obj("ready");
-            set_str(&msg, "key_hex", &key_hex);
+            set_str(&msg, "key_hex",  &key_hex);
+            set_str(&msg, "address",  &address);
+            set_str(&msg, "inbox_id", &inbox_id);
             scope.post_message(&msg).unwrap_throw();
         }
         None => post_error(&scope, "Failed to initialize identity"),
@@ -193,7 +205,7 @@ impl XmtpHandle {
 ///   conversation list.
 pub fn spawn_xmtp_worker(
     key_hex: Option<String>,
-    on_ready: impl Fn(String) + 'static,
+    on_ready: impl Fn(IdentityInfo) + 'static,
     on_conversations: impl Fn(Vec<ConversationSummary>) + 'static,
 ) -> XmtpHandle {
     let arr = js_sys::Array::of1(&JsValue::from_str(WORKER_BOOTSTRAP));
@@ -219,7 +231,11 @@ pub fn spawn_xmtp_worker(
                 }
                 worker_cb.post_message(&msg).unwrap_throw();
             }
-            "ready" => on_ready(str_field(&data, "key_hex")),
+            "ready" => on_ready(IdentityInfo {
+                key_hex:  str_field(&data, "key_hex"),
+                address:  str_field(&data, "address"),
+                inbox_id: str_field(&data, "inbox_id"),
+            }),
             "conversations" => {
                 let arr = Reflect::get(&data, &"data".into())
                     .ok()

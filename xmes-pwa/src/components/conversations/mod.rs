@@ -1,5 +1,6 @@
 use dioxus::prelude::*;
 use xmes_xmtp_wasm::{ConversationSummary, XmtpHandle};
+use crate::View;
 
 mod conversation;
 
@@ -8,6 +9,7 @@ pub fn Conversations() -> Element {
     let xmtp = use_context::<Signal<Option<XmtpHandle>>>();
     let conversations = use_context::<Signal<Option<Vec<ConversationSummary>>>>();
     let identity_ready = use_context::<Signal<bool>>();
+    let view = use_context::<Signal<View>>();
 
     rsx! {
         div { class: "app-shell",
@@ -107,11 +109,15 @@ pub fn Conversations() -> Element {
                         for summary in convos.clone() {
                             conversation::Convo {
                                 summary,
+                                on_open: move |s: ConversationSummary| {
+                                    let mut v = view;
+                                    v.set(View::Chat(s));
+                                },
                                 on_delete: move |id: String| {
                                     if let Some(h) = xmtp.read().as_ref() {
                                         h.request_leave(id);
                                     }
-                                }
+                                },
                             }
                         }
                     },

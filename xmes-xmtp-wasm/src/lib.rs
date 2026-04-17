@@ -1,7 +1,7 @@
 #![recursion_limit = "256"]
 
 pub mod worker;
-pub use worker::{XmtpHandle, init_worker_mode, is_worker_context, spawn_xmtp_worker};
+pub use worker::{IdentityInfo, XmtpHandle, init_worker_mode, is_worker_context, spawn_xmtp_worker};
 
 use std::rc::Rc;
 use alloy::signers::local::PrivateKeySigner;
