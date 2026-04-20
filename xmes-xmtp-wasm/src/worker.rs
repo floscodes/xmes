@@ -16,10 +16,12 @@ use crate::{ConversationSummary, Env, Identity};
 /// Per-identity metadata sent to the host thread.
 #[derive(Clone, PartialEq)]
 pub struct IdentityInfo {
-    pub key_hex:   String,
-    pub inbox_id:  String,
+    pub key_hex:         String,
+    pub inbox_id:        String,
+    /// The address derived from this identity's own signing key (cannot be removed).
+    pub primary_address: String,
     /// All Ethereum addresses linked to this inbox (fetched from the network).
-    pub addresses: Vec<String>,
+    pub addresses:       Vec<String>,
 }
 
 /// Sent whenever the identity list or active selection changes.
@@ -126,6 +128,14 @@ async fn worker_run() {
                     .unwrap_or(0.0) as usize;
                 spawn_local(handle_add_address(scope, state, idx));
             }
+            "remove_address" => {
+                let idx = Reflect::get(&data, &"index".into())
+                    .ok()
+                    .and_then(|v| v.as_f64())
+                    .unwrap_or(0.0) as usize;
+                let address = str_field(&data, "address");
+                spawn_local(handle_remove_address(scope, state, idx, address));
+            }
             "switch_identity" => {
                 let idx = Reflect::get(&data, &"index".into())
                     .ok()
@@ -223,6 +233,15 @@ async fn handle_remove_identity(
     }
     post_identity_list_async(&scope, &state).await;
     handle_list(scope, state).await;
+}
+
+async fn handle_remove_address(
+    scope: web_sys::DedicatedWorkerGlobalScope,
+    _state: StateRef,
+    _idx: usize,
+    _address: String,
+) {
+    post_error(&scope, "Address removal not yet supported — requires upstream libxmtp API change");
 }
 
 async fn handle_add_address(
@@ -330,6 +349,13 @@ impl XmtpHandle {
         self.worker.post_message(&msg).unwrap_throw();
     }
 
+    pub fn request_remove_address(&self, identity_idx: usize, address: &str) {
+        let msg = typed_obj("remove_address");
+        Reflect::set(&msg, &"index".into(), &JsValue::from_f64(identity_idx as f64)).unwrap_throw();
+        set_str(&msg, "address", address);
+        self.worker.post_message(&msg).unwrap_throw();
+    }
+
     pub fn request_switch_identity(&self, idx: usize) {
         let msg = typed_obj("switch_identity");
         Reflect::set(&msg, &"index".into(), &JsValue::from_f64(idx as f64)).unwrap_throw();
@@ -401,8 +427,9 @@ pub fn spawn_xmtp_worker(
                             .filter_map(|j| addr_arr.get(j).as_string())
                             .collect();
                         IdentityInfo {
-                            key_hex:   str_field(&item, "key_hex"),
-                            inbox_id:  str_field(&item, "inbox_id"),
+                            key_hex:         str_field(&item, "key_hex"),
+                            inbox_id:        str_field(&item, "inbox_id"),
+                            primary_address: str_field(&item, "primary_address"),
                             addresses,
                         }
                     })
@@ -480,8 +507,9 @@ async fn post_identity_list_async(
         let addresses = id.linked_addresses().await;
 
         let item = js_sys::Object::new();
-        set_str(&item, "key_hex",  &id.to_key_hex());
-        set_str(&item, "inbox_id", &id.inbox_id());
+        set_str(&item, "key_hex",         &id.to_key_hex());
+        set_str(&item, "inbox_id",        &id.inbox_id());
+        set_str(&item, "primary_address", &id.address());
 
         let addr_arr = js_sys::Array::new();
         for a in &addresses {

@@ -806,3 +806,189 @@ body {
 /* Lift FAB above the bottom nav */
 .fab { bottom: calc(1.75rem + 62px); }
 @media (max-width: 480px) { .fab { bottom: calc(1.25rem + 62px); } }
+
+/* ── Identity options sheet ────────────────────────────────── */
+
+.sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgb(0 0 0 / 0.45);
+    z-index: 150;
+    animation: fade-in 0.18s ease;
+}
+
+.identity-sheet {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 480px;
+    height: 88vh;
+    background: var(--surface);
+    border-radius: 1.25rem 1.25rem 0 0;
+    z-index: 151;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: sheet-slide-up 0.26s cubic-bezier(0.34, 1.2, 0.64, 1);
+}
+
+@keyframes sheet-slide-up {
+    from { transform: translateX(-50%) translateY(100%); }
+    to   { transform: translateX(-50%) translateY(0); }
+}
+
+.sheet-handle {
+    width: 40px;
+    height: 4px;
+    background: var(--border);
+    border-radius: var(--radius-full);
+    margin: 0.75rem auto 0;
+    flex-shrink: 0;
+}
+
+.sheet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.875rem 1.25rem 0.75rem;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.sheet-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-1);
+    letter-spacing: -0.01em;
+    font-family: ui-monospace, 'Cascadia Code', 'Fira Mono', monospace;
+}
+
+.sheet-close-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: var(--border-subtle);
+    color: var(--text-2);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s;
+    flex-shrink: 0;
+}
+
+.sheet-close-btn:hover {
+    background: var(--border);
+    color: var(--text-1);
+}
+
+.sheet-section-label {
+    padding: 0.875rem 1.25rem 0.375rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-3);
+    flex-shrink: 0;
+}
+
+.sheet-addr-list {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.sheet-empty {
+    padding: 2.5rem 1.25rem;
+    text-align: center;
+    font-size: 0.875rem;
+    color: var(--text-3);
+}
+
+.addr-primary-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    margin: 0.625rem 1.25rem 0.25rem;
+    padding: 0.625rem 0.875rem;
+    background: var(--border-subtle);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-3);
+    cursor: default;
+    user-select: none;
+}
+
+.addr-primary-badge {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-3);
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.addr-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1.25rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border-subtle);
+    touch-action: pan-y;
+    user-select: none;
+    cursor: default;
+}
+
+.addr-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--primary);
+    flex-shrink: 0;
+}
+
+.addr-text {
+    flex: 1;
+    font-size: 0.875rem;
+    color: var(--text-1);
+    font-family: ui-monospace, 'Cascadia Code', 'Fira Mono', monospace;
+    font-weight: 500;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sheet-footer {
+    flex-shrink: 0;
+    padding: 1rem 1.25rem;
+    display: flex;
+    justify-content: flex-end;
+    border-top: 1px solid var(--border-subtle);
+}
+
+.sheet-fab {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: white;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-fab);
+    transition: background 0.15s, transform 0.15s;
+}
+
+.sheet-fab:hover {
+    background: var(--primary-hover);
+    transform: scale(1.06);
+}
+
+.sheet-fab:active { transform: scale(0.96); }
