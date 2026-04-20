@@ -1,4 +1,6 @@
 use dioxus::prelude::*;
+
+const LOGO: Asset = asset!("/assets/icons/xmes-icon.svg");
 use xmes_xmtp_wasm::{ConversationSummary, XmtpHandle};
 use crate::View;
 
@@ -19,39 +21,7 @@ pub fn Conversations() -> Element {
             // ── Header ──────────────────────────────────────────
             header { class: "app-header",
                 div { class: "app-logo",
-                    div { class: "app-logo-mark",
-                        svg {
-                            xmlns: "http://www.w3.org/2000/svg",
-                            width: "100%", height: "100%",
-                            view_box: "0 0 228 194",
-                            fill: "none",
-                            // M letterform — full white
-                            path {
-                                d: "M0,1 L85,92 L120,129 L228,0",
-                                stroke: "white",
-                                stroke_opacity: "1",
-                                stroke_width: "30",
-                                stroke_linejoin: "round",
-                                stroke_linecap: "round",
-                            }
-                            // X bottom-right leg
-                            path {
-                                d: "M155,91 L216,194",
-                                stroke: "white",
-                                stroke_opacity: "0.7",
-                                stroke_width: "30",
-                                stroke_linecap: "round",
-                            }
-                            // X bottom-left leg
-                            path {
-                                d: "M73,91 L12,194",
-                                stroke: "white",
-                                stroke_opacity: "0.7",
-                                stroke_width: "30",
-                                stroke_linecap: "round",
-                            }
-                        }
-                    }
+                    img { class: "app-logo-mark", src: LOGO, alt: "xmes logo" }
                     span { class: "app-logo-name", "xmes" }
                 }
             }

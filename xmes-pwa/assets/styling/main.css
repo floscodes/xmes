@@ -1,6 +1,6 @@
 :root {
     --bg:             #F5F4FF;
-    --surface:        rgb(255, 255, 255);
+    --surface:        rgb(255, 254, 254);
     --surface-subtle: #F9FAFB;
     --primary:        #4F46E5;
     --primary-hover:  #4338CA;
@@ -68,14 +68,8 @@ body {
 }
 
 .app-logo-mark {
-    width: 32px;
-    height: 32px;
-    background: var(--primary);
-    border-radius: var(--radius-sm);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 5px;
+    width: 36px;
+    height: 36px;
     flex-shrink: 0;
 }
 
