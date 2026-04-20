@@ -133,7 +133,9 @@ pub fn Convo(
                     class: "convo-info",
                     span { class: "convo-name", "{summary.name}" }
                     if let Some(sender) = &summary.last_sender {
-                        span { class: "convo-sub", "{sender}" }
+                        div {
+                            span { class: "convo-sub", "{sender}" }
+                        }
                     }
                 }
             }

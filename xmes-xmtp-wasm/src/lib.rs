@@ -13,6 +13,15 @@ pub use bindings_wasm::conversation::Conversation;
 pub use bindings_wasm::conversations::Conversations;
 
 #[derive(Clone, PartialEq)]
+pub struct MessageInfo {
+    pub id:               String,
+    pub text:             String,
+    pub sender_inbox_id:  String,
+    pub sent_at_ns:       i64,
+    pub delivered:        bool,
+}
+
+#[derive(Clone, PartialEq)]
 pub struct ConversationSummary {
     pub id: String,
     pub name: String,
@@ -22,6 +31,7 @@ use bindings_wasm::conversations::{
     ListConversationsOptions,
     ListConversationsOrderBy
 };
+use bindings_wasm::messages::{GroupMessageKind, DeliveryStatus};
 use bindings_wasm::identity::{Identifier, IdentifierKind};
 use bindings_wasm::inbox_id::generate_inbox_id;
 
@@ -210,6 +220,38 @@ impl Identity {
     pub fn inbox_id(&self) -> String {
         self.inbox_id.clone()
     }
+    pub async fn fetch_messages(&self, conversation_id: String) -> Result<Vec<MessageInfo>> {
+        let convo = self.conversations()
+            .find_group_by_id(conversation_id)
+            .map_err(|_| Error::msg("Conversation not found"))?;
+        convo.sync().await.map_err(|e| Error::msg(format!("{e:?}")))?;
+        let msgs = convo.find_messages(None).await
+            .map_err(|e| Error::msg(format!("{e:?}")))?;
+        let result = msgs.into_iter().filter_map(|m| {
+            if !matches!(m.kind, GroupMessageKind::Application) { return None; }
+            let text = String::from_utf8(m.content.content).ok()?;
+            if text.is_empty() { return None; }
+            let delivered = matches!(m.delivery_status, DeliveryStatus::Published);
+            Some(MessageInfo {
+                id:              m.id,
+                text,
+                sender_inbox_id: m.sender_inbox_id,
+                sent_at_ns:      m.sent_at_ns,
+                delivered,
+            })
+        }).collect();
+        Ok(result)
+    }
+
+    pub async fn send_text_message(&self, conversation_id: String, text: String) -> Result<()> {
+        let convo = self.conversations()
+            .find_group_by_id(conversation_id)
+            .map_err(|_| Error::msg("Conversation not found"))?;
+        convo.send_text(text, None).await
+            .map_err(|e| Error::msg(format!("{e:?}")))?;
+        Ok(())
+    }
+
     pub async fn list_conversations(&self) -> Result<Vec<ConversationSummary>> {
         self.conversations()
             .sync_all_conversations(None)

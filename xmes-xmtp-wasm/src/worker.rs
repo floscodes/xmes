@@ -11,7 +11,7 @@ use std::{cell::RefCell, rc::Rc};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 
-use crate::{ConversationSummary, Env, Identity};
+use crate::{ConversationSummary, Env, Identity, MessageInfo};
 
 /// Per-identity metadata sent to the host thread.
 #[derive(Clone, PartialEq)]
@@ -142,6 +142,15 @@ async fn worker_run() {
                     .and_then(|v| v.as_f64())
                     .unwrap_or(0.0) as usize;
                 spawn_local(handle_switch_identity(scope, state, idx));
+            }
+            "list_messages" => {
+                let conversation_id = str_field(&data, "conversation_id");
+                spawn_local(handle_list_messages(scope, state, conversation_id));
+            }
+            "send_message" => {
+                let conversation_id = str_field(&data, "conversation_id");
+                let text            = str_field(&data, "text");
+                spawn_local(handle_send_message(scope, state, conversation_id, text));
             }
             "list"         => spawn_local(handle_list(scope, state)),
             "create_group" => spawn_local(handle_create_group(scope, state)),
@@ -320,6 +329,43 @@ async fn handle_leave(
     }
 }
 
+async fn handle_list_messages(
+    scope: web_sys::DedicatedWorkerGlobalScope,
+    state: StateRef,
+    conversation_id: String,
+) {
+    let id = state.borrow().active_clone();
+    match id {
+        Some(id) => match id.fetch_messages(conversation_id.clone()).await {
+            Ok(msgs)  => post_messages(&scope, &conversation_id, &msgs),
+            Err(e)    => post_error(&scope, &e.to_string()),
+        },
+        None => post_error(&scope, "No identity available"),
+    }
+}
+
+async fn handle_send_message(
+    scope: web_sys::DedicatedWorkerGlobalScope,
+    state: StateRef,
+    conversation_id: String,
+    text: String,
+) {
+    let id = state.borrow().active_clone();
+    match id {
+        Some(id) => {
+            if let Err(e) = id.send_text_message(conversation_id.clone(), text).await {
+                post_error(&scope, &e.to_string());
+                return;
+            }
+            match id.fetch_messages(conversation_id.clone()).await {
+                Ok(msgs)  => post_messages(&scope, &conversation_id, &msgs),
+                Err(e)    => post_error(&scope, &e.to_string()),
+            }
+        }
+        None => post_error(&scope, "No identity available"),
+    }
+}
+
 async fn new_identity() -> Option<Identity> {
     Identity::new(Env::Dev(Some(XMTP_HOST.to_string()))).await.ok()
 }
@@ -362,6 +408,19 @@ impl XmtpHandle {
         self.worker.post_message(&msg).unwrap_throw();
     }
 
+    pub fn request_list_messages(&self, conversation_id: &str) {
+        let msg = typed_obj("list_messages");
+        set_str(&msg, "conversation_id", conversation_id);
+        self.worker.post_message(&msg).unwrap_throw();
+    }
+
+    pub fn request_send_message(&self, conversation_id: &str, text: &str) {
+        let msg = typed_obj("send_message");
+        set_str(&msg, "conversation_id", conversation_id);
+        set_str(&msg, "text", text);
+        self.worker.post_message(&msg).unwrap_throw();
+    }
+
     pub fn request_leave(&self, id: String) {
         let msg = typed_obj("leave");
         set_str(&msg, "id", &id);
@@ -382,6 +441,7 @@ pub fn spawn_xmtp_worker(
     key_hexes: Vec<String>,
     on_identity_update: impl Fn(IdentityListUpdate) + 'static,
     on_conversations:   impl Fn(Vec<ConversationSummary>) + 'static,
+    on_messages:        impl Fn(String, Vec<MessageInfo>) + 'static,
 ) -> XmtpHandle {
     let arr = js_sys::Array::of1(&JsValue::from_str(WORKER_BOOTSTRAP));
     let mut props = web_sys::BlobPropertyBag::new();
@@ -443,6 +503,28 @@ pub fn spawn_xmtp_worker(
                     .and_then(|v| v.dyn_into::<js_sys::Array>().ok())
                     .unwrap_or_default();
                 on_conversations(parse_conversations(&arr));
+            }
+            "messages" => {
+                let conv_id = str_field(&data, "conversation_id");
+                let raw = Reflect::get(&data, &"data".into())
+                    .ok()
+                    .and_then(|v| v.dyn_into::<js_sys::Array>().ok())
+                    .unwrap_or_default();
+                let messages: Vec<MessageInfo> = (0..raw.length()).map(|i| {
+                    let item       = raw.get(i);
+                    let sent_at_ns = Reflect::get(&item, &"sent_at_ns".into())
+                        .ok().and_then(|v| v.as_f64()).unwrap_or(0.0) as i64;
+                    let delivered  = Reflect::get(&item, &"delivered".into())
+                        .ok().and_then(|v| v.as_bool()).unwrap_or(false);
+                    MessageInfo {
+                        id:              str_field(&item, "id"),
+                        text:            str_field(&item, "text"),
+                        sender_inbox_id: str_field(&item, "sender_inbox_id"),
+                        sent_at_ns,
+                        delivered,
+                    }
+                }).collect();
+                on_messages(conv_id, messages);
             }
             _ => {}
         }
@@ -522,6 +604,23 @@ async fn post_identity_list_async(
     let msg = typed_obj("identity_list");
     Reflect::set(&msg, &"identities".into(), &arr).unwrap_throw();
     Reflect::set(&msg, &"active_idx".into(), &JsValue::from_f64(active_idx as f64)).unwrap_throw();
+    scope.post_message(&msg).unwrap_throw();
+}
+
+fn post_messages(scope: &web_sys::DedicatedWorkerGlobalScope, conversation_id: &str, msgs: &[MessageInfo]) {
+    let arr = js_sys::Array::new();
+    for m in msgs {
+        let item = js_sys::Object::new();
+        set_str(&item, "id",              &m.id);
+        set_str(&item, "text",            &m.text);
+        set_str(&item, "sender_inbox_id", &m.sender_inbox_id);
+        Reflect::set(&item, &"sent_at_ns".into(), &JsValue::from_f64(m.sent_at_ns as f64)).unwrap_throw();
+        Reflect::set(&item, &"delivered".into(),  &JsValue::from_bool(m.delivered)).unwrap_throw();
+        arr.push(&item);
+    }
+    let msg = typed_obj("messages");
+    set_str(&msg, "conversation_id", conversation_id);
+    Reflect::set(&msg, &"data".into(), &arr).unwrap_throw();
     scope.post_message(&msg).unwrap_throw();
 }
 

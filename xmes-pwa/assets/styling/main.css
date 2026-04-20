@@ -622,10 +622,44 @@ body {
     box-shadow: var(--shadow-sm);
 }
 
+.bubble-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0 0.25rem;
+}
+
+.bubble-row.own  .bubble-meta { justify-content: flex-end; }
+.bubble-row.other .bubble-meta { justify-content: flex-start; }
+
 .bubble-time {
     font-size: 0.6875rem;
     color: var(--text-3);
-    padding: 0 0.25rem;
+}
+
+.bubble-sent {
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    line-height: 1;
+}
+
+.bubble-sending {
+    font-size: 0.75rem;
+    color: var(--text-3);
+    line-height: 1;
+}
+
+.chat-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 3rem 1.5rem;
+    color: var(--text-3);
+    font-size: 0.875rem;
+    flex: 1;
 }
 
 /* Input bar */

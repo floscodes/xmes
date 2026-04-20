@@ -9,6 +9,7 @@ use xmes_xmtp_wasm::{
     ConversationSummary,
     IdentityInfo,
     IdentityListUpdate,
+    MessageInfo,
     XmtpHandle,
     is_worker_context,
     init_worker_mode,
@@ -85,6 +86,7 @@ fn App() -> Element {
     let anim:              Signal<&'static str>                     = use_signal(|| "");
     let pending_open:      Signal<Option<()>>                       = use_signal(|| None);
     let confirm_action:    Signal<Option<ConfirmAction>>            = use_signal(|| None);
+    let messages:          Signal<Vec<MessageInfo>>                 = use_signal(|| vec![]);
 
     use_context_provider(|| xmtp_handle);
     use_context_provider(|| conversations);
@@ -95,6 +97,7 @@ fn App() -> Element {
     use_context_provider(|| anim);
     use_context_provider(|| pending_open);
     use_context_provider(|| confirm_action);
+    use_context_provider(|| messages);
 
     use_resource(move || async move {
         if xmtp_handle.read().is_some() {
@@ -143,6 +146,10 @@ fn App() -> Element {
                 }
                 let mut c = conversations;
                 c.set(Some(convos));
+            },
+            move |_conv_id, msgs| {
+                let mut m = messages;
+                m.set(msgs);
             },
         );
 
