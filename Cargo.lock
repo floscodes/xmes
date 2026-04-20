@@ -10390,6 +10390,7 @@ dependencies = [
  "dioxus",
  "dioxus-primitives",
  "dioxus-sdk",
+ "gloo-timers 0.3.0",
  "js-sys",
  "wasm-bindgen",
  "web-sys",

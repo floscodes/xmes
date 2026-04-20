@@ -21,6 +21,57 @@ fn inbox_avatar(inbox_id: &str) -> &'static str {
     }
 }
 
+/// Write `text` to the clipboard and briefly flip `copied` to true.
+fn copy_to_clipboard(text: String, mut copied: Signal<bool>) {
+    let _ = js_sys::eval(&format!(
+        "navigator.clipboard.writeText('{}')",
+        text.replace('\'', "\\'")
+    ));
+    copied.set(true);
+    spawn(async move {
+        gloo_timers::future::TimeoutFuture::new(1500).await;
+        copied.set(false);
+    });
+}
+
+/// Small inline copy button. Shows a checkmark for 1.5 s after clicking.
+#[component]
+fn CopyBtn(text: String) -> Element {
+    let mut copied = use_signal(|| false);
+    rsx! {
+        button {
+            class: "copy-btn",
+            title: if copied() { "Copied!" } else { "Copy" },
+            onclick: move |e| {
+                e.stop_propagation();
+                copy_to_clipboard(text.clone(), copied);
+            },
+            onpointerdown: move |e| { e.stop_propagation(); },
+            onpointerup:   move |e| { e.stop_propagation(); },
+            if copied() {
+                svg {
+                    xmlns: "http://www.w3.org/2000/svg",
+                    width: "13", height: "13",
+                    view_box: "0 0 24 24", fill: "none",
+                    stroke: "currentColor", stroke_width: "2.8",
+                    stroke_linecap: "round", stroke_linejoin: "round",
+                    polyline { points: "20 6 9 17 4 12" }
+                }
+            } else {
+                svg {
+                    xmlns: "http://www.w3.org/2000/svg",
+                    width: "13", height: "13",
+                    view_box: "0 0 24 24", fill: "none",
+                    stroke: "currentColor", stroke_width: "2",
+                    stroke_linecap: "round", stroke_linejoin: "round",
+                    rect { x: "9", y: "9", width: "13", height: "13", rx: "2", ry: "2" }
+                    path { d: "M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" }
+                }
+            }
+        }
+    }
+}
+
 #[component]
 pub fn Identities() -> Element {
     let xmtp           = use_context::<Signal<Option<XmtpHandle>>>();
@@ -142,7 +193,6 @@ fn IdentityCard(
                                     .cloned()
                                     .collect();
                                 ids.set(remaining);
-
                                 if let Some(h) = xmtp.peek().as_ref() {
                                     h.request_remove_identity(idx);
                                 }
@@ -181,7 +231,6 @@ fn IdentityCard(
                     let cur = *offset.read();
                     if cur < SWIPE_THRESHOLD {
                         offset.set(0.0);
-                        // Treat as tap → switch identity + navigate
                         if let Some(h) = xmtp.read().as_ref() {
                             h.request_switch_identity(idx);
                         }
@@ -217,7 +266,11 @@ fn IdentityCard(
                             span { class: "identity-active-badge", "Active" }
                         }
                     }
-                    span { class: "identity-address", "{inbox_short}" }
+                    // Inbox ID with copy button
+                    div { class: "identity-copy-row",
+                        span { class: "identity-address", "{inbox_short}" }
+                        CopyBtn { text: info.inbox_id.clone() }
+                    }
 
                     if !addresses.is_empty() {
                         div { class: "identity-addr-section",
@@ -313,7 +366,11 @@ fn IdentityOptionsSheet(
         div { class: "identity-sheet",
             div { class: "sheet-handle" }
             div { class: "sheet-header",
-                span { class: "sheet-title", "{short(&inbox_id, 8)}" }
+                // Inbox ID + copy button in the title area
+                div { class: "sheet-title-row",
+                    span { class: "sheet-title", "{short(&inbox_id, 8)}" }
+                    CopyBtn { text: inbox_id.clone() }
+                }
                 button {
                     class: "sheet-close-btn",
                     onclick: move |_| on_close.call(()),
@@ -343,6 +400,7 @@ fn IdentityOptionsSheet(
                             path { d: "M7 11V7a5 5 0 0 1 10 0v4" }
                         }
                         span { class: "addr-text", "{short(&primary_address, 10)}" }
+                        CopyBtn { text: primary_address.clone() }
                         span { class: "addr-primary-badge", "Primary" }
                     }
                 }
@@ -461,6 +519,7 @@ fn AddressRow(
                 },
                 div { class: "addr-dot" }
                 span { class: "addr-text", "{addr_display}" }
+                CopyBtn { text: address.clone() }
             }
         }
     }
