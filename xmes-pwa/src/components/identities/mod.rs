@@ -158,13 +158,10 @@ fn IdentityCard(
                         xmlns: "http://www.w3.org/2000/svg",
                         width: "18", height: "18",
                         view_box: "0 0 24 24", fill: "none",
-                        stroke: "currentColor", stroke_width: "2",
+                        stroke: "currentColor", stroke_width: "2.5",
                         stroke_linecap: "round", stroke_linejoin: "round",
-                        polyline { points: "3 6 5 6 21 6" }
-                        path { d: "M19 6l-1 14H6L5 6" }
-                        path { d: "M10 11v6" }
-                        path { d: "M14 11v6" }
-                        path { d: "M9 6V4h6v2" }
+                        path { d: "M18 6L6 18" }
+                        path { d: "M6 6l12 12" }
                     }
                     span { "Remove" }
                 }
