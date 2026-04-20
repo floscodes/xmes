@@ -152,6 +152,17 @@ async fn worker_run() {
                 let text            = str_field(&data, "text");
                 spawn_local(handle_send_message(scope, state, conversation_id, text));
             }
+            "add_members" => {
+                let conversation_id = str_field(&data, "conversation_id");
+                let raw = Reflect::get(&data, &"inbox_ids".into())
+                    .ok()
+                    .and_then(|v| v.dyn_into::<js_sys::Array>().ok())
+                    .unwrap_or_default();
+                let inbox_ids: Vec<String> = (0..raw.length())
+                    .filter_map(|i| raw.get(i).as_string())
+                    .collect();
+                spawn_local(handle_add_members(scope, state, conversation_id, inbox_ids));
+            }
             "list"         => spawn_local(handle_list(scope, state)),
             "create_group" => spawn_local(handle_create_group(scope, state)),
             "leave" => {
@@ -329,6 +340,22 @@ async fn handle_leave(
     }
 }
 
+async fn handle_add_members(
+    scope: web_sys::DedicatedWorkerGlobalScope,
+    state: StateRef,
+    conversation_id: String,
+    inbox_ids: Vec<String>,
+) {
+    let id = state.borrow().active_clone();
+    match id {
+        Some(id) => match id.add_members_to_conversation(conversation_id, inbox_ids).await {
+            Ok(_)  => handle_list(scope, state).await,
+            Err(e) => post_error(&scope, &e.to_string()),
+        },
+        None => post_error(&scope, "No identity available"),
+    }
+}
+
 async fn handle_list_messages(
     scope: web_sys::DedicatedWorkerGlobalScope,
     state: StateRef,
@@ -405,6 +432,17 @@ impl XmtpHandle {
     pub fn request_switch_identity(&self, idx: usize) {
         let msg = typed_obj("switch_identity");
         Reflect::set(&msg, &"index".into(), &JsValue::from_f64(idx as f64)).unwrap_throw();
+        self.worker.post_message(&msg).unwrap_throw();
+    }
+
+    pub fn request_add_members(&self, conversation_id: &str, inbox_ids: &[String]) {
+        let msg = typed_obj("add_members");
+        set_str(&msg, "conversation_id", conversation_id);
+        let arr = js_sys::Array::new();
+        for id in inbox_ids {
+            arr.push(&JsValue::from_str(id));
+        }
+        Reflect::set(&msg, &"inbox_ids".into(), &arr).unwrap_throw();
         self.worker.post_message(&msg).unwrap_throw();
     }
 

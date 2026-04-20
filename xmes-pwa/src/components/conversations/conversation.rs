@@ -2,6 +2,7 @@ use std::sync::Arc;
 use dioxus::prelude::*;
 use xmes_xmtp_wasm::{ConversationSummary, XmtpHandle};
 use crate::ConfirmAction;
+use crate::components::add_members::AddMembersSheet;
 
 const DELETE_WIDTH: f64 = 80.0;
 const SWIPE_THRESHOLD: f64 = 40.0;
@@ -34,6 +35,7 @@ pub fn Convo(
     summary: ConversationSummary,
     on_open: EventHandler<ConversationSummary>,
 ) -> Element {
+    let mut show_add  = use_signal(|| false);
     let mut offset   = use_signal(|| 0.0f64);
     let mut start_x  = use_signal(|| 0.0f64);
     let mut dragging = use_signal(|| false);
@@ -138,6 +140,36 @@ pub fn Convo(
                         }
                     }
                 }
+                // Add-member button — stops pointer propagation so swipe isn't triggered
+                button {
+                    class: "convo-add-btn",
+                    title: "Add member",
+                    onpointerdown: move |e| { e.stop_propagation(); },
+                    onpointerup:   move |e| { e.stop_propagation(); },
+                    onclick: move |e| {
+                        e.stop_propagation();
+                        show_add.set(true);
+                    },
+                    svg {
+                        xmlns: "http://www.w3.org/2000/svg",
+                        width: "17", height: "17",
+                        view_box: "0 0 24 24", fill: "none",
+                        stroke: "currentColor", stroke_width: "2",
+                        stroke_linecap: "round", stroke_linejoin: "round",
+                        path { d: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" }
+                        circle { cx: "9", cy: "7", r: "4" }
+                        line { x1: "19", y1: "8", x2: "19", y2: "14" }
+                        line { x1: "22", y1: "11", x2: "16", y2: "11" }
+                    }
+                }
+            }
+        }
+
+        if show_add() {
+            AddMembersSheet {
+                conversation_id: summary.id.clone(),
+                xmtp,
+                on_close: move |_| show_add.set(false),
             }
         }
     }

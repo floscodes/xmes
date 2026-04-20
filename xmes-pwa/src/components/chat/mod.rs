@@ -2,6 +2,7 @@ use dioxus::prelude::*;
 use js_sys::Date;
 use xmes_xmtp_wasm::{ConversationSummary, IdentityInfo, MessageInfo, XmtpHandle};
 use crate::View;
+use crate::components::add_members::AddMembersSheet;
 
 fn av_class(name: &str) -> &'static str {
     let idx = name.bytes().fold(0usize, |a, b| a.wrapping_add(b as usize)) % 8;
@@ -39,6 +40,7 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
     let messages        = use_context::<Signal<Vec<MessageInfo>>>();
     let identity_info   = use_context::<Signal<Option<IdentityInfo>>>();
 
+    let mut show_add = use_signal(|| false);
     let conv_id     = conversation.id.clone();
     let own_inbox   = identity_info.read().as_ref().map(|i| i.inbox_id.clone()).unwrap_or_default();
     let av          = av_class(&conversation.name);
@@ -88,6 +90,30 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                 div { class: "chat-header-info",
                     span { class: "chat-header-name", "{conversation.name}" }
                     span { class: "chat-header-sub", "Group · XMTP" }
+                }
+                button {
+                    class: "chat-add-btn",
+                    title: "Add member",
+                    onclick: move |_| show_add.set(true),
+                    svg {
+                        xmlns: "http://www.w3.org/2000/svg",
+                        width: "18", height: "18",
+                        view_box: "0 0 24 24", fill: "none",
+                        stroke: "currentColor", stroke_width: "2",
+                        stroke_linecap: "round", stroke_linejoin: "round",
+                        path { d: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" }
+                        circle { cx: "9", cy: "7", r: "4" }
+                        line { x1: "19", y1: "8", x2: "19", y2: "14" }
+                        line { x1: "22", y1: "11", x2: "16", y2: "11" }
+                    }
+                }
+            }
+
+            if show_add() {
+                AddMembersSheet {
+                    conversation_id: conversation.id.clone(),
+                    xmtp,
+                    on_close: move |_| show_add.set(false),
                 }
             }
 

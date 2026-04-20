@@ -718,6 +718,26 @@ body {
     transform: none;
 }
 
+.chat-add-btn {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: none;
+    color: var(--text-2);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s, background 0.15s;
+}
+
+.chat-add-btn:hover {
+    color: var(--primary);
+    background: var(--primary-light);
+}
+
 /* ── Confirmation modal ────────────────────────────────────── */
 
 .modal-backdrop {
@@ -1026,3 +1046,85 @@ body {
 }
 
 .sheet-fab:active { transform: scale(0.96); }
+
+/* ── Add member sheet ──────────────────────────────────────── */
+
+.convo-add-btn {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: none;
+    color: var(--text-3);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s, background 0.15s;
+}
+
+.convo-add-btn:hover {
+    color: var(--primary);
+    background: var(--primary-light);
+}
+
+.add-member-body {
+    padding: 1.25rem 1.25rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.add-member-hint {
+    font-size: 0.875rem;
+    color: var(--text-2);
+    margin: 0;
+    line-height: 1.55;
+}
+
+.add-member-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    font-family: ui-monospace, 'Cascadia Code', 'Fira Mono', monospace;
+    color: var(--text-1);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    box-sizing: border-box;
+}
+
+.add-member-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgb(79 70 229 / 0.1);
+}
+
+.add-member-input::placeholder { color: var(--text-3); }
+
+.add-member-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    border-radius: var(--radius-md);
+    background: var(--primary);
+    color: white;
+    border: none;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    font-family: var(--font);
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+}
+
+.add-member-btn:hover { background: var(--primary-hover); }
+.add-member-btn:active { transform: scale(0.97); }
+.add-member-btn:disabled {
+    background: var(--border);
+    color: var(--text-3);
+    cursor: not-allowed;
+    transform: none;
+}
