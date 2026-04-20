@@ -26,11 +26,14 @@ pub struct ConversationSummary {
     pub id: String,
     pub name: String,
     pub last_sender: Option<String>,
+    pub is_pending: bool,
 }
 use bindings_wasm::conversations::{
+    GroupMembershipState,
     ListConversationsOptions,
     ListConversationsOrderBy
 };
+use bindings_wasm::consent_state::ConsentState as XmtpConsentState;
 use bindings_wasm::messages::{GroupMessageKind, DeliveryStatus};
 use bindings_wasm::identity::{Identifier, IdentifierKind};
 use bindings_wasm::inbox_id::generate_inbox_id;
@@ -261,6 +264,24 @@ impl Identity {
         Ok(())
     }
 
+    pub fn accept_invitation(&self, conversation_id: String) -> Result<()> {
+        let convo = self.conversations()
+            .find_group_by_id(conversation_id)
+            .map_err(|_| Error::msg("Conversation not found"))?;
+        convo.update_consent_state(XmtpConsentState::Allowed)
+            .map_err(|e| Error::msg(format!("{e:?}")))?;
+        Ok(())
+    }
+
+    pub fn decline_invitation(&self, conversation_id: String) -> Result<()> {
+        let convo = self.conversations()
+            .find_group_by_id(conversation_id)
+            .map_err(|_| Error::msg("Conversation not found"))?;
+        convo.update_consent_state(XmtpConsentState::Denied)
+            .map_err(|e| Error::msg(format!("{e:?}")))?;
+        Ok(())
+    }
+
     pub async fn list_conversations(&self) -> Result<Vec<ConversationSummary>> {
         self.conversations()
             .sync_all_conversations(None)
@@ -286,6 +307,7 @@ impl Identity {
             id: String,
             name: String,
             sender_inbox_id: Option<String>,
+            is_pending: bool,
         }
 
         // Sync pass: extract conversation data + sender inbox IDs
@@ -311,7 +333,21 @@ impl Identity {
                 .and_then(|last_msg| js_sys::Reflect::get(&last_msg, &sender_key).ok())
                 .and_then(|v| v.as_string());
 
-            raw_items.push(RawItem { id, name, sender_inbox_id });
+            let is_pending = self.conversations()
+                .find_group_by_id(id.clone())
+                .ok()
+                .map(|c| {
+                    let pending = c.membership_state().ok()
+                        .map(|s| s == GroupMembershipState::Pending)
+                        .unwrap_or(false);
+                    let accepted = c.consent_state().ok()
+                        .map(|s| s == XmtpConsentState::Allowed)
+                        .unwrap_or(false);
+                    pending && !accepted
+                })
+                .unwrap_or(false);
+
+            raw_items.push(RawItem { id, name, sender_inbox_id, is_pending });
         }
 
         // Async pass: batch-resolve sender inbox IDs → wallet addresses
@@ -337,7 +373,7 @@ impl Identity {
                 .as_deref()
                 .and_then(|inbox_id| addr_map.get(inbox_id))
                 .cloned();
-            ConversationSummary { id: it.id, name: it.name, last_sender }
+            ConversationSummary { id: it.id, name: it.name, last_sender, is_pending: it.is_pending }
         }).collect();
 
         Ok(summaries)

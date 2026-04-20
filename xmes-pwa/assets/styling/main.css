@@ -1162,3 +1162,52 @@ body {
     cursor: not-allowed;
     transform: none;
 }
+
+/* ── Invite row ───────────────────────────────────────────────── */
+
+.invite-row {
+    background: rgb(79 70 229 / 0.04);
+    border-left: 3px solid var(--primary);
+}
+
+.invite-label {
+    font-size: 0.75rem;
+    color: var(--primary);
+    font-weight: 500;
+    margin-top: 1px;
+}
+
+.invite-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+    margin-left: auto;
+    padding-right: 0.25rem;
+}
+
+.invite-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, transform 0.1s;
+}
+
+.invite-btn:active { transform: scale(0.92); }
+
+.invite-accept {
+    background: #dcfce7;
+    color: #16a34a;
+}
+.invite-accept:hover { background: #bbf7d0; }
+
+.invite-decline {
+    background: #fee2e2;
+    color: #dc2626;
+}
+.invite-decline:hover { background: #fecaca; }

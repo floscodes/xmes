@@ -163,6 +163,14 @@ async fn worker_run() {
                     .collect();
                 spawn_local(handle_add_members(scope, state, conversation_id, inbox_ids));
             }
+            "accept_invitation" => {
+                let id = str_field(&data, "id");
+                spawn_local(handle_accept_invitation(scope, state, id));
+            }
+            "decline_invitation" => {
+                let id = str_field(&data, "id");
+                spawn_local(handle_decline_invitation(scope, state, id));
+            }
             "list"         => spawn_local(handle_list(scope, state)),
             "create_group" => spawn_local(handle_create_group(scope, state)),
             "leave" => {
@@ -295,6 +303,36 @@ async fn handle_switch_identity(
     }
     post_identity_list_async(&scope, &state).await;
     handle_list(scope, state).await;
+}
+
+async fn handle_accept_invitation(
+    scope: web_sys::DedicatedWorkerGlobalScope,
+    state: StateRef,
+    conversation_id: String,
+) {
+    let id = state.borrow().active_clone();
+    match id {
+        Some(id) => match id.accept_invitation(conversation_id) {
+            Ok(_)  => handle_list(scope, state).await,
+            Err(e) => post_error(&scope, &e.to_string()),
+        },
+        None => post_error(&scope, "No identity available"),
+    }
+}
+
+async fn handle_decline_invitation(
+    scope: web_sys::DedicatedWorkerGlobalScope,
+    state: StateRef,
+    conversation_id: String,
+) {
+    let id = state.borrow().active_clone();
+    match id {
+        Some(id) => match id.decline_invitation(conversation_id) {
+            Ok(_)  => handle_list(scope, state).await,
+            Err(e) => post_error(&scope, &e.to_string()),
+        },
+        None => post_error(&scope, "No identity available"),
+    }
 }
 
 async fn handle_list(
@@ -465,6 +503,18 @@ impl XmtpHandle {
         self.worker.post_message(&msg).unwrap_throw();
     }
 
+    pub fn request_accept_invitation(&self, id: &str) {
+        let msg = typed_obj("accept_invitation");
+        set_str(&msg, "id", id);
+        self.worker.post_message(&msg).unwrap_throw();
+    }
+
+    pub fn request_decline_invitation(&self, id: &str) {
+        let msg = typed_obj("decline_invitation");
+        set_str(&msg, "id", id);
+        self.worker.post_message(&msg).unwrap_throw();
+    }
+
     fn send(&self, msg_type: &str) {
         self.worker.post_message(&typed_obj(msg_type)).unwrap_throw();
     }
@@ -600,12 +650,15 @@ fn parse_conversations(arr: &js_sys::Array) -> Vec<ConversationSummary> {
             let item = arr.get(i);
             let id   = str_field(&item, "id");
             if id.is_empty() { return None; }
+            let is_pending = Reflect::get(&item, &"is_pending".into())
+                .ok().and_then(|v| v.as_bool()).unwrap_or(false);
             Some(ConversationSummary {
                 id,
                 name:        str_field(&item, "name"),
                 last_sender: Reflect::get(&item, &"last_sender".into())
                     .ok()
                     .and_then(|v| v.as_string()),
+                is_pending,
             })
         })
         .collect()
@@ -673,6 +726,7 @@ fn post_conversations(scope: &web_sys::DedicatedWorkerGlobalScope, convos: &[Con
             &"last_sender".into(),
             &c.last_sender.as_deref().map(JsValue::from_str).unwrap_or(JsValue::null()),
         ).unwrap_throw();
+        Reflect::set(&item, &"is_pending".into(), &JsValue::from_bool(c.is_pending)).unwrap_throw();
         arr.push(&item);
     }
     let msg = typed_obj("conversations");
