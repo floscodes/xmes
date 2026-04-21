@@ -688,12 +688,15 @@ fn parse_conversations(arr: &js_sys::Array) -> Vec<ConversationSummary> {
             if id.is_empty() { return None; }
             let is_pending = Reflect::get(&item, &"is_pending".into())
                 .ok().and_then(|v| v.as_bool()).unwrap_or(false);
+            let last_message_ns = Reflect::get(&item, &"last_message_ns".into())
+                .ok().and_then(|v| v.as_f64()).map(|f| f as i64);
             Some(ConversationSummary {
                 id,
                 name:        str_field(&item, "name"),
                 last_sender: Reflect::get(&item, &"last_sender".into())
                     .ok()
                     .and_then(|v| v.as_string()),
+                last_message_ns,
                 is_pending,
             })
         })
@@ -772,6 +775,11 @@ fn post_conversations(scope: &web_sys::DedicatedWorkerGlobalScope, convos: &[Con
             &item,
             &"last_sender".into(),
             &c.last_sender.as_deref().map(JsValue::from_str).unwrap_or(JsValue::null()),
+        ).unwrap_throw();
+        Reflect::set(
+            &item,
+            &"last_message_ns".into(),
+            &c.last_message_ns.map(|v| JsValue::from_f64(v as f64)).unwrap_or(JsValue::null()),
         ).unwrap_throw();
         Reflect::set(&item, &"is_pending".into(), &JsValue::from_bool(c.is_pending)).unwrap_throw();
         arr.push(&item);

@@ -88,6 +88,9 @@ fn App() -> Element {
     let confirm_action:    Signal<Option<ConfirmAction>>            = use_signal(|| None);
     let messages:          Signal<Vec<MessageInfo>>                 = use_signal(|| vec![]);
     let group_members:     Signal<Vec<String>>                     = use_signal(|| vec![]);
+    let unread_ids:        Signal<std::collections::HashSet<String>> = use_signal(|| std::collections::HashSet::new());
+    // last known last_message_ns per conversation — used to detect new messages
+    let last_seen_ns:      Signal<std::collections::HashMap<String, i64>> = use_signal(|| std::collections::HashMap::new());
 
     use_context_provider(|| xmtp_handle);
     use_context_provider(|| conversations);
@@ -100,6 +103,7 @@ fn App() -> Element {
     use_context_provider(|| confirm_action);
     use_context_provider(|| messages);
     use_context_provider(|| group_members);
+    use_context_provider(|| unread_ids);
 
     use_resource(move || async move {
         if xmtp_handle.read().is_some() {
@@ -146,6 +150,26 @@ fn App() -> Element {
                         let mut v = view; v.set(View::Chat(first));
                     }
                 }
+
+                // Detect new messages: compare last_message_ns against what we last saw.
+                // Skip conversations currently open (user is already reading them).
+                let open_id = match view.peek().clone() {
+                    View::Chat(c) => Some(c.id),
+                    _ => None,
+                };
+                let mut seen = last_seen_ns;
+                let mut unread = unread_ids;
+                for conv in &convos {
+                    if Some(&conv.id) == open_id.as_ref() { continue; }
+                    if let Some(ns) = conv.last_message_ns {
+                        let prev = seen.peek().get(&conv.id).copied().unwrap_or(0);
+                        if ns > prev {
+                            unread.write().insert(conv.id.clone());
+                        }
+                        seen.write().insert(conv.id.clone(), ns);
+                    }
+                }
+
                 let mut c = conversations;
                 c.set(Some(convos));
             },
@@ -160,6 +184,16 @@ fn App() -> Element {
         );
 
         xmtp_handle.set(Some(handle));
+    });
+
+    // Periodic sync every 12 seconds
+    use_effect(move || {
+        let interval = gloo_timers::callback::Interval::new(12_000, move || {
+            if let Some(h) = xmtp_handle.peek().as_ref() {
+                h.request_list();
+            }
+        });
+        interval.forget(); // keep running for the lifetime of the app
     });
 
     let in_chat = matches!(*view.read(), View::Chat(_));

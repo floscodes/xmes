@@ -26,6 +26,7 @@ pub struct ConversationSummary {
     pub id: String,
     pub name: String,
     pub last_sender: Option<String>,
+    pub last_message_ns: Option<i64>,
     pub is_pending: bool,
 }
 use bindings_wasm::conversations::{
@@ -333,11 +334,13 @@ impl Identity {
         let group_name_key = wasm_bindgen::JsValue::from_str("groupName");
         let last_msg_key   = wasm_bindgen::JsValue::from_str("lastMessage");
         let sender_key     = wasm_bindgen::JsValue::from_str("senderInboxId");
+        let sent_at_ns_key = wasm_bindgen::JsValue::from_str("sentAtNs");
 
         struct RawItem {
             id: String,
             name: String,
             sender_inbox_id: Option<String>,
+            last_message_ns: Option<i64>,
             is_pending: bool,
         }
 
@@ -358,11 +361,19 @@ impl Identity {
                 .filter(|s| !s.is_empty())
                 .unwrap_or_else(|| id[..8.min(id.len())].to_string());
 
-            let sender_inbox_id = js_sys::Reflect::get(&item, &last_msg_key)
+            let last_msg_val = js_sys::Reflect::get(&item, &last_msg_key)
                 .ok()
-                .filter(|v| !v.is_null() && !v.is_undefined())
-                .and_then(|last_msg| js_sys::Reflect::get(&last_msg, &sender_key).ok())
+                .filter(|v| !v.is_null() && !v.is_undefined());
+
+            let sender_inbox_id = last_msg_val.as_ref()
+                .and_then(|last_msg| js_sys::Reflect::get(last_msg, &sender_key).ok())
                 .and_then(|v| v.as_string());
+
+            let last_message_ns = last_msg_val.as_ref()
+                .and_then(|last_msg| js_sys::Reflect::get(last_msg, &sent_at_ns_key).ok())
+                .and_then(|v| v.as_f64())
+                .map(|f| f as i64)
+                .filter(|&ns| ns > 0);
 
             let membership = self.conversations()
                 .find_group_by_id(id.clone())
@@ -386,7 +397,7 @@ impl Identity {
             let is_pending = membership_state == GroupMembershipState::Pending
                 && consent_state != XmtpConsentState::Allowed;
 
-            raw_items.push(RawItem { id, name, sender_inbox_id, is_pending });
+            raw_items.push(RawItem { id, name, sender_inbox_id, last_message_ns, is_pending });
         }
 
         // Async pass: batch-resolve sender inbox IDs → wallet addresses
@@ -412,7 +423,7 @@ impl Identity {
                 .as_deref()
                 .and_then(|inbox_id| addr_map.get(inbox_id))
                 .cloned();
-            ConversationSummary { id: it.id, name: it.name, last_sender, is_pending: it.is_pending }
+            ConversationSummary { id: it.id, name: it.name, last_sender, last_message_ns: it.last_message_ns, is_pending: it.is_pending }
         }).collect();
 
         Ok(summaries)

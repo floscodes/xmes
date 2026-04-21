@@ -1226,3 +1226,19 @@ body {
     color: #dc2626;
 }
 .invite-decline:hover { background: #fecaca; }
+
+/* ── Unread indicator ─────────────────────────────────────────── */
+
+.unread-dot {
+    flex-shrink: 0;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--primary);
+    margin-right: 0.25rem;
+}
+
+.convo-name-unread {
+    font-weight: 700;
+    color: var(--text-1);
+}

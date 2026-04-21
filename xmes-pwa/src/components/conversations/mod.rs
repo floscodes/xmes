@@ -14,6 +14,7 @@ pub fn Conversations() -> Element {
     let view = use_context::<Signal<View>>();
     let anim = use_context::<Signal<&'static str>>();
     let pending_open = use_context::<Signal<Option<()>>>();
+    let unread_ids = use_context::<Signal<std::collections::HashSet<String>>>();
 
     rsx! {
         div { class: "app-shell",
@@ -88,12 +89,20 @@ pub fn Conversations() -> Element {
 
                     Some(convos) => rsx! {
                         for summary in convos.clone() {
-                            conversation::Convo {
-                                summary,
-                                on_open: move |s: ConversationSummary| {
-                                    let mut a = anim; a.set("slide-in-right");
-                                    let mut v = view; v.set(View::Chat(s));
-                                },
+                            {
+                                let has_unread = unread_ids.read().contains(&summary.id);
+                                rsx! {
+                                    conversation::Convo {
+                                        summary: summary.clone(),
+                                        has_unread,
+                                        on_open: move |s: ConversationSummary| {
+                                            // Clear unread when opening
+                                            unread_ids.write().remove(&s.id);
+                                            let mut a = anim; a.set("slide-in-right");
+                                            let mut v = view; v.set(View::Chat(s));
+                                        },
+                                    }
+                                }
                             }
                         }
                     },

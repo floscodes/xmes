@@ -34,6 +34,8 @@ fn initials(name: &str) -> String {
 pub fn Convo(
     summary: ConversationSummary,
     on_open: EventHandler<ConversationSummary>,
+    #[props(default = false)]
+    has_unread: bool,
 ) -> Element {
     let mut show_add  = use_signal(|| false);
     let mut offset   = use_signal(|| 0.0f64);
@@ -203,12 +205,15 @@ pub fn Convo(
                     div { class: "convo-avatar {av_class}", "{av_text}" }
                     div {
                         class: "convo-info",
-                        span { class: "convo-name", "{summary.name}" }
+                        span { class: if has_unread { "convo-name convo-name-unread" } else { "convo-name" }, "{summary.name}" }
                         if let Some(sender) = &summary.last_sender {
                             div {
                                 span { class: "convo-sub", "{sender}" }
                             }
                         }
+                    }
+                    if has_unread {
+                        div { class: "unread-dot" }
                     }
                     button {
                         class: "convo-add-btn",
