@@ -30,7 +30,6 @@ pub struct ConversationSummary {
     pub is_pending: bool,
 }
 use bindings_wasm::conversations::{
-    GroupMembershipState,
     ListConversationsOptions,
     ListConversationsOrderBy
 };
@@ -329,12 +328,14 @@ impl Identity {
             ))
             .map_err(|_| Error::msg("Could not list conversations"))?;
 
-        let convo_key      = wasm_bindgen::JsValue::from_str("conversation");
-        let id_key         = wasm_bindgen::JsValue::from_str("id");
-        let group_name_key = wasm_bindgen::JsValue::from_str("groupName");
-        let last_msg_key   = wasm_bindgen::JsValue::from_str("lastMessage");
-        let sender_key     = wasm_bindgen::JsValue::from_str("senderInboxId");
-        let sent_at_ns_key = wasm_bindgen::JsValue::from_str("sentAtNs");
+        let convo_key            = wasm_bindgen::JsValue::from_str("conversation");
+        let id_key               = wasm_bindgen::JsValue::from_str("id");
+        let group_name_key       = wasm_bindgen::JsValue::from_str("groupName");
+        let last_msg_key         = wasm_bindgen::JsValue::from_str("lastMessage");
+        let sender_key           = wasm_bindgen::JsValue::from_str("senderInboxId");
+        let sent_at_ns_key       = wasm_bindgen::JsValue::from_str("sentAtNs");
+        let membership_state_key = wasm_bindgen::JsValue::from_str("membershipState");
+        let consent_state_key    = wasm_bindgen::JsValue::from_str("consentState");
 
         struct RawItem {
             id: String,
@@ -383,27 +384,27 @@ impl Identity {
                 })
                 .filter(|&ns| ns > 0);
 
-            let membership = self.conversations()
-                .find_group_by_id(id.clone())
+            // Call membershipState() and consentState() directly on the convo object
+            // from list() instead of doing a second find_group_by_id round-trip.
+            let membership_state_val = js_sys::Reflect::get(&convo, &membership_state_key)
                 .ok()
-                .and_then(|c| {
-                    let state = c.membership_state().ok()?;
-                    let consent = c.consent_state().ok()?;
-                    Some((state, consent))
-                });
+                .and_then(|f| js_sys::Function::from(f).call0(&convo).ok())
+                .and_then(|v| v.as_f64())
+                .map(|f| f as u32);
 
-            let (membership_state, consent_state) = match membership {
-                Some(pair) => pair,
-                None => continue,
-            };
+            let consent_state_val = js_sys::Reflect::get(&convo, &consent_state_key)
+                .ok()
+                .and_then(|f| js_sys::Function::from(f).call0(&convo).ok())
+                .and_then(|v| v.as_f64())
+                .map(|f| f as u32);
 
-            // Skip conversations the user has left or been removed from
-            if matches!(membership_state, GroupMembershipState::Rejected | GroupMembershipState::PendingRemove) {
-                continue;
-            }
+            let (Some(ms), Some(cs)) = (membership_state_val, consent_state_val) else { continue };
 
-            let is_pending = membership_state == GroupMembershipState::Pending
-                && consent_state != XmtpConsentState::Allowed;
+            // GroupMembershipState: Allowed=0, Rejected=1, Pending=2, Restored=3, PendingRemove=4
+            // ConsentState:         Unknown=0, Allowed=1, Denied=2
+            if ms == 1 || ms == 4 { continue; } // Rejected or PendingRemove
+
+            let is_pending = ms == 2 && cs != 1; // Pending && consent != Allowed
 
             raw_items.push(RawItem { id, name, sender_inbox_id, last_message_ns, is_pending });
         }
