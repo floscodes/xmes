@@ -333,19 +333,27 @@ impl Identity {
                 .and_then(|last_msg| js_sys::Reflect::get(&last_msg, &sender_key).ok())
                 .and_then(|v| v.as_string());
 
-            let is_pending = self.conversations()
+            let membership = self.conversations()
                 .find_group_by_id(id.clone())
                 .ok()
-                .map(|c| {
-                    let pending = c.membership_state().ok()
-                        .map(|s| s == GroupMembershipState::Pending)
-                        .unwrap_or(false);
-                    let accepted = c.consent_state().ok()
-                        .map(|s| s == XmtpConsentState::Allowed)
-                        .unwrap_or(false);
-                    pending && !accepted
-                })
-                .unwrap_or(false);
+                .and_then(|c| {
+                    let state = c.membership_state().ok()?;
+                    let consent = c.consent_state().ok()?;
+                    Some((state, consent))
+                });
+
+            let (membership_state, consent_state) = match membership {
+                Some(pair) => pair,
+                None => continue,
+            };
+
+            // Skip conversations the user has left or been removed from
+            if matches!(membership_state, GroupMembershipState::Rejected | GroupMembershipState::PendingRemove) {
+                continue;
+            }
+
+            let is_pending = membership_state == GroupMembershipState::Pending
+                && consent_state != XmtpConsentState::Allowed;
 
             raw_items.push(RawItem { id, name, sender_inbox_id, is_pending });
         }
