@@ -14,7 +14,7 @@ pub fn Conversations() -> Element {
     let view = use_context::<Signal<View>>();
     let anim = use_context::<Signal<&'static str>>();
     let pending_open = use_context::<Signal<Option<()>>>();
-    let unread_ids = use_context::<Signal<std::collections::HashSet<String>>>();
+    let mut unread_ids = use_context::<Signal<std::collections::HashSet<String>>>();
 
     rsx! {
         div { class: "app-shell",
