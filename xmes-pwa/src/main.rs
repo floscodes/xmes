@@ -88,9 +88,8 @@ fn App() -> Element {
     let confirm_action:    Signal<Option<ConfirmAction>>            = use_signal(|| None);
     let messages:          Signal<Vec<MessageInfo>>                 = use_signal(|| vec![]);
     let group_members:     Signal<Vec<String>>                     = use_signal(|| vec![]);
-    let unread_ids:        Signal<std::collections::HashSet<String>> = use_signal(|| std::collections::HashSet::new());
-    // last known last_message_ns per conversation — used to detect new messages
-    let last_seen_ns:      Signal<std::collections::HashMap<String, i64>> = use_signal(|| std::collections::HashMap::new());
+    let unread_ids:   Signal<std::collections::HashSet<String>>       = use_persistent("unread_ids",   || std::collections::HashSet::new());
+    let last_seen_ns: Signal<std::collections::HashMap<String, i64>> = use_persistent("last_seen_ns", || std::collections::HashMap::new());
 
     use_context_provider(|| xmtp_handle);
     use_context_provider(|| conversations);
