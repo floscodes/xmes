@@ -335,6 +335,7 @@ impl Identity {
         let sender_key           = wasm_bindgen::JsValue::from_str("senderInboxId");
         let sent_at_ns_key       = wasm_bindgen::JsValue::from_str("sentAtNs");
         let membership_state_key = wasm_bindgen::JsValue::from_str("membershipState");
+        let consent_state_key    = wasm_bindgen::JsValue::from_str("consentState");
 
         struct RawItem {
             id: String,
@@ -383,8 +384,9 @@ impl Identity {
                 })
                 .filter(|&ns| ns > 0);
 
-            // Call membershipState() directly on the convo object from list().
+            // Call membershipState() and consentState() directly on the convo object from list().
             // GroupMembershipState: Allowed=0, Rejected=1, Pending=2, Restored=3, PendingRemove=4
+            // ConsentState:         Unknown=0, Allowed=1, Denied=2
             let membership_state_val = js_sys::Reflect::get(&convo, &membership_state_key)
                 .ok()
                 .and_then(|f| js_sys::Function::from(f).call0(&convo).ok())
@@ -395,7 +397,18 @@ impl Identity {
 
             if ms == 1 || ms == 4 { continue; } // Rejected or PendingRemove
 
-            let is_pending = ms == 2; // Pending membership = unanswered invitation
+            // consentState() can fail for a newly-received conversation; treat failure as Unknown(0).
+            let cs: u32 = js_sys::Reflect::get(&convo, &consent_state_key)
+                .ok()
+                .and_then(|f| js_sys::Function::from(f).call0(&convo).ok())
+                .and_then(|v| v.as_f64())
+                .map(|f| f as u32)
+                .unwrap_or(0);
+
+            // Pending membership + consent not yet set = unanswered invitation.
+            // If the user already accepted (cs=Allowed=1), show as a normal conversation
+            // even if membership hasn't been upgraded yet by the next sync.
+            let is_pending = ms == 2 && cs != 1;
 
             raw_items.push(RawItem { id, name, sender_inbox_id, last_message_ns, is_pending });
         }
