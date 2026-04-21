@@ -570,6 +570,14 @@ body {
     color: white;
 }
 
+.chat-header-center {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    min-width: 0;
+}
+
 .chat-header-info {
     display: flex;
     flex-direction: column;
@@ -752,7 +760,7 @@ body {
     transform: none;
 }
 
-.chat-add-btn {
+.chat-menu-btn {
     flex-shrink: 0;
     width: 36px;
     height: 36px;
@@ -767,7 +775,7 @@ body {
     transition: color 0.15s, background 0.15s;
 }
 
-.chat-add-btn:hover {
+.chat-menu-btn:hover {
     color: var(--primary);
     background: var(--primary-light);
 }
@@ -1057,6 +1065,13 @@ body {
     display: flex;
     justify-content: flex-end;
     border-top: 1px solid var(--border-subtle);
+}
+
+.sheet-fab-row {
+    display: flex;
+    justify-content: flex-end;
+    padding: 1rem 1.25rem 1.5rem;
+    flex-shrink: 0;
 }
 
 .sheet-fab {

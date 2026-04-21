@@ -87,6 +87,7 @@ fn App() -> Element {
     let pending_open:      Signal<Option<()>>                       = use_signal(|| None);
     let confirm_action:    Signal<Option<ConfirmAction>>            = use_signal(|| None);
     let messages:          Signal<Vec<MessageInfo>>                 = use_signal(|| vec![]);
+    let group_members:     Signal<Vec<String>>                     = use_signal(|| vec![]);
 
     use_context_provider(|| xmtp_handle);
     use_context_provider(|| conversations);
@@ -98,6 +99,7 @@ fn App() -> Element {
     use_context_provider(|| pending_open);
     use_context_provider(|| confirm_action);
     use_context_provider(|| messages);
+    use_context_provider(|| group_members);
 
     use_resource(move || async move {
         if xmtp_handle.read().is_some() {
@@ -150,6 +152,10 @@ fn App() -> Element {
             move |_conv_id, msgs| {
                 let mut m = messages;
                 m.set(msgs);
+            },
+            move |addrs| {
+                let mut gm = group_members;
+                gm.set(addrs);
             },
         );
 

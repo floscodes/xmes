@@ -233,6 +233,36 @@ impl Identity {
         Ok(())
     }
 
+    pub async fn get_conversation_members(&self, conversation_id: String) -> Result<Vec<String>> {
+        let convo = self.conversations()
+            .find_group_by_id(conversation_id)
+            .map_err(|_| Error::msg("Conversation not found"))?;
+        convo.sync().await.map_err(|e| Error::msg(format!("{e:?}")))?;
+        let raw = convo.list_members().await
+            .map_err(|e| Error::msg(format!("{e:?}")))?;
+
+        let arr = js_sys::Array::from(&raw);
+        let account_ids_key = wasm_bindgen::JsValue::from_str("accountIdentifiers");
+        let identifier_key  = wasm_bindgen::JsValue::from_str("identifier");
+
+        let mut addresses = Vec::new();
+        for i in 0..arr.length() {
+            let member = arr.get(i);
+            let Ok(id_arr_val) = js_sys::Reflect::get(&member, &account_ids_key) else { continue };
+            let id_arr = js_sys::Array::from(&id_arr_val);
+            for j in 0..id_arr.length() {
+                let id_item = id_arr.get(j);
+                if let Ok(addr_val) = js_sys::Reflect::get(&id_item, &identifier_key) {
+                    if let Some(addr) = addr_val.as_string() {
+                        addresses.push(addr);
+                        break;
+                    }
+                }
+            }
+        }
+        Ok(addresses)
+    }
+
     pub async fn fetch_messages(&self, conversation_id: String) -> Result<Vec<MessageInfo>> {
         let convo = self.conversations()
             .find_group_by_id(conversation_id)

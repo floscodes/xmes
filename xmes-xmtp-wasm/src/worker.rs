@@ -143,6 +143,10 @@ async fn worker_run() {
                     .unwrap_or(0.0) as usize;
                 spawn_local(handle_switch_identity(scope, state, idx));
             }
+            "list_members" => {
+                let conversation_id = str_field(&data, "conversation_id");
+                spawn_local(handle_list_members(scope, state, conversation_id));
+            }
             "list_messages" => {
                 let conversation_id = str_field(&data, "conversation_id");
                 spawn_local(handle_list_messages(scope, state, conversation_id));
@@ -394,6 +398,21 @@ async fn handle_add_members(
     }
 }
 
+async fn handle_list_members(
+    scope: web_sys::DedicatedWorkerGlobalScope,
+    state: StateRef,
+    conversation_id: String,
+) {
+    let id = state.borrow().active_clone();
+    match id {
+        Some(id) => match id.get_conversation_members(conversation_id.clone()).await {
+            Ok(addrs) => post_group_members(&scope, &conversation_id, &addrs),
+            Err(e)    => post_error(&scope, &e.to_string()),
+        },
+        None => post_error(&scope, "No identity available"),
+    }
+}
+
 async fn handle_list_messages(
     scope: web_sys::DedicatedWorkerGlobalScope,
     state: StateRef,
@@ -484,6 +503,12 @@ impl XmtpHandle {
         self.worker.post_message(&msg).unwrap_throw();
     }
 
+    pub fn request_list_members(&self, conversation_id: &str) {
+        let msg = typed_obj("list_members");
+        set_str(&msg, "conversation_id", conversation_id);
+        self.worker.post_message(&msg).unwrap_throw();
+    }
+
     pub fn request_list_messages(&self, conversation_id: &str) {
         let msg = typed_obj("list_messages");
         set_str(&msg, "conversation_id", conversation_id);
@@ -530,6 +555,7 @@ pub fn spawn_xmtp_worker(
     on_identity_update: impl Fn(IdentityListUpdate) + 'static,
     on_conversations:   impl Fn(Vec<ConversationSummary>) + 'static,
     on_messages:        impl Fn(String, Vec<MessageInfo>) + 'static,
+    on_group_members:   impl Fn(Vec<String>) + 'static,
 ) -> XmtpHandle {
     let arr = js_sys::Array::of1(&JsValue::from_str(WORKER_BOOTSTRAP));
     let mut props = web_sys::BlobPropertyBag::new();
@@ -614,6 +640,16 @@ pub fn spawn_xmtp_worker(
                 }).collect();
                 on_messages(conv_id, messages);
             }
+            "group_members" => {
+                let raw = Reflect::get(&data, &"data".into())
+                    .ok()
+                    .and_then(|v| v.dyn_into::<js_sys::Array>().ok())
+                    .unwrap_or_default();
+                let addresses: Vec<String> = (0..raw.length())
+                    .filter_map(|i| raw.get(i).as_string())
+                    .collect();
+                on_group_members(addresses);
+            }
             _ => {}
         }
     }) as Box<dyn Fn(web_sys::MessageEvent)>);
@@ -695,6 +731,17 @@ async fn post_identity_list_async(
     let msg = typed_obj("identity_list");
     Reflect::set(&msg, &"identities".into(), &arr).unwrap_throw();
     Reflect::set(&msg, &"active_idx".into(), &JsValue::from_f64(active_idx as f64)).unwrap_throw();
+    scope.post_message(&msg).unwrap_throw();
+}
+
+fn post_group_members(scope: &web_sys::DedicatedWorkerGlobalScope, conversation_id: &str, addresses: &[String]) {
+    let arr = js_sys::Array::new();
+    for a in addresses {
+        arr.push(&JsValue::from_str(a));
+    }
+    let msg = typed_obj("group_members");
+    set_str(&msg, "conversation_id", conversation_id);
+    Reflect::set(&msg, &"data".into(), &arr).unwrap_throw();
     scope.post_message(&msg).unwrap_throw();
 }
 
