@@ -19,6 +19,10 @@ use xmes_xmtp_wasm::{
 const FAVICON: Asset = asset!("/assets/favicon.ico");
 const MAIN_CSS: Asset = asset!("/assets/styling/main.css");
 const TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
+const APPLE_ICON_180: Asset = asset!("/assets/icons/icon-180x180.png");
+const APPLE_ICON_167: Asset = asset!("/assets/icons/icon-167x167.png");
+const APPLE_ICON_152: Asset = asset!("/assets/icons/icon-152x152.png");
+const APPLE_ICON_120: Asset = asset!("/assets/icons/icon-120x120.png");
 
 /// A pending confirmation action. Store it in the `confirm_action` context
 /// signal to show the modal; set it back to `None` to dismiss.
@@ -211,9 +215,10 @@ fn App() -> Element {
         document::Link { rel: "icon", href: FAVICON }
         document::Link { rel: "icon", r#type: "image/png", sizes: "32x32", href: "/icons/icon-32x32.png" }
         document::Link { rel: "icon", r#type: "image/png", sizes: "16x16", href: "/icons/icon-16x16.png" }
-        document::Link { rel: "apple-touch-icon", sizes: "180x180", href: "/icons/icon-180x180.png" }
-        document::Link { rel: "apple-touch-icon", sizes: "167x167", href: "/icons/icon-167x167.png" }
-        document::Link { rel: "apple-touch-icon", sizes: "152x152", href: "/icons/icon-152x152.png" }
+        document::Link { rel: "apple-touch-icon", sizes: "180x180", href: APPLE_ICON_180 }
+        document::Link { rel: "apple-touch-icon", sizes: "167x167", href: APPLE_ICON_167 }
+        document::Link { rel: "apple-touch-icon", sizes: "152x152", href: APPLE_ICON_152 }
+        document::Link { rel: "apple-touch-icon", sizes: "120x120", href: APPLE_ICON_120 }
         document::Link { rel: "manifest", href: "/manifest.webmanifest" }
         document::Meta { name: "theme-color",                    content: "#4F46E5" }
         document::Meta { name: "mobile-web-app-capable",         content: "yes" }
