@@ -202,7 +202,12 @@ pub fn Convo(
                         offset.set(0.0);
                     },
 
-                    div { class: "convo-avatar {av_class}", "{av_text}" }
+                    div { class: "convo-avatar-wrap",
+                        div { class: "convo-avatar {av_class}", "{av_text}" }
+                        if has_unread {
+                            div { class: "unread-badge" }
+                        }
+                    }
                     div {
                         class: "convo-info",
                         span { class: if has_unread { "convo-name convo-name-unread" } else { "convo-name" }, "{summary.name}" }
@@ -211,9 +216,6 @@ pub fn Convo(
                                 span { class: "convo-sub", "{sender}" }
                             }
                         }
-                    }
-                    if has_unread {
-                        div { class: "unread-dot" }
                     }
                     button {
                         class: "convo-add-btn",

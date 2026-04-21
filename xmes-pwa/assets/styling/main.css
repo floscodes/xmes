@@ -162,8 +162,14 @@ body {
 .convo-row:hover { background: var(--surface-subtle); }
 
 /* Avatar */
-.convo-avatar {
+.convo-avatar-wrap {
     flex-shrink: 0;
+    position: relative;
+    width: 46px;
+    height: 46px;
+}
+
+.convo-avatar {
     width: 46px;
     height: 46px;
     border-radius: 50%;
@@ -174,6 +180,17 @@ body {
     font-weight: 700;
     color: white;
     letter-spacing: -0.01em;
+}
+
+.unread-badge {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background: var(--primary);
+    border: 2px solid var(--surface);
 }
 
 .av-0 { background: linear-gradient(135deg, #6366F1, #8B5CF6); }

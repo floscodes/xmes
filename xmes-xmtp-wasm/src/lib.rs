@@ -337,6 +337,12 @@ impl Identity {
         let membership_state_key = wasm_bindgen::JsValue::from_str("membershipState");
         let consent_state_key    = wasm_bindgen::JsValue::from_str("consentState");
 
+        // Pre-fetch the global String() function for BigInt-to-string conversion.
+        let js_string_fn: Option<js_sys::Function> = js_sys::Reflect::get(
+            &js_sys::global(),
+            &wasm_bindgen::JsValue::from_str("String"),
+        ).ok().map(js_sys::Function::from);
+
         struct RawItem {
             id: String,
             name: String,
@@ -374,15 +380,16 @@ impl Identity {
                 .and_then(|last_msg| js_sys::Reflect::get(last_msg, &sent_at_ns_key).ok())
                 .and_then(|v| {
                     // sentAtNs is a JS BigInt — as_f64() returns None for BigInt.
-                    // Call v.toString() to get the decimal string, then parse.
+                    // Use the global String() function which handles BigInt reliably.
                     if let Some(f) = v.as_f64() {
-                        return Some(f as i64);
+                        return if f > 0.0 { Some(f as i64) } else { None };
                     }
-                    let to_str = js_sys::Reflect::get(&v, &wasm_bindgen::JsValue::from_str("toString")).ok()?;
-                    let s = js_sys::Function::from(to_str).call0(&v).ok()?.as_string()?;
-                    s.parse::<i64>().ok()
-                })
-                .filter(|&ns| ns > 0);
+                    let s = js_string_fn.as_ref()
+                        .and_then(|f| f.call1(&wasm_bindgen::JsValue::NULL, &v).ok())
+                        .and_then(|v| v.as_string())?;
+                    let n = s.parse::<i64>().ok()?;
+                    if n > 0 { Some(n) } else { None }
+                });
 
             // Call membershipState() and consentState() directly on the convo object from list().
             // GroupMembershipState: Allowed=0, Rejected=1, Pending=2, Restored=3, PendingRemove=4
