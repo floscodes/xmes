@@ -4,7 +4,7 @@ mod components;
 
 use std::sync::Arc;
 use dioxus::prelude::*;
-use dioxus_sdk::storage::use_persistent;
+use dioxus_sdk::storage::{LocalStorage, use_persistent, use_storage};
 use xmes_xmtp_wasm::{
     ConversationSummary,
     IdentityInfo,
@@ -88,8 +88,8 @@ fn App() -> Element {
     let confirm_action:    Signal<Option<ConfirmAction>>            = use_signal(|| None);
     let messages:          Signal<Vec<MessageInfo>>                 = use_signal(|| vec![]);
     let group_members:     Signal<Vec<String>>                     = use_signal(|| vec![]);
-    let unread_ids:   Signal<std::collections::HashSet<String>>       = use_persistent("unread_ids",   || std::collections::HashSet::new());
-    let last_seen_ns: Signal<std::collections::HashMap<String, i64>> = use_persistent("last_seen_ns", || std::collections::HashMap::new());
+    let unread_ids:   Signal<std::collections::HashSet<String>>       = use_storage::<LocalStorage, _>("unread_ids".to_string(),   || std::collections::HashSet::new());
+    let last_seen_ns: Signal<std::collections::HashMap<String, i64>> = use_storage::<LocalStorage, _>("last_seen_ns".to_string(), || std::collections::HashMap::new());
 
     use_context_provider(|| xmtp_handle);
     use_context_provider(|| conversations);
