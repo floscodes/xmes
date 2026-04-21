@@ -92,6 +92,20 @@ fn ChatMembersSheet(
     let member_label    = if members.len() == 1 { "1 Member".to_string() }
                           else { format!("{} Members", members.len()) };
 
+    // Focus the add-member input whenever it becomes visible
+    use_effect(move || {
+        if show_add() {
+            if let Some(win) = web_sys::window() {
+                if let Some(doc) = win.document() {
+                    if let Ok(Some(el)) = doc.query_selector(".add-member-input") {
+                        let html_el: Option<web_sys::HtmlElement> = wasm_bindgen::JsCast::dyn_into(el).ok();
+                        if let Some(e) = html_el { let _ = e.focus(); }
+                    }
+                }
+            }
+        }
+    });
+
     rsx! {
         div {
             class: "sheet-backdrop",
