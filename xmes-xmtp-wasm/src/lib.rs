@@ -203,9 +203,10 @@ impl Identity {
         let conversation = self.conversations()
             .find_group_by_id(id)
             .map_err(|_| Error::msg("Conversation not found"))?;
-        conversation.leave_group()
-            .await
-            .map_err(|_| Error::msg("Could not leave conversation"))?;
+        // Deny consent first so the group is excluded from future list() queries
+        // even if the MLS leave fails (e.g. super-admin restriction).
+        let _ = conversation.update_consent_state(XmtpConsentState::Denied);
+        let _ = conversation.leave_group().await;
         Ok(())
     }
 
