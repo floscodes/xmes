@@ -15,6 +15,11 @@ fn avatar_class(name: &str) -> &'static str {
     }
 }
 
+fn short_addr(s: &str) -> String {
+    if s.len() <= 13 { s.to_string() }
+    else { format!("{}…{}", &s[..6], &s[s.len()-4..]) }
+}
+
 fn initials(name: &str) -> String {
     let words: Vec<&str> = name.split_whitespace().filter(|w| !w.is_empty()).collect();
     match words.as_slice() {
@@ -212,7 +217,7 @@ pub fn Convo(
                         class: "convo-info",
                         span { class: if has_unread { "convo-name convo-name-unread" } else { "convo-name" }, "{summary.name}" }
                         if let Some(sender) = &summary.last_sender {
-                            span { class: "convo-sub", "{sender}" }
+                            span { class: "convo-sub", "{short_addr(sender)}" }
                         }
                     }
                     button {
