@@ -291,27 +291,7 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                         span { class: "chat-header-sub", "{member_label}" }
                     }
                 }
-                // Add-member button — opens sheet with input pre-focused
-                button {
-                    class: "chat-menu-btn",
-                    title: "Add member",
-                    onclick: move |_| {
-                        sheet_start_adding.set(true);
-                        show_members.set(true);
-                    },
-                    svg {
-                        xmlns: "http://www.w3.org/2000/svg",
-                        width: "18", height: "18",
-                        view_box: "0 0 24 24", fill: "none",
-                        stroke: "currentColor", stroke_width: "2",
-                        stroke_linecap: "round", stroke_linejoin: "round",
-                        path { d: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" }
-                        circle { cx: "9", cy: "7", r: "4" }
-                        line { x1: "19", y1: "8", x2: "19", y2: "14" }
-                        line { x1: "22", y1: "11", x2: "16", y2: "11" }
-                    }
-                }
-                // Three-dots → members sheet (no pre-open input)
+                // Three-dots → members sheet
                 button {
                     class: "chat-menu-btn",
                     title: "Group members",
