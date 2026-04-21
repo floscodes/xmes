@@ -4,7 +4,7 @@ mod components;
 
 use std::sync::Arc;
 use dioxus::prelude::*;
-use dioxus_sdk::storage::{LocalStorage, use_persistent, use_storage};
+use dioxus_sdk::storage::{LocalStorage, use_storage};
 use xmes_xmtp_wasm::{
     ConversationSummary,
     IdentityInfo,
@@ -75,7 +75,7 @@ fn json_to_keys(s: &str) -> Vec<String> {
 fn App() -> Element {
     // `signing_keys` stores a JSON array of private-key hex strings.
     // Legacy single-key values are migrated automatically by `json_to_keys`.
-    let signing_keys: Signal<Option<String>> = use_persistent("signing_keys", || None);
+    let signing_keys: Signal<Option<String>> = use_storage::<LocalStorage, _>("signing_keys".to_string(), || None);
 
     let mut xmtp_handle:   Signal<Option<XmtpHandle>>              = use_signal(|| None);
     let conversations:     Signal<Option<Vec<ConversationSummary>>> = use_signal(|| None);
