@@ -371,8 +371,16 @@ impl Identity {
 
             let last_message_ns = last_msg_val.as_ref()
                 .and_then(|last_msg| js_sys::Reflect::get(last_msg, &sent_at_ns_key).ok())
-                .and_then(|v| v.as_f64())
-                .map(|f| f as i64)
+                .and_then(|v| {
+                    // sentAtNs is a JS BigInt — as_f64() returns None for BigInt.
+                    // Call v.toString() to get the decimal string, then parse.
+                    if let Some(f) = v.as_f64() {
+                        return Some(f as i64);
+                    }
+                    let to_str = js_sys::Reflect::get(&v, &wasm_bindgen::JsValue::from_str("toString")).ok()?;
+                    let s = js_sys::Function::from(to_str).call0(&v).ok()?.as_string()?;
+                    s.parse::<i64>().ok()
+                })
                 .filter(|&ns| ns > 0);
 
             let membership = self.conversations()
