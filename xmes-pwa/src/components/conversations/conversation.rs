@@ -212,9 +212,7 @@ pub fn Convo(
                         class: "convo-info",
                         span { class: if has_unread { "convo-name convo-name-unread" } else { "convo-name" }, "{summary.name}" }
                         if let Some(sender) = &summary.last_sender {
-                            div {
-                                span { class: "convo-sub", "{sender}" }
-                            }
+                            span { class: "convo-sub", "{sender}" }
                         }
                     }
                     button {
