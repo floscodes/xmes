@@ -153,10 +153,14 @@ fn App() -> Element {
 
                 // Detect new messages: compare last_message_ns against what we last saw.
                 // Skip conversations currently open (user is already reading them).
+                // Skip conversations where the last message was sent by ourselves.
                 let open_id = match view.peek().clone() {
                     View::Chat(c) => Some(c.id),
                     _ => None,
                 };
+                let my_address = identity_info.peek()
+                    .as_ref()
+                    .map(|i| i.primary_address.to_lowercase());
                 let mut seen = last_seen_ns;
                 let mut unread = unread_ids;
                 for conv in &convos {
@@ -164,7 +168,13 @@ fn App() -> Element {
                     if let Some(ns) = conv.last_message_ns {
                         let prev = seen.peek().get(&conv.id).copied().unwrap_or(0);
                         if ns > prev {
-                            unread.write().insert(conv.id.clone());
+                            let last_sender_is_me = conv.last_sender.as_deref()
+                                .zip(my_address.as_deref())
+                                .map(|(s, m)| s.to_lowercase() == m)
+                                .unwrap_or(false);
+                            if !last_sender_is_me {
+                                unread.write().insert(conv.id.clone());
+                            }
                         }
                         seen.write().insert(conv.id.clone(), ns);
                     }
