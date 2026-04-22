@@ -530,11 +530,15 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                 }
                 for msg in messages.read().iter() {
                     {
+                        let system_text = msg.system_text.clone();
                         let is_own  = msg.sender_inbox_id == own_inbox;
                         let time    = format_time_ns(msg.sent_at_ns);
                         let text    = msg.text.clone();
                         let deliv   = msg.delivered;
                         rsx! {
+                            if let Some(ref st) = system_text {
+                                div { class: "system-event", "{st}" }
+                            } else {
                             div { class: if is_own { "bubble-row own" } else { "bubble-row other" },
                                 if !is_own {
                                     div { class: "bubble-avatar {av}", "{av_text}" }
@@ -564,6 +568,7 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                                     }
                                 }
                             }
+                            }
                         }
                     }
                 }
@@ -590,6 +595,7 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                                 list.push(MessageInfo {
                                     id:              format!("pending-{}", Date::now() as i64),
                                     text:            text.clone(),
+                                    system_text:     None,
                                     sender_inbox_id: own_inbox2.clone(),
                                     sent_at_ns:      (Date::now() * 1_000_000.0) as i64,
                                     delivered:       false,
@@ -621,6 +627,7 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                                 sender_inbox_id: own_inbox3.clone(),
                                 sent_at_ns:      (Date::now() * 1_000_000.0) as i64,
                                 delivered:       false,
+                                system_text:     None,
                             });
                             m.set(list);
                             if let Some(h) = xmtp.read().as_ref() {

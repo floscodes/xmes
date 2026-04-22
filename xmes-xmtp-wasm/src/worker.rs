@@ -720,9 +720,12 @@ pub fn spawn_xmtp_worker(
                         .ok().and_then(|v| v.as_f64()).unwrap_or(0.0) as i64;
                     let delivered  = Reflect::get(&item, &"delivered".into())
                         .ok().and_then(|v| v.as_bool()).unwrap_or(false);
+                    let system_text = Reflect::get(&item, &"system_text".into())
+                        .ok().and_then(|v| v.as_string());
                     MessageInfo {
                         id:              str_field(&item, "id"),
                         text:            str_field(&item, "text"),
+                        system_text,
                         sender_inbox_id: str_field(&item, "sender_inbox_id"),
                         sent_at_ns,
                         delivered,
@@ -858,6 +861,9 @@ fn post_messages(scope: &web_sys::DedicatedWorkerGlobalScope, conversation_id: &
         set_str(&item, "sender_inbox_id", &m.sender_inbox_id);
         Reflect::set(&item, &"sent_at_ns".into(), &JsValue::from_f64(m.sent_at_ns as f64)).unwrap_throw();
         Reflect::set(&item, &"delivered".into(),  &JsValue::from_bool(m.delivered)).unwrap_throw();
+        if let Some(ref st) = m.system_text {
+            set_str(&item, "system_text", st);
+        }
         arr.push(&item);
     }
     let msg = typed_obj("messages");

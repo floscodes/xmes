@@ -739,6 +739,18 @@ body {
     to { transform: rotate(360deg); }
 }
 
+.system-event {
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--text-3);
+    padding: 0.375rem 1rem;
+    margin: 0.25rem auto;
+    background: var(--border-subtle);
+    border-radius: var(--radius-full);
+    max-width: 80%;
+    width: fit-content;
+}
+
 .chat-empty {
     display: flex;
     flex-direction: column;

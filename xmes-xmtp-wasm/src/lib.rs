@@ -12,6 +12,11 @@ use bindings_wasm::client::{create_client, Client, DeviceSyncMode};
 pub use bindings_wasm::conversation::Conversation;
 pub use bindings_wasm::conversations::Conversations;
 
+fn short_inbox(s: &str) -> String {
+    if s.len() <= 13 { s.to_string() }
+    else { format!("{}…{}", &s[..6], &s[s.len()-4..]) }
+}
+
 #[derive(Clone, PartialEq)]
 pub struct MemberInfo {
     pub inbox_id: String,
@@ -23,6 +28,7 @@ pub struct MemberInfo {
 pub struct MessageInfo {
     pub id:               String,
     pub text:             String,
+    pub system_text:      Option<String>, // join/leave notification; None for regular messages
     pub sender_inbox_id:  String,
     pub sent_at_ns:       i64,
     pub delivered:        bool,
@@ -41,7 +47,9 @@ use bindings_wasm::conversations::{
     ListConversationsOrderBy
 };
 use bindings_wasm::consent_state::ConsentState as XmtpConsentState;
-use bindings_wasm::messages::{GroupMessageKind, DeliveryStatus};
+use bindings_wasm::messages::DeliveryStatus;
+use bindings_wasm::enriched_message::DecodedMessage;
+use bindings_wasm::content_types::decoded_message_content::DecodedMessageContent;
 use bindings_wasm::identity::{Identifier, IdentifierKind};
 use bindings_wasm::inbox_id::generate_inbox_id;
 
@@ -311,20 +319,45 @@ impl Identity {
             .find_group_by_id(conversation_id)
             .map_err(|_| Error::msg("Conversation not found"))?;
         convo.sync().await.map_err(|e| Error::msg(format!("{e:?}")))?;
-        let msgs = convo.find_messages(None).await
+        let msgs: Vec<DecodedMessage> = convo.find_enriched_messages(None).await
             .map_err(|e| Error::msg(format!("{e:?}")))?;
         let result = msgs.into_iter().filter_map(|m| {
-            if !matches!(m.kind, GroupMessageKind::Application) { return None; }
-            let text = String::from_utf8(m.content.content).ok()?;
-            if text.is_empty() { return None; }
             let delivered = matches!(m.delivery_status, DeliveryStatus::Published);
-            Some(MessageInfo {
-                id:              m.id,
-                text,
-                sender_inbox_id: m.sender_inbox_id,
-                sent_at_ns:      m.sent_at_ns,
-                delivered,
-            })
+            match m.content {
+                DecodedMessageContent::Text { content } => {
+                    if content.is_empty() { return None; }
+                    Some(MessageInfo {
+                        id: m.id, text: content, system_text: None,
+                        sender_inbox_id: m.sender_inbox_id,
+                        sent_at_ns: m.sent_at_ns, delivered,
+                    })
+                }
+                DecodedMessageContent::GroupUpdated { content } => {
+                    if !content.left_inboxes.is_empty() {
+                        let label = short_inbox(&content.left_inboxes[0].inbox_id);
+                        Some(MessageInfo {
+                            id: m.id, text: String::new(),
+                            system_text: Some(format!("{label} left the group")),
+                            sender_inbox_id: m.sender_inbox_id,
+                            sent_at_ns: m.sent_at_ns, delivered: true,
+                        })
+                    } else if !content.added_inboxes.is_empty() {
+                        // Only show notification for voluntary joins (initiator == joined person)
+                        let voluntary = content.added_inboxes.iter()
+                            .any(|i| i.inbox_id == content.initiated_by_inbox_id);
+                        if voluntary {
+                            let label = short_inbox(&content.added_inboxes[0].inbox_id);
+                            Some(MessageInfo {
+                                id: m.id, text: String::new(),
+                                system_text: Some(format!("{label} joined the group")),
+                                sender_inbox_id: m.sender_inbox_id,
+                                sent_at_ns: m.sent_at_ns, delivered: true,
+                            })
+                        } else { None }
+                    } else { None }
+                }
+                _ => None,
+            }
         }).collect();
         Ok(result)
     }
