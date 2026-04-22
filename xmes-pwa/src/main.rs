@@ -220,6 +220,7 @@ fn App() -> Element {
         document::Link { rel: "apple-touch-icon", sizes: "152x152", href: APPLE_ICON_152 }
         document::Link { rel: "apple-touch-icon", sizes: "120x120", href: APPLE_ICON_120 }
         document::Link { rel: "manifest", href: "/manifest.webmanifest" }
+        document::Meta { name: "viewport", content: "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" }
         document::Meta { name: "theme-color",                    content: "#4F46E5" }
         document::Meta { name: "mobile-web-app-capable",         content: "yes" }
         document::Meta { name: "apple-mobile-web-app-capable",   content: "yes" }
