@@ -628,6 +628,7 @@ body {
 .chat-messages {
     flex: 1;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     padding: 1rem 1rem 1.5rem;
     display: flex;
     flex-direction: column;

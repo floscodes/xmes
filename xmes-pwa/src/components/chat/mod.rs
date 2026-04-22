@@ -234,6 +234,7 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
 
     let mut unread_ids         = use_context::<Signal<std::collections::HashSet<String>>>();
     let mut initial_scroll_done = use_signal(|| false);
+    let mut user_scrolled_up   = use_signal(|| false);
     let mut loading            = use_signal(|| true);
     let mut show_members       = use_signal(|| false);
     let mut sheet_start_adding = use_signal(|| false);
@@ -273,19 +274,19 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
         interval.forget();
     });
 
-    // Auto-scroll to bottom on first load; after that only if already near the bottom.
-    // Also clears the loading spinner on first response.
+    // Auto-scroll to bottom on first load; afterwards only when user hasn't scrolled up.
+    // Uses peek() for user_scrolled_up so the effect doesn't re-run on scroll events.
     use_effect(move || {
         let _ = messages.read();
         loading.set(false);
-        if let Some(window) = web_sys::window() {
-            if let Some(doc) = window.document() {
-                if let Some(el) = doc.query_selector(".chat-messages").ok().flatten() {
-                    let is_initial  = !*initial_scroll_done.read();
-                    let distance    = el.scroll_height() - el.scroll_top() - el.client_height();
-                    if is_initial || distance < 150 {
+        let is_initial = !*initial_scroll_done.peek();
+        let scrolled_up = *user_scrolled_up.peek();
+        if is_initial || !scrolled_up {
+            if let Some(window) = web_sys::window() {
+                if let Some(doc) = window.document() {
+                    if let Some(el) = doc.query_selector(".chat-messages").ok().flatten() {
                         el.set_scroll_top(el.scroll_height());
-                        if is_initial { initial_scroll_done.set(true); }
+                        initial_scroll_done.set(true);
                     }
                 }
             }
@@ -356,7 +357,16 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
             }
 
             // ── Messages ─────────────────────────────────────────
-            div { class: "chat-messages",
+            div {
+                class: "chat-messages",
+                onscroll: move |_| {
+                    if let Some(doc) = web_sys::window().and_then(|w| w.document()) {
+                        if let Some(el) = doc.query_selector(".chat-messages").ok().flatten() {
+                            let distance = el.scroll_height() - el.scroll_top() - el.client_height();
+                            user_scrolled_up.set(distance > 80);
+                        }
+                    }
+                },
                 if loading() {
                     div { class: "chat-loading",
                         div { class: "chat-spinner" }
