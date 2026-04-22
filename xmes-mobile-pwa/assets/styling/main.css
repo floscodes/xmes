@@ -1109,6 +1109,12 @@ body {
 }
 .member-menu-btn:hover { color: var(--text-1); background: var(--border-subtle); }
 
+.member-dropdown-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+}
+
 .member-dropdown {
     position: absolute;
     right: 0;

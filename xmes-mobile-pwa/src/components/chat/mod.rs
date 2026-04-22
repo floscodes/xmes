@@ -192,6 +192,10 @@ fn ChatMembersSheet(
                                             }
                                         }
                                         if is_menu_open {
+                                            div {
+                                                class: "member-dropdown-overlay",
+                                                onclick: move |_| menu_open.set(None),
+                                            }
                                             div { class: "member-dropdown",
                                                 onclick: move |e| e.stop_propagation(),
                                                 // Role actions (super admin only)
