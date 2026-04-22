@@ -254,13 +254,17 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
         }
     });
 
-    // Periodic sync every 8 seconds while chat is open
+    // Periodic sync every 8 seconds while chat is open.
+    // The callback checks the current view so it becomes a no-op after navigation.
     let conv_id_sync = conversation.id.clone();
     use_effect(move || {
         let id = conv_id_sync.clone();
         let interval = gloo_timers::callback::Interval::new(8_000, move || {
-            if let Some(h) = xmtp.peek().as_ref() {
-                h.request_list_messages(&id);
+            let still_open = matches!(view.peek().clone(), View::Chat(c) if c.id == id);
+            if still_open {
+                if let Some(h) = xmtp.peek().as_ref() {
+                    h.request_list_messages(&id);
+                }
             }
         });
         interval.forget();
