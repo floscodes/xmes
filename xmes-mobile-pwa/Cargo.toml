@@ -1,9 +1,12 @@
 [package]
-name = "xmes"
+name = "xmes-mobile-pwa"
 version = "0.1.0"
 authors = ["flopetautschnig (floscodes) <mail@floscodes.net>"]
 edition = "2024"
 
+[[bin]]
+name = "xmes"
+path = "src/main.rs"
 
 [dependencies]
 dioxus = { version = "*", features = [] }
