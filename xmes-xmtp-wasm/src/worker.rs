@@ -167,6 +167,23 @@ async fn worker_run() {
                     .collect();
                 spawn_local(handle_add_members(scope, state, conversation_id, inbox_ids));
             }
+            "remove_member" => {
+                let conversation_id = str_field(&data, "conversation_id");
+                let inbox_id        = str_field(&data, "inbox_id");
+                spawn_local(handle_remove_member(scope, state, conversation_id, inbox_id));
+            }
+            "set_admin" => {
+                let conversation_id = str_field(&data, "conversation_id");
+                let inbox_id        = str_field(&data, "inbox_id");
+                let add = Reflect::get(&data, &"add".into()).ok().and_then(|v| v.as_bool()).unwrap_or(false);
+                spawn_local(handle_set_admin(scope, state, conversation_id, inbox_id, add));
+            }
+            "set_super_admin" => {
+                let conversation_id = str_field(&data, "conversation_id");
+                let inbox_id        = str_field(&data, "inbox_id");
+                let add = Reflect::get(&data, &"add".into()).ok().and_then(|v| v.as_bool()).unwrap_or(false);
+                spawn_local(handle_set_super_admin(scope, state, conversation_id, inbox_id, add));
+            }
             "accept_invitation" => {
                 let id = str_field(&data, "id");
                 spawn_local(handle_accept_invitation(scope, state, id));
@@ -398,6 +415,56 @@ async fn handle_add_members(
     }
 }
 
+async fn handle_remove_member(
+    scope: web_sys::DedicatedWorkerGlobalScope,
+    state: StateRef,
+    conversation_id: String,
+    inbox_id: String,
+) {
+    let id = state.borrow().active_clone();
+    match id {
+        Some(id) => match id.remove_member(conversation_id.clone(), inbox_id).await {
+            Ok(_)  => { if let Some(id2) = state.borrow().active_clone() { if let Ok(m) = id2.get_conversation_members(conversation_id.clone()).await { post_group_members(&scope, &conversation_id, &m); } } }
+            Err(e) => post_error(&scope, &e.to_string()),
+        },
+        None => post_error(&scope, "No identity available"),
+    }
+}
+
+async fn handle_set_admin(
+    scope: web_sys::DedicatedWorkerGlobalScope,
+    state: StateRef,
+    conversation_id: String,
+    inbox_id: String,
+    add: bool,
+) {
+    let id = state.borrow().active_clone();
+    match id {
+        Some(id) => match id.set_admin(conversation_id.clone(), inbox_id, add).await {
+            Ok(_)  => { if let Some(id2) = state.borrow().active_clone() { if let Ok(m) = id2.get_conversation_members(conversation_id.clone()).await { post_group_members(&scope, &conversation_id, &m); } } }
+            Err(e) => post_error(&scope, &e.to_string()),
+        },
+        None => post_error(&scope, "No identity available"),
+    }
+}
+
+async fn handle_set_super_admin(
+    scope: web_sys::DedicatedWorkerGlobalScope,
+    state: StateRef,
+    conversation_id: String,
+    inbox_id: String,
+    add: bool,
+) {
+    let id = state.borrow().active_clone();
+    match id {
+        Some(id) => match id.set_super_admin(conversation_id.clone(), inbox_id, add).await {
+            Ok(_)  => { if let Some(id2) = state.borrow().active_clone() { if let Ok(m) = id2.get_conversation_members(conversation_id.clone()).await { post_group_members(&scope, &conversation_id, &m); } } }
+            Err(e) => post_error(&scope, &e.to_string()),
+        },
+        None => post_error(&scope, "No identity available"),
+    }
+}
+
 async fn handle_list_members(
     scope: web_sys::DedicatedWorkerGlobalScope,
     state: StateRef,
@@ -500,6 +567,29 @@ impl XmtpHandle {
             arr.push(&JsValue::from_str(id));
         }
         Reflect::set(&msg, &"inbox_ids".into(), &arr).unwrap_throw();
+        self.worker.post_message(&msg).unwrap_throw();
+    }
+
+    pub fn request_remove_member(&self, conversation_id: &str, inbox_id: &str) {
+        let msg = typed_obj("remove_member");
+        set_str(&msg, "conversation_id", conversation_id);
+        set_str(&msg, "inbox_id", inbox_id);
+        self.worker.post_message(&msg).unwrap_throw();
+    }
+
+    pub fn request_set_admin(&self, conversation_id: &str, inbox_id: &str, add: bool) {
+        let msg = typed_obj("set_admin");
+        set_str(&msg, "conversation_id", conversation_id);
+        set_str(&msg, "inbox_id", inbox_id);
+        Reflect::set(&msg, &"add".into(), &JsValue::from_bool(add)).unwrap_throw();
+        self.worker.post_message(&msg).unwrap_throw();
+    }
+
+    pub fn request_set_super_admin(&self, conversation_id: &str, inbox_id: &str, add: bool) {
+        let msg = typed_obj("set_super_admin");
+        set_str(&msg, "conversation_id", conversation_id);
+        set_str(&msg, "inbox_id", inbox_id);
+        Reflect::set(&msg, &"add".into(), &JsValue::from_bool(add)).unwrap_throw();
         self.worker.post_message(&msg).unwrap_throw();
     }
 
@@ -645,13 +735,15 @@ pub fn spawn_xmtp_worker(
                     .ok()
                     .and_then(|v| v.dyn_into::<js_sys::Array>().ok())
                     .unwrap_or_default();
-                let address_key = JsValue::from_str("address");
-                let role_key    = JsValue::from_str("role");
+                let inbox_id_key = JsValue::from_str("inbox_id");
+                let address_key  = JsValue::from_str("address");
+                let role_key     = JsValue::from_str("role");
                 let members: Vec<MemberInfo> = (0..raw.length()).filter_map(|i| {
-                    let item    = raw.get(i);
-                    let address = Reflect::get(&item, &address_key).ok()?.as_string()?;
-                    let role    = Reflect::get(&item, &role_key).ok()?.as_f64()? as u8;
-                    Some(MemberInfo { address, role })
+                    let item     = raw.get(i);
+                    let inbox_id = Reflect::get(&item, &inbox_id_key).ok()?.as_string()?;
+                    let address  = Reflect::get(&item, &address_key).ok()?.as_string()?;
+                    let role     = Reflect::get(&item, &role_key).ok()?.as_f64()? as u8;
+                    Some(MemberInfo { inbox_id, address, role })
                 }).collect();
                 on_group_members(members);
             }
@@ -746,6 +838,7 @@ fn post_group_members(scope: &web_sys::DedicatedWorkerGlobalScope, conversation_
     let arr = js_sys::Array::new();
     for m in members {
         let item = js_sys::Object::new();
+        set_str(&item, "inbox_id", &m.inbox_id);
         set_str(&item, "address", &m.address);
         Reflect::set(&item, &"role".into(), &JsValue::from_f64(m.role as f64)).unwrap_throw();
         arr.push(&item);

@@ -14,8 +14,9 @@ pub use bindings_wasm::conversations::Conversations;
 
 #[derive(Clone, PartialEq)]
 pub struct MemberInfo {
-    pub address: String,
-    pub role: u8, // 0=Member, 1=Admin, 2=SuperAdmin
+    pub inbox_id: String,
+    pub address:  String,
+    pub role:     u8, // 0=Member, 1=Admin, 2=SuperAdmin
 }
 
 #[derive(Clone, PartialEq)]
@@ -248,9 +249,10 @@ impl Identity {
             .map_err(|e| Error::msg(format!("{e:?}")))?;
 
         let arr = js_sys::Array::from(&raw);
-        let account_ids_key   = wasm_bindgen::JsValue::from_str("accountIdentifiers");
-        let identifier_key    = wasm_bindgen::JsValue::from_str("identifier");
-        let permission_key    = wasm_bindgen::JsValue::from_str("permissionLevel");
+        let account_ids_key = wasm_bindgen::JsValue::from_str("accountIdentifiers");
+        let identifier_key  = wasm_bindgen::JsValue::from_str("identifier");
+        let permission_key  = wasm_bindgen::JsValue::from_str("permissionLevel");
+        let inbox_id_key    = wasm_bindgen::JsValue::from_str("inboxId");
 
         let mut members = Vec::new();
         for i in 0..arr.length() {
@@ -258,21 +260,50 @@ impl Identity {
             let Ok(id_arr_val) = js_sys::Reflect::get(&member, &account_ids_key) else { continue };
             let id_arr = js_sys::Array::from(&id_arr_val);
             let role = js_sys::Reflect::get(&member, &permission_key)
-                .ok()
-                .and_then(|v| v.as_f64())
-                .map(|f| f as u8)
-                .unwrap_or(0);
+                .ok().and_then(|v| v.as_f64()).map(|f| f as u8).unwrap_or(0);
+            let inbox_id = js_sys::Reflect::get(&member, &inbox_id_key)
+                .ok().and_then(|v| v.as_string()).unwrap_or_default();
             for j in 0..id_arr.length() {
                 let id_item = id_arr.get(j);
                 if let Ok(addr_val) = js_sys::Reflect::get(&id_item, &identifier_key) {
                     if let Some(addr) = addr_val.as_string() {
-                        members.push(MemberInfo { address: addr, role });
+                        members.push(MemberInfo { inbox_id: inbox_id.clone(), address: addr, role });
                         break;
                     }
                 }
             }
         }
         Ok(members)
+    }
+
+    pub async fn remove_member(&self, conversation_id: String, inbox_id: String) -> Result<()> {
+        let convo = self.conversations()
+            .find_group_by_id(conversation_id)
+            .map_err(|_| Error::msg("Conversation not found"))?;
+        convo.remove_members(vec![inbox_id]).await
+            .map_err(|e| Error::msg(format!("{e:?}")))
+    }
+
+    pub async fn set_admin(&self, conversation_id: String, inbox_id: String, add: bool) -> Result<()> {
+        let convo = self.conversations()
+            .find_group_by_id(conversation_id)
+            .map_err(|_| Error::msg("Conversation not found"))?;
+        if add {
+            convo.add_admin(inbox_id).await.map_err(|e| Error::msg(format!("{e:?}")))
+        } else {
+            convo.remove_admin(inbox_id).await.map_err(|e| Error::msg(format!("{e:?}")))
+        }
+    }
+
+    pub async fn set_super_admin(&self, conversation_id: String, inbox_id: String, add: bool) -> Result<()> {
+        let convo = self.conversations()
+            .find_group_by_id(conversation_id)
+            .map_err(|_| Error::msg("Conversation not found"))?;
+        if add {
+            convo.add_super_admin(inbox_id).await.map_err(|e| Error::msg(format!("{e:?}")))
+        } else {
+            convo.remove_super_admin(inbox_id).await.map_err(|e| Error::msg(format!("{e:?}")))
+        }
     }
 
     pub async fn fetch_messages(&self, conversation_id: String) -> Result<Vec<MessageInfo>> {

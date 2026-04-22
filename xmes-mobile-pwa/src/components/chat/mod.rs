@@ -98,6 +98,7 @@ fn role_class(role: u8) -> &'static str {
 fn ChatMembersSheet(
     conversation_id: String,
     members: Vec<MemberInfo>,
+    own_inbox_id: String,
     xmtp: Signal<Option<XmtpHandle>>,
     on_close: EventHandler<()>,
     #[props(default = false)]
@@ -105,8 +106,16 @@ fn ChatMembersSheet(
 ) -> Element {
     let mut show_add    = use_signal(move || start_adding);
     let mut add_input   = use_signal(|| String::new());
-    let member_label    = if members.len() == 1 { "1 Member".to_string() }
-                          else { format!("{} Members", members.len()) };
+    // inbox_id of the member whose context menu is open
+    let mut menu_open: Signal<Option<String>> = use_signal(|| None);
+
+    let member_label = if members.len() == 1 { "1 Member".to_string() }
+                       else { format!("{} Members", members.len()) };
+
+    let own_role = members.iter()
+        .find(|m| m.inbox_id == own_inbox_id)
+        .map(|m| m.role)
+        .unwrap_or(0);
 
     // Focus the add-member input whenever it becomes visible
     use_effect(move || {
@@ -149,6 +158,10 @@ fn ChatMembersSheet(
                 for m in members.iter() {
                     {
                         let m = m.clone();
+                        let is_menu_open = menu_open.read().as_deref() == Some(&m.inbox_id);
+                        let show_menu_btn = own_role >= 1 && m.role < 2;
+                        let conv_id = conversation_id.clone();
+                        let iid = m.inbox_id.clone();
                         rsx! {
                             div { class: "addr-row member-row",
                                 div { class: "addr-primary-pill",
@@ -156,6 +169,113 @@ fn ChatMembersSheet(
                                     CopyBtn { text: m.address.clone() }
                                 }
                                 span { class: "{role_class(m.role)}", "{role_label(m.role)}" }
+                                if show_menu_btn {
+                                    div { class: "member-menu-wrap",
+                                        button {
+                                            class: "member-menu-btn",
+                                            title: "Manage member",
+                                            onclick: move |e| {
+                                                e.stop_propagation();
+                                                if is_menu_open {
+                                                    menu_open.set(None);
+                                                } else {
+                                                    menu_open.set(Some(iid.clone()));
+                                                }
+                                            },
+                                            svg {
+                                                xmlns: "http://www.w3.org/2000/svg", width: "16", height: "16",
+                                                view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
+                                                stroke_width: "2", stroke_linecap: "round", stroke_linejoin: "round",
+                                                circle { cx: "12", cy: "5",  r: "1" }
+                                                circle { cx: "12", cy: "12", r: "1" }
+                                                circle { cx: "12", cy: "19", r: "1" }
+                                            }
+                                        }
+                                        if is_menu_open {
+                                            div { class: "member-dropdown",
+                                                onclick: move |e| e.stop_propagation(),
+                                                // Role actions (super admin only)
+                                                if own_role == 2 {
+                                                    if m.role == 0 {
+                                                        button {
+                                                            class: "member-dropdown-item",
+                                                            onclick: {
+                                                                let cid = conv_id.clone();
+                                                                let mid = m.inbox_id.clone();
+                                                                move |_| {
+                                                                    menu_open.set(None);
+                                                                    if let Some(h) = xmtp.peek().as_ref() {
+                                                                        h.request_set_admin(&cid, &mid, true);
+                                                                    }
+                                                                }
+                                                            },
+                                                            "Make Admin"
+                                                        }
+                                                        button {
+                                                            class: "member-dropdown-item",
+                                                            onclick: {
+                                                                let cid = conv_id.clone();
+                                                                let mid = m.inbox_id.clone();
+                                                                move |_| {
+                                                                    menu_open.set(None);
+                                                                    if let Some(h) = xmtp.peek().as_ref() {
+                                                                        h.request_set_super_admin(&cid, &mid, true);
+                                                                    }
+                                                                }
+                                                            },
+                                                            "Make Super Admin"
+                                                        }
+                                                    }
+                                                    if m.role == 1 {
+                                                        button {
+                                                            class: "member-dropdown-item",
+                                                            onclick: {
+                                                                let cid = conv_id.clone();
+                                                                let mid = m.inbox_id.clone();
+                                                                move |_| {
+                                                                    menu_open.set(None);
+                                                                    if let Some(h) = xmtp.peek().as_ref() {
+                                                                        h.request_set_admin(&cid, &mid, false);
+                                                                    }
+                                                                }
+                                                            },
+                                                            "Remove Admin"
+                                                        }
+                                                        button {
+                                                            class: "member-dropdown-item",
+                                                            onclick: {
+                                                                let cid = conv_id.clone();
+                                                                let mid = m.inbox_id.clone();
+                                                                move |_| {
+                                                                    menu_open.set(None);
+                                                                    if let Some(h) = xmtp.peek().as_ref() {
+                                                                        h.request_set_super_admin(&cid, &mid, true);
+                                                                    }
+                                                                }
+                                                            },
+                                                            "Make Super Admin"
+                                                        }
+                                                    }
+                                                }
+                                                // Remove (admin and super admin)
+                                                button {
+                                                    class: "member-dropdown-item member-dropdown-danger",
+                                                    onclick: {
+                                                        let cid = conv_id.clone();
+                                                        let mid = m.inbox_id.clone();
+                                                        move |_| {
+                                                            menu_open.set(None);
+                                                            if let Some(h) = xmtp.peek().as_ref() {
+                                                                h.request_remove_member(&cid, &mid);
+                                                            }
+                                                        }
+                                                    },
+                                                    "Remove from group"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -366,6 +486,7 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                 ChatMembersSheet {
                     conversation_id: conversation.id.clone(),
                     members: group_members.read().clone(),
+                    own_inbox_id: own_inbox.clone(),
                     xmtp,
                     start_adding: sheet_start_adding(),
                     on_close: move |_| {

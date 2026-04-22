@@ -1090,6 +1090,55 @@ body {
 .role-admin      { background: #EFF6FF; color: #2563EB; }
 .role-superadmin { background: #FFF7ED; color: #EA580C; }
 
+.member-menu-wrap {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.member-menu-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-3);
+    padding: 0.25rem;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s, background 0.15s;
+}
+.member-menu-btn:hover { color: var(--text-1); background: var(--border-subtle); }
+
+.member-dropdown {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 4px);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    min-width: 160px;
+    z-index: 100;
+    overflow: hidden;
+}
+
+.member-dropdown-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
+    color: var(--text-1);
+    cursor: pointer;
+    font-family: var(--font);
+    transition: background 0.1s;
+}
+.member-dropdown-item:hover { background: var(--border-subtle); }
+.member-dropdown-danger { color: var(--danger); }
+.member-dropdown-danger:hover { background: #FEF2F2; }
+
 .addr-primary-badge {
     font-size: 0.6875rem;
     font-weight: 600;
