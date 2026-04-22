@@ -233,6 +233,7 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
     let identity_info     = use_context::<Signal<Option<IdentityInfo>>>();
 
     let mut unread_ids         = use_context::<Signal<std::collections::HashSet<String>>>();
+    let mut initial_scroll_done = use_signal(|| false);
     let mut show_members       = use_signal(|| false);
     let mut sheet_start_adding = use_signal(|| false);
     let conv_id           = conversation.id.clone();
@@ -270,13 +271,18 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
         interval.forget();
     });
 
-    // Auto-scroll to bottom whenever messages change
+    // Auto-scroll to bottom on first load; after that only if already near the bottom.
     use_effect(move || {
         let _ = messages.read();
         if let Some(window) = web_sys::window() {
             if let Some(doc) = window.document() {
                 if let Some(el) = doc.query_selector(".chat-messages").ok().flatten() {
-                    el.set_scroll_top(el.scroll_height());
+                    let is_initial  = !*initial_scroll_done.read();
+                    let distance    = el.scroll_height() - el.scroll_top() - el.client_height();
+                    if is_initial || distance < 150 {
+                        el.set_scroll_top(el.scroll_height());
+                        if is_initial { initial_scroll_done.set(true); }
+                    }
                 }
             }
         }
