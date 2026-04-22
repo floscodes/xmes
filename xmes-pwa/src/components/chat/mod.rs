@@ -228,12 +228,13 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
     let view              = use_context::<Signal<View>>();
     let anim              = use_context::<Signal<&'static str>>();
     let xmtp              = use_context::<Signal<Option<XmtpHandle>>>();
-    let messages          = use_context::<Signal<Vec<MessageInfo>>>();
+    let mut messages      = use_context::<Signal<Vec<MessageInfo>>>();
     let group_members     = use_context::<Signal<Vec<String>>>();
     let identity_info     = use_context::<Signal<Option<IdentityInfo>>>();
 
     let mut unread_ids         = use_context::<Signal<std::collections::HashSet<String>>>();
     let mut initial_scroll_done = use_signal(|| false);
+    let mut loading            = use_signal(|| true);
     let mut show_members       = use_signal(|| false);
     let mut sheet_start_adding = use_signal(|| false);
     let conv_id           = conversation.id.clone();
@@ -245,9 +246,10 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
     let member_label      = if member_count == 1 { "1 Member".to_string() }
                             else { format!("{} Members", member_count) };
 
-    // Fetch messages + members on mount, clear unread badge
+    // Clear stale messages immediately, then fetch fresh ones
     let conv_id_unread = conversation.id.clone();
     use_effect(move || {
+        messages.set(vec![]);
         unread_ids.write().remove(&conv_id_unread);
         if let Some(h) = xmtp.read().as_ref() {
             h.request_list_messages(&conv_id);
@@ -272,8 +274,10 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
     });
 
     // Auto-scroll to bottom on first load; after that only if already near the bottom.
+    // Also clears the loading spinner on first response.
     use_effect(move || {
         let _ = messages.read();
+        loading.set(false);
         if let Some(window) = web_sys::window() {
             if let Some(doc) = window.document() {
                 if let Some(el) = doc.query_selector(".chat-messages").ok().flatten() {
@@ -353,7 +357,11 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
 
             // ── Messages ─────────────────────────────────────────
             div { class: "chat-messages",
-                if messages.read().is_empty() {
+                if loading() {
+                    div { class: "chat-loading",
+                        div { class: "chat-spinner" }
+                    }
+                } else if messages.read().is_empty() {
                     div { class: "chat-empty",
                         svg {
                             xmlns: "http://www.w3.org/2000/svg",
