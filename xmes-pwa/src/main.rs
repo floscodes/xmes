@@ -167,18 +167,21 @@ fn App() -> Element {
                 let mut seen = last_seen_ns;
                 let mut unread = unread_ids;
                 for conv in &convos {
-                    if Some(&conv.id) == open_id.as_ref() { continue; }
                     if let Some(ns) = conv.last_message_ns {
                         let prev = seen.peek().get(&conv.id).copied().unwrap_or(0);
                         if ns > prev {
-                            let last_sender_is_me = conv.last_sender.as_deref()
-                                .zip(my_address.as_deref())
-                                .map(|(s, m)| s.to_lowercase() == m)
-                                .unwrap_or(false);
-                            if !last_sender_is_me {
-                                unread.write().insert(conv.id.clone());
+                            // Only mark unread when the conversation is not currently open
+                            if Some(&conv.id) != open_id.as_ref() {
+                                let last_sender_is_me = conv.last_sender.as_deref()
+                                    .zip(my_address.as_deref())
+                                    .map(|(s, m)| s.to_lowercase() == m)
+                                    .unwrap_or(false);
+                                if !last_sender_is_me {
+                                    unread.write().insert(conv.id.clone());
+                                }
                             }
                         }
+                        // Always advance the watermark so closing the chat doesn't re-trigger unread
                         seen.write().insert(conv.id.clone(), ns);
                     }
                 }
