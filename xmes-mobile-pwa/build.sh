@@ -6,4 +6,6 @@ rustup target add wasm32-unknown-unknown
 
 cargo install dioxus-cli
 
+apt install -y clang libzstd-dev
+
 dx build --release --web
