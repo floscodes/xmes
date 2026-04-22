@@ -926,9 +926,9 @@ body {
 .bottom-nav-tab.active { color: var(--primary); }
 .bottom-nav-tab.active:hover { color: var(--primary); }
 
-/* Lift FAB above the bottom nav */
-.fab { bottom: calc(1.75rem + 62px); }
-@media (max-width: 480px) { .fab { bottom: calc(1.25rem + 62px); } }
+/* Lift FAB above the bottom nav (including safe-area) */
+.fab { bottom: calc(1.75rem + 62px + env(safe-area-inset-bottom)); }
+@media (max-width: 480px) { .fab { bottom: calc(1.25rem + 62px + env(safe-area-inset-bottom)); } }
 
 /* ── Identity options sheet ────────────────────────────────── */
 
