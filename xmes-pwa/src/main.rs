@@ -9,6 +9,7 @@ use xmes_xmtp_wasm::{
     ConversationSummary,
     IdentityInfo,
     IdentityListUpdate,
+    MemberInfo,
     MessageInfo,
     XmtpHandle,
     is_worker_context,
@@ -91,7 +92,7 @@ fn App() -> Element {
     let pending_open:      Signal<Option<()>>                       = use_signal(|| None);
     let confirm_action:    Signal<Option<ConfirmAction>>            = use_signal(|| None);
     let messages:          Signal<Vec<MessageInfo>>                 = use_signal(|| vec![]);
-    let group_members:     Signal<Vec<String>>                     = use_signal(|| vec![]);
+    let group_members:     Signal<Vec<MemberInfo>>                  = use_signal(|| vec![]);
     let unread_ids:   Signal<std::collections::HashSet<String>>       = use_storage::<LocalStorage, _>("unread_ids".to_string(),   || std::collections::HashSet::new());
     let last_seen_ns: Signal<std::collections::HashMap<String, i64>> = use_storage::<LocalStorage, _>("last_seen_ns".to_string(), || std::collections::HashMap::new());
 
@@ -193,9 +194,9 @@ fn App() -> Element {
                 let mut m = messages;
                 m.set(msgs);
             },
-            move |addrs| {
+            move |members| {
                 let mut gm = group_members;
-                gm.set(addrs);
+                gm.set(members);
             },
         );
 

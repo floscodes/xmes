@@ -1,6 +1,6 @@
 use dioxus::prelude::*;
 use js_sys::Date;
-use xmes_xmtp_wasm::{ConversationSummary, IdentityInfo, MessageInfo, XmtpHandle};
+use xmes_xmtp_wasm::{ConversationSummary, IdentityInfo, MemberInfo, MessageInfo, XmtpHandle};
 use crate::View;
 use crate::components::add_members::AddMembersSheet;
 
@@ -77,11 +77,27 @@ fn CopyBtn(text: String) -> Element {
     }
 }
 
+fn role_label(role: u8) -> &'static str {
+    match role {
+        2 => "Super Admin",
+        1 => "Admin",
+        _ => "Member",
+    }
+}
+
+fn role_class(role: u8) -> &'static str {
+    match role {
+        2 => "role-badge role-superadmin",
+        1 => "role-badge role-admin",
+        _ => "role-badge role-member",
+    }
+}
+
 /// Bottom sheet showing all group members and an "Add Member" option.
 #[component]
 fn ChatMembersSheet(
     conversation_id: String,
-    members: Vec<String>,
+    members: Vec<MemberInfo>,
     xmtp: Signal<Option<XmtpHandle>>,
     on_close: EventHandler<()>,
     #[props(default = false)]
@@ -130,15 +146,16 @@ fn ChatMembersSheet(
 
             // member list
             div { class: "sheet-addr-list",
-                for addr in members.iter() {
+                for m in members.iter() {
                     {
-                        let addr = addr.clone();
+                        let m = m.clone();
                         rsx! {
-                            div { class: "addr-row",
+                            div { class: "addr-row member-row",
                                 div { class: "addr-primary-pill",
-                                    span { class: "addr-primary-text", "{short_addr(&addr)}" }
-                                    CopyBtn { text: addr.clone() }
+                                    span { class: "addr-primary-text", "{short_addr(&m.address)}" }
+                                    CopyBtn { text: m.address.clone() }
                                 }
+                                span { class: "{role_class(m.role)}", "{role_label(m.role)}" }
                             }
                         }
                     }
@@ -166,6 +183,7 @@ fn ChatMembersSheet(
                                     if let Some(h) = xmtp.peek().as_ref() {
                                         h.request_add_members(&conv_id, &[id]);
                                     }
+                                    on_close.call(());
                                 }
                             }
                         },
@@ -183,6 +201,7 @@ fn ChatMembersSheet(
                                 if let Some(h) = xmtp.peek().as_ref() {
                                     h.request_add_members(&conv_id, &[id]);
                                 }
+                                on_close.call(());
                             }
                         },
                         svg {
@@ -229,7 +248,7 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
     let anim              = use_context::<Signal<&'static str>>();
     let xmtp              = use_context::<Signal<Option<XmtpHandle>>>();
     let mut messages      = use_context::<Signal<Vec<MessageInfo>>>();
-    let group_members     = use_context::<Signal<Vec<String>>>();
+    let group_members     = use_context::<Signal<Vec<MemberInfo>>>();
     let identity_info     = use_context::<Signal<Option<IdentityInfo>>>();
 
     let mut unread_ids         = use_context::<Signal<std::collections::HashSet<String>>>();

@@ -11,7 +11,7 @@ use std::{cell::RefCell, rc::Rc};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 
-use crate::{ConversationSummary, Env, Identity, MessageInfo};
+use crate::{ConversationSummary, Env, Identity, MemberInfo, MessageInfo};
 
 /// Per-identity metadata sent to the host thread.
 #[derive(Clone, PartialEq)]
@@ -555,7 +555,7 @@ pub fn spawn_xmtp_worker(
     on_identity_update: impl Fn(IdentityListUpdate) + 'static,
     on_conversations:   impl Fn(Vec<ConversationSummary>) + 'static,
     on_messages:        impl Fn(String, Vec<MessageInfo>) + 'static,
-    on_group_members:   impl Fn(Vec<String>) + 'static,
+    on_group_members:   impl Fn(Vec<MemberInfo>) + 'static,
 ) -> XmtpHandle {
     let arr = js_sys::Array::of1(&JsValue::from_str(WORKER_BOOTSTRAP));
     let mut props = web_sys::BlobPropertyBag::new();
@@ -645,10 +645,15 @@ pub fn spawn_xmtp_worker(
                     .ok()
                     .and_then(|v| v.dyn_into::<js_sys::Array>().ok())
                     .unwrap_or_default();
-                let addresses: Vec<String> = (0..raw.length())
-                    .filter_map(|i| raw.get(i).as_string())
-                    .collect();
-                on_group_members(addresses);
+                let address_key = JsValue::from_str("address");
+                let role_key    = JsValue::from_str("role");
+                let members: Vec<MemberInfo> = (0..raw.length()).filter_map(|i| {
+                    let item    = raw.get(i);
+                    let address = Reflect::get(&item, &address_key).ok()?.as_string()?;
+                    let role    = Reflect::get(&item, &role_key).ok()?.as_f64()? as u8;
+                    Some(MemberInfo { address, role })
+                }).collect();
+                on_group_members(members);
             }
             _ => {}
         }
@@ -737,10 +742,13 @@ async fn post_identity_list_async(
     scope.post_message(&msg).unwrap_throw();
 }
 
-fn post_group_members(scope: &web_sys::DedicatedWorkerGlobalScope, conversation_id: &str, addresses: &[String]) {
+fn post_group_members(scope: &web_sys::DedicatedWorkerGlobalScope, conversation_id: &str, members: &[MemberInfo]) {
     let arr = js_sys::Array::new();
-    for a in addresses {
-        arr.push(&JsValue::from_str(a));
+    for m in members {
+        let item = js_sys::Object::new();
+        set_str(&item, "address", &m.address);
+        Reflect::set(&item, &"role".into(), &JsValue::from_f64(m.role as f64)).unwrap_throw();
+        arr.push(&item);
     }
     let msg = typed_obj("group_members");
     set_str(&msg, "conversation_id", conversation_id);

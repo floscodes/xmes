@@ -13,6 +13,12 @@ pub use bindings_wasm::conversation::Conversation;
 pub use bindings_wasm::conversations::Conversations;
 
 #[derive(Clone, PartialEq)]
+pub struct MemberInfo {
+    pub address: String,
+    pub role: u8, // 0=Member, 1=Admin, 2=SuperAdmin
+}
+
+#[derive(Clone, PartialEq)]
 pub struct MessageInfo {
     pub id:               String,
     pub text:             String,
@@ -233,7 +239,7 @@ impl Identity {
         Ok(())
     }
 
-    pub async fn get_conversation_members(&self, conversation_id: String) -> Result<Vec<String>> {
+    pub async fn get_conversation_members(&self, conversation_id: String) -> Result<Vec<MemberInfo>> {
         let convo = self.conversations()
             .find_group_by_id(conversation_id)
             .map_err(|_| Error::msg("Conversation not found"))?;
@@ -242,25 +248,31 @@ impl Identity {
             .map_err(|e| Error::msg(format!("{e:?}")))?;
 
         let arr = js_sys::Array::from(&raw);
-        let account_ids_key = wasm_bindgen::JsValue::from_str("accountIdentifiers");
-        let identifier_key  = wasm_bindgen::JsValue::from_str("identifier");
+        let account_ids_key   = wasm_bindgen::JsValue::from_str("accountIdentifiers");
+        let identifier_key    = wasm_bindgen::JsValue::from_str("identifier");
+        let permission_key    = wasm_bindgen::JsValue::from_str("permissionLevel");
 
-        let mut addresses = Vec::new();
+        let mut members = Vec::new();
         for i in 0..arr.length() {
             let member = arr.get(i);
             let Ok(id_arr_val) = js_sys::Reflect::get(&member, &account_ids_key) else { continue };
             let id_arr = js_sys::Array::from(&id_arr_val);
+            let role = js_sys::Reflect::get(&member, &permission_key)
+                .ok()
+                .and_then(|v| v.as_f64())
+                .map(|f| f as u8)
+                .unwrap_or(0);
             for j in 0..id_arr.length() {
                 let id_item = id_arr.get(j);
                 if let Ok(addr_val) = js_sys::Reflect::get(&id_item, &identifier_key) {
                     if let Some(addr) = addr_val.as_string() {
-                        addresses.push(addr);
+                        members.push(MemberInfo { address: addr, role });
                         break;
                     }
                 }
             }
         }
-        Ok(addresses)
+        Ok(members)
     }
 
     pub async fn fetch_messages(&self, conversation_id: String) -> Result<Vec<MessageInfo>> {

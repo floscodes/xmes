@@ -1066,6 +1066,30 @@ body {
     user-select: none;
 }
 
+.member-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.member-row .addr-primary-pill { flex: 1; margin: 0; }
+
+.role-badge {
+    flex-shrink: 0;
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.2rem 0.55rem;
+    border-radius: var(--radius-full);
+    white-space: nowrap;
+}
+
+.role-member     { background: #F3F4F6; color: #6B7280; }
+.role-admin      { background: #EFF6FF; color: #2563EB; }
+.role-superadmin { background: #FFF7ED; color: #EA580C; }
+
 .addr-primary-badge {
     font-size: 0.6875rem;
     font-weight: 600;
