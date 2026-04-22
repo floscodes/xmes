@@ -232,6 +232,7 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
     let group_members     = use_context::<Signal<Vec<String>>>();
     let identity_info     = use_context::<Signal<Option<IdentityInfo>>>();
 
+    let mut unread_ids         = use_context::<Signal<std::collections::HashSet<String>>>();
     let mut show_members       = use_signal(|| false);
     let mut sheet_start_adding = use_signal(|| false);
     let conv_id           = conversation.id.clone();
@@ -243,8 +244,10 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
     let member_label      = if member_count == 1 { "1 Member".to_string() }
                             else { format!("{} Members", member_count) };
 
-    // Fetch messages + members on mount
+    // Fetch messages + members on mount, clear unread badge
+    let conv_id_unread = conversation.id.clone();
     use_effect(move || {
+        unread_ids.write().remove(&conv_id_unread);
         if let Some(h) = xmtp.read().as_ref() {
             h.request_list_messages(&conv_id);
             h.request_list_members(&conv_id);
