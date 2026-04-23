@@ -1,5 +1,3 @@
-export const config = { runtime: 'edge' };
-
 const UPSTREAMS: Record<string, string> = {
     'xmtp-dev-api.xmes.org':        'https://api.dev.xmtp.network:5558',
     'xmtp-production-api.xmes.org': 'https://api.production.xmtp.network:5558',
