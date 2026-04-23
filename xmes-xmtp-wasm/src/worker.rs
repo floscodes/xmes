@@ -435,7 +435,14 @@ async fn handle_remove_member(
     let id = state.borrow().active_clone();
     match id {
         Some(id) => match id.remove_member(conversation_id.clone(), inbox_id).await {
-            Ok(_)  => { if let Some(id2) = state.borrow().active_clone() { if let Ok(m) = id2.get_conversation_members(conversation_id.clone()).await { post_group_members(&scope, &conversation_id, &m); } } }
+            Ok(_)  => {
+                let id2 = state.borrow().active_clone();
+                if let Some(id2) = id2 {
+                    if let Ok(m) = id2.get_conversation_members(conversation_id.clone()).await {
+                        post_group_members(&scope, &conversation_id, &m);
+                    }
+                }
+            }
             Err(e) => post_error(&scope, &e.to_string()),
         },
         None => post_error(&scope, "No identity available"),
@@ -452,7 +459,14 @@ async fn handle_set_admin(
     let id = state.borrow().active_clone();
     match id {
         Some(id) => match id.set_admin(conversation_id.clone(), inbox_id, add).await {
-            Ok(_)  => { if let Some(id2) = state.borrow().active_clone() { if let Ok(m) = id2.get_conversation_members(conversation_id.clone()).await { post_group_members(&scope, &conversation_id, &m); } } }
+            Ok(_)  => {
+                let id2 = state.borrow().active_clone();
+                if let Some(id2) = id2 {
+                    if let Ok(m) = id2.get_conversation_members(conversation_id.clone()).await {
+                        post_group_members(&scope, &conversation_id, &m);
+                    }
+                }
+            }
             Err(e) => post_error(&scope, &e.to_string()),
         },
         None => post_error(&scope, "No identity available"),
@@ -469,7 +483,14 @@ async fn handle_set_super_admin(
     let id = state.borrow().active_clone();
     match id {
         Some(id) => match id.set_super_admin(conversation_id.clone(), inbox_id, add).await {
-            Ok(_)  => { if let Some(id2) = state.borrow().active_clone() { if let Ok(m) = id2.get_conversation_members(conversation_id.clone()).await { post_group_members(&scope, &conversation_id, &m); } } }
+            Ok(_)  => {
+                let id2 = state.borrow().active_clone();
+                if let Some(id2) = id2 {
+                    if let Ok(m) = id2.get_conversation_members(conversation_id.clone()).await {
+                        post_group_members(&scope, &conversation_id, &m);
+                    }
+                }
+            }
             Err(e) => post_error(&scope, &e.to_string()),
         },
         None => post_error(&scope, "No identity available"),
