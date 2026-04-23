@@ -16,6 +16,7 @@ sha3 = "0.10.8"
 wasm-bindgen = "=0.2.114"
 wasm-bindgen-futures = "=0.4.64"
 zstd = { version = "0.13", default-features = false, features = ["wasm"] }
+zstd-sys = { version = "2", features = ["wasm"] }
 
 [dependencies.web-sys]
 version = "=0.3.91"
