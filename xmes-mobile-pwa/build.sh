@@ -14,4 +14,4 @@ export CC_wasm32_unknown_unknown="$PWD/clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu
 dx build --release --web
 
 mkdir -p xmes-mobile-pwa/target/dx/xmes/release/web/public
-mv -r target/dx/xmes/release/web/public/. xmes-mobile-pwa/target/dx/xmes/release/web/public/
+mv target/dx/xmes/release/web/public/. xmes-mobile-pwa/target/dx/xmes/release/web/public/
