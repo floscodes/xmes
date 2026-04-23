@@ -6,9 +6,9 @@ rustup target add wasm32-unknown-unknown
 
 cargo install dioxus-cli
 
-which clang clang-14 clang-15 clang-16 clang-17 clang-18 2>/dev/null || echo "no clang found"
-ls /usr/bin/clang* 2>/dev/null || echo "no clang in /usr/bin"
-
-sudo apt install -y clang libzstd-dev
+curl -L https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.6/clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu-22.04.tar.xz | tar -xJ
+export PATH="$PWD/clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu-22.04/bin:$PATH"
+export CC="$PWD/clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu-22.04/bin/clang"
+export CC_wasm32_unknown_unknown="$PWD/clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu-22.04/bin/clang"
 
 dx build --release --web
