@@ -11,7 +11,7 @@ export PATH="$PWD/clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu-22.04/bin:$PATH"
 export CC="$PWD/clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu-22.04/bin/clang"
 export CC_wasm32_unknown_unknown="$PWD/clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu-22.04/bin/clang"
 
-dx build --release --web
+PRODUCTION=1 dx build --release --web
 
 mkdir -p target/dx/xmes-mobile-pwa/release/web
 mv /opt/buildhome/repo/target/dx/xmes-mobile-pwa/release/web/public target/dx/xmes-mobile-pwa/release/web/public

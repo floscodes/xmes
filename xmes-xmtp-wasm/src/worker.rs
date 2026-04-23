@@ -36,6 +36,7 @@ pub struct IdentityListUpdate {
 struct WorkerState {
     identities: Vec<Identity>,
     active: usize,
+    env: Env,
 }
 
 impl WorkerState {
@@ -48,12 +49,6 @@ impl WorkerState {
 }
 
 type StateRef = Rc<RefCell<WorkerState>>;
-
-const XMTP_HOST: &str = if option_env!("PRODUCTION").is_some() {
-    crate::DEFAULT_PRODUCTION_ENV_HOST
-} else {
-    crate::DEFAULT_DEV_ENV_HOST
-};
 
 /// Minimal JS bootstrap loaded inside the Dedicated Worker.
 /// Patches `fetch` so origin-relative paths resolve against the page
@@ -95,6 +90,7 @@ async fn worker_run() {
     let state: StateRef = Rc::new(RefCell::new(WorkerState {
         identities: vec![],
         active: 0,
+        env: Env::Dev(None),
     }));
 
     let scope_cb  = scope.clone();
@@ -107,7 +103,7 @@ async fn worker_run() {
         let state    = state_cb.clone();
 
         match msg_type.as_str() {
-            "init" => {
+            "init_dev_env" | "init_production_env" | "init_local_env" => {
                 let arr = Reflect::get(&data, &"key_hexes".into())
                     .ok()
                     .and_then(|v| v.dyn_into::<js_sys::Array>().ok())
@@ -115,7 +111,15 @@ async fn worker_run() {
                 let key_hexes: Vec<String> = (0..arr.length())
                     .filter_map(|i| arr.get(i).as_string())
                     .collect();
-                spawn_local(handle_init(scope, state, key_hexes));
+                let env = match msg_type.as_str() {
+                    "init_production_env" => Env::Production(None),
+                    "init_local_env"      => {
+                        let host = str_field(&data, "host");
+                        Env::Local(host)
+                    }
+                    _                     => Env::Dev(None),
+                };
+                spawn_local(handle_init(env, scope, state, key_hexes));
             }
             "create_identity" => spawn_local(handle_create_identity(scope, state)),
             "remove_identity" => {
@@ -216,11 +220,11 @@ async fn worker_run() {
 // ── message handlers ──────────────────────────────────────────────────────────
 
 async fn handle_init(
+    env: Env,
     scope: web_sys::DedicatedWorkerGlobalScope,
     state: StateRef,
     key_hexes: Vec<String>,
 ) {
-    let env = Env::Dev(Some(XMTP_HOST.to_string()));
 
     let mut identities: Vec<Identity> = Vec::new();
     for hex in key_hexes {
@@ -232,11 +236,12 @@ async fn handle_init(
 
     // Always have at least one identity
     if identities.is_empty() {
-        if let Some(id) = new_identity().await {
+        if let Some(id) = new_identity(env.clone()).await {
             identities.push(id);
         }
     }
 
+    state.borrow_mut().env        = env;
     state.borrow_mut().identities = identities;
     state.borrow_mut().active     = 0;
 
@@ -247,7 +252,8 @@ async fn handle_create_identity(
     scope: web_sys::DedicatedWorkerGlobalScope,
     state: StateRef,
 ) {
-    if let Some(id) = new_identity().await {
+    let env = state.borrow().env.clone();
+    if let Some(id) = new_identity(env).await {
         let new_idx = {
             let mut s = state.borrow_mut();
             s.identities.push(id);
@@ -280,7 +286,8 @@ async fn handle_remove_identity(
     }
     // Always keep at least one identity.
     if state.borrow().identities.is_empty() {
-        if let Some(id) = new_identity().await {
+        let env = state.borrow().env.clone();
+        if let Some(id) = new_identity(env).await {
             state.borrow_mut().identities.push(id);
         }
     }
@@ -521,8 +528,8 @@ async fn handle_send_message(
     }
 }
 
-async fn new_identity() -> Option<Identity> {
-    Identity::new(Env::Dev(Some(XMTP_HOST.to_string()))).await.ok()
+async fn new_identity(env: Env) -> Option<Identity> {
+    Identity::new(env).await.ok()
 }
 
 // ── host-side ─────────────────────────────────────────────────────────────────
@@ -665,8 +672,12 @@ pub fn spawn_xmtp_worker(
         let data = e.data();
         match str_field(&data, "type").as_str() {
             "worker_ready" => {
-                // Send all stored keys to the worker for initialisation.
-                let msg = typed_obj("init");
+                let msg_type = if option_env!("PRODUCTION").is_some() {
+                    "init_production_env"
+                } else {
+                    "init_dev_env"
+                };
+                let msg = typed_obj(msg_type);
                 let arr = js_sys::Array::new();
                 for hex in &key_hexes {
                     arr.push(&JsValue::from_str(hex));
