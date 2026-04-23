@@ -5,7 +5,7 @@ authors = ["flopetautschnig (floscodes) <mail@floscodes.net>"]
 edition = "2024"
 
 [[bin]]
-name = "xmes"
+name = "xmes-mobile-pwa"
 path = "src/main.rs"
 
 [dependencies]
