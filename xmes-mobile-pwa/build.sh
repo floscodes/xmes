@@ -1,7 +1,3 @@
-pwd
-ls -la
-exit 0
-
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 
 source "$HOME/.cargo/env"
@@ -17,5 +13,5 @@ export CC_wasm32_unknown_unknown="$PWD/clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu
 
 dx build --release --web
 
-mkdir -p xmes-mobile-pwa/target/dx/xmes/release/web/public
-mv target/dx/xmes-mobile-pwa/release/web/public/. xmes-mobile-pwa/target/dx/xmes-mobile-pwa/release/web/public/
+mkdir -p target/dx/xmes-mobile-pwa/release/web
+mv /opt/buildhome/repo/target/dx/xmes-mobile-pwa/release/web/public target/dx/xmes-mobile-pwa/release/web/public
