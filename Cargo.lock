@@ -10412,6 +10412,7 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
+ "zstd",
 ]
 
 [[package]]

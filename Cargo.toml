@@ -4,6 +4,3 @@ members = ["xmes-xmtp-wasm", "xmes-mobile-pwa"]
 
 [workspace.dependencies]
 xmes-xmtp-wasm = { path = "xmes-xmtp-wasm" }
-
-[patch.crates-io]
-async-compression = { version = "0.4", default-features = false, features = ["futures-io"] }
