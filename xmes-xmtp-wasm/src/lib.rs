@@ -53,8 +53,8 @@ use bindings_wasm::content_types::decoded_message_content::DecodedMessageContent
 use bindings_wasm::identity::{Identifier, IdentifierKind};
 use bindings_wasm::inbox_id::generate_inbox_id;
 
-const DEFAULT_DEV_ENV_HOST: &'static str = "https://api.dev.xmtp.network:5558";
-const DEFAULT_PRODUCTION_ENV_HOST: &'static str = "https://api.production.xmtp.network:5558";
+pub(crate) const DEFAULT_DEV_ENV_HOST: &str = "https://api.dev.xmtp.network:5558";
+pub(crate) const DEFAULT_PRODUCTION_ENV_HOST: &str = "https://api.production.xmtp.network:5558";
 
 #[derive(Clone)]
 pub struct Identity {

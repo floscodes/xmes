@@ -49,7 +49,11 @@ impl WorkerState {
 
 type StateRef = Rc<RefCell<WorkerState>>;
 
-const XMTP_HOST: &str = "https://xmtp-dev.floscodes.net";
+const XMTP_HOST: &str = if option_env!("PRODUCTION").is_some() {
+    crate::DEFAULT_PRODUCTION_ENV_HOST
+} else {
+    crate::DEFAULT_DEV_ENV_HOST
+};
 
 /// Minimal JS bootstrap loaded inside the Dedicated Worker.
 /// Patches `fetch` so origin-relative paths resolve against the page
