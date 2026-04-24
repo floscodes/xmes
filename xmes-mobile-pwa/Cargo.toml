@@ -15,7 +15,11 @@ dioxus-sdk = { version = "0.7.0", features = ["storage"] }
 xmes-xmtp-wasm.workspace = true
 js-sys = "0.3"
 wasm-bindgen = "0.2"
-web-sys = { version = "0.3", features = ["Window", "Document", "Element", "HtmlElement"] }
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = ["Window", "Document", "Element", "HtmlElement", "Storage"] }
+aes-gcm = "0.10"
+getrandom = { version = "0.2", features = ["js"] }
+base64 = "0.22"
 gloo-timers = { version = "0.3", features = ["futures"] }
 
 [features]
