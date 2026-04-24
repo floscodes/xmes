@@ -7,6 +7,7 @@ use dioxus::prelude::*;
 use dioxus_sdk::storage::{LocalStorage, use_storage};
 use xmes_xmtp_wasm::{
     ConversationSummary,
+    Env,
     IdentityInfo,
     IdentityListUpdate,
     MemberInfo,
@@ -119,7 +120,14 @@ fn App() -> Element {
             .map(json_to_keys)
             .unwrap_or_default();
 
+        let env = if option_env!("PRODUCTION").is_some() {
+            Env::Production(None)
+        } else {
+            Env::Dev(None)
+        };
+
         let handle = spawn_xmtp_worker(
+            env,
             key_hexes,
             move |update: IdentityListUpdate| {
                 // Persist all keys as JSON array.

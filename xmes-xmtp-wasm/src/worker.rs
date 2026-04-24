@@ -673,6 +673,7 @@ impl XmtpHandle {
 /// * `on_identity_update` – called whenever the identity list or active changes.
 /// * `on_conversations` – called whenever a conversation list arrives.
 pub fn spawn_xmtp_worker(
+    env: Env,
     key_hexes: Vec<String>,
     on_identity_update: impl Fn(IdentityListUpdate) + 'static,
     on_conversations:   impl Fn(Vec<ConversationSummary>) + 'static,
@@ -693,12 +694,15 @@ pub fn spawn_xmtp_worker(
         let data = e.data();
         match str_field(&data, "type").as_str() {
             "worker_ready" => {
-                let msg_type = if option_env!("PRODUCTION").is_some() {
-                    "init_production_env"
-                } else {
-                    "init_dev_env"
+                let (msg_type, host) = match &env {
+                    Env::Production(_) => ("init_production_env", None),
+                    Env::Local(h)      => ("init_local_env", Some(h.clone())),
+                    Env::Dev(_)        => ("init_dev_env", None),
                 };
                 let msg = typed_obj(msg_type);
+                if let Some(h) = host {
+                    set_str(&msg, "host", &h);
+                }
                 let arr = js_sys::Array::new();
                 for hex in &key_hexes {
                     arr.push(&JsValue::from_str(hex));
