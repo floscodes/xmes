@@ -1,6 +1,7 @@
 #![recursion_limit = "256"]
 
 mod components;
+mod crypto_store;
 
 use std::sync::Arc;
 use dioxus::prelude::*;
@@ -115,10 +116,13 @@ fn App() -> Element {
             return;
         }
 
-        // Parse stored keys; supports legacy single-key format.
-        let key_hexes = signing_keys.peek().as_deref()
-            .map(json_to_keys)
-            .unwrap_or_default();
+        // Decrypt stored keys; falls back to plaintext for migration from older versions.
+        let key_hexes = if let Some(raw) = signing_keys.peek().clone() {
+            let plaintext = crypto_store::decrypt(&raw).unwrap_or(raw);
+            json_to_keys(&plaintext)
+        } else {
+            vec![]
+        };
 
         let env = if option_env!("PRODUCTION").is_some() {
             Env::Production(None)
@@ -130,10 +134,13 @@ fn App() -> Element {
             env,
             key_hexes,
             move |update: IdentityListUpdate| {
-                // Persist all keys as JSON array.
+                // Encrypt and persist all keys as JSON array.
                 let keys: Vec<String> = update.identities.iter().map(|i| i.key_hex.clone()).collect();
+                let json = keys_to_json(&keys);
                 let mut sk = signing_keys;
-                sk.set(Some(keys_to_json(&keys)));
+                if let Some(encrypted) = crypto_store::encrypt(&json) {
+                    sk.set(Some(encrypted));
+                }
 
                 // Active identity.
                 let active = update.identities.get(update.active_idx).cloned();
