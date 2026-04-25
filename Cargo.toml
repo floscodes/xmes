@@ -4,3 +4,6 @@ members = ["xmes-xmtp-wasm", "xmes-mobile-pwa"]
 
 [workspace.dependencies]
 xmes-xmtp-wasm = { path = "xmes-xmtp-wasm" }
+
+[patch."https://github.com/xmtp/libxmtp"]
+xmtp_configuration = { path = "patches/xmtp_configuration" }

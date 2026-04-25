@@ -1,33 +1,37 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { Buffer } from 'node:buffer';
+
 const UPSTREAMS: Record<string, string> = {
     'xmtp-dev-api.xmes.org':        'https://api.dev.xmtp.network:5558',
     'xmtp-production-api.xmes.org': 'https://api.production.xmtp.network:5558',
 };
 
-export default async function handler(req: Request): Promise<Response> {
-    const host = (req.headers.get('host') ?? '').split(':')[0];
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+    const host = (req.headers['host'] ?? '').split(':')[0];
     const upstream = UPSTREAMS[host];
 
     if (!upstream) {
-        return new Response('Unknown host', { status: 404 });
+        return res.status(404).send('Unknown host');
     }
 
-    const { pathname, search } = new URL(req.url);
-    const target = `${upstream}${pathname}${search}`;
+    const target = `${upstream}${req.url}`;
 
-    const headers = new Headers(req.headers);
-    headers.set('host', new URL(upstream).host);
+    const headers: Record<string, string> = {};
+    for (const [key, value] of Object.entries(req.headers)) {
+        if (value) headers[key] = Array.isArray(value) ? value[0] : value;
+    }
+    headers['host'] = new URL(upstream).host;
 
-    const res = await fetch(target, {
+    const response = await fetch(target, {
         method: req.method,
         headers,
-        body: req.method !== 'GET' && req.method !== 'HEAD' ? req.body : undefined,
+        body: req.method !== 'GET' && req.method !== 'HEAD' ? req : undefined,
         // @ts-ignore
         duplex: 'half',
     });
 
-    return new Response(res.body, {
-        status:     res.status,
-        statusText: res.statusText,
-        headers:    res.headers,
-    });
+    res.status(response.status);
+    response.headers.forEach((value, key) => res.setHeader(key, value));
+    const buffer = await response.arrayBuffer();
+    res.send(Buffer.from(buffer));
 }

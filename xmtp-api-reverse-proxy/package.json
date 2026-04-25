@@ -1,0 +1,8 @@
+{
+    "dependencies": {
+        "@vercel/node": "latest"
+    },
+    "devDependencies": {
+        "@types/node": "latest"
+    }
+}
