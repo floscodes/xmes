@@ -1,0 +1,4 @@
+//! Test constants/configuration for API
+
+/// the max page size for queries
+pub const MAX_PAGE_SIZE: u32 = 20;

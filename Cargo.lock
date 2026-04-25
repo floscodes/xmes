@@ -1166,13 +1166,13 @@ dependencies = [
  "xmtp-workspace-hack",
  "xmtp_api",
  "xmtp_api_d14n",
- "xmtp_common",
+ "xmtp_common 1.10.0 (git+https://github.com/xmtp/libxmtp)",
  "xmtp_configuration",
  "xmtp_content_types",
- "xmtp_cryptography",
+ "xmtp_cryptography 1.10.0 (git+https://github.com/xmtp/libxmtp)",
  "xmtp_db",
  "xmtp_id",
- "xmtp_macro",
+ "xmtp_macro 1.10.0 (git+https://github.com/xmtp/libxmtp)",
  "xmtp_mls",
  "xmtp_proto",
 ]
@@ -10387,12 +10387,16 @@ checksum = "b9cc00251562a284751c9973bace760d86c0276c471b4be569fe6b068ee97a56"
 name = "xmes-mobile-pwa"
 version = "0.1.0"
 dependencies = [
+ "aes-gcm",
+ "base64",
  "dioxus",
  "dioxus-primitives",
  "dioxus-sdk",
+ "getrandom 0.2.17",
  "gloo-timers 0.3.0",
  "js-sys",
  "wasm-bindgen",
+ "wasm-bindgen-futures",
  "web-sys",
  "xmes-xmtp-wasm",
 ]
@@ -10434,7 +10438,7 @@ dependencies = [
  "tracing",
  "xmtp-workspace-hack",
  "xmtp_api_d14n",
- "xmtp_common",
+ "xmtp_common 1.10.0 (git+https://github.com/xmtp/libxmtp)",
  "xmtp_id",
  "xmtp_proto",
 ]
@@ -10467,9 +10471,9 @@ dependencies = [
  "url",
  "xmtp-workspace-hack",
  "xmtp_api_grpc",
- "xmtp_common",
+ "xmtp_common 1.10.0 (git+https://github.com/xmtp/libxmtp)",
  "xmtp_configuration",
- "xmtp_cryptography",
+ "xmtp_cryptography 1.10.0 (git+https://github.com/xmtp/libxmtp)",
  "xmtp_id",
  "xmtp_proto",
 ]
@@ -10494,7 +10498,7 @@ dependencies = [
  "tracing",
  "url",
  "xmtp-workspace-hack",
- "xmtp_common",
+ "xmtp_common 1.10.0 (git+https://github.com/xmtp/libxmtp)",
  "xmtp_configuration",
  "xmtp_proto",
 ]
@@ -10523,10 +10527,39 @@ dependencies = [
  "tracing",
  "wasm-bindgen-test",
  "xmtp-workspace-hack",
- "xmtp_common",
+ "xmtp_common 1.10.0 (git+https://github.com/xmtp/libxmtp)",
  "xmtp_db",
  "xmtp_mls_common",
  "xmtp_proto",
+]
+
+[[package]]
+name = "xmtp_common"
+version = "1.10.0"
+source = "git+https://github.com/xmtp/libxmtp?rev=171ca8e9f17e6c70be15f4fb8f35409402c331e5#171ca8e9f17e6c70be15f4fb8f35409402c331e5"
+dependencies = [
+ "async-trait",
+ "const-hex",
+ "const_panic",
+ "ctor",
+ "fdlimit",
+ "futures",
+ "getrandom 0.4.2",
+ "gloo-timers 0.3.0",
+ "js-sys",
+ "rand 0.10.0",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-stream",
+ "tokio_with_wasm",
+ "tracing",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "web-time",
+ "xmtp-workspace-hack",
+ "xmtp_cryptography 1.10.0 (git+https://github.com/xmtp/libxmtp?rev=171ca8e9f17e6c70be15f4fb8f35409402c331e5)",
+ "xmtp_macro 1.10.0 (git+https://github.com/xmtp/libxmtp?rev=171ca8e9f17e6c70be15f4fb8f35409402c331e5)",
 ]
 
 [[package]]
@@ -10555,19 +10588,17 @@ dependencies = [
  "web-sys",
  "web-time",
  "xmtp-workspace-hack",
- "xmtp_cryptography",
- "xmtp_macro",
+ "xmtp_cryptography 1.10.0 (git+https://github.com/xmtp/libxmtp)",
+ "xmtp_macro 1.10.0 (git+https://github.com/xmtp/libxmtp)",
 ]
 
 [[package]]
 name = "xmtp_configuration"
 version = "1.10.0"
-source = "git+https://github.com/xmtp/libxmtp#171ca8e9f17e6c70be15f4fb8f35409402c331e5"
 dependencies = [
  "openmls",
- "xmtp-workspace-hack",
- "xmtp_common",
- "xmtp_cryptography",
+ "xmtp_common 1.10.0 (git+https://github.com/xmtp/libxmtp?rev=171ca8e9f17e6c70be15f4fb8f35409402c331e5)",
+ "xmtp_cryptography 1.10.0 (git+https://github.com/xmtp/libxmtp?rev=171ca8e9f17e6c70be15f4fb8f35409402c331e5)",
 ]
 
 [[package]]
@@ -10587,8 +10618,36 @@ dependencies = [
  "thiserror 2.0.18",
  "tracing",
  "xmtp-workspace-hack",
- "xmtp_common",
+ "xmtp_common 1.10.0 (git+https://github.com/xmtp/libxmtp)",
  "xmtp_proto",
+]
+
+[[package]]
+name = "xmtp_cryptography"
+version = "1.10.0"
+source = "git+https://github.com/xmtp/libxmtp?rev=171ca8e9f17e6c70be15f4fb8f35409402c331e5#171ca8e9f17e6c70be15f4fb8f35409402c331e5"
+dependencies = [
+ "alloy",
+ "const-hex",
+ "ctor",
+ "ed25519-dalek",
+ "futures-timer",
+ "getrandom 0.2.17",
+ "getrandom 0.3.4",
+ "getrandom 0.4.2",
+ "libcrux-ed25519 0.0.7",
+ "openmls",
+ "openmls_basic_credential",
+ "openmls_traits",
+ "rand 0.10.0",
+ "rand_chacha 0.10.0",
+ "rustls",
+ "serde",
+ "sha2",
+ "thiserror 2.0.18",
+ "tls_codec",
+ "xmtp-workspace-hack",
+ "zeroize",
 ]
 
 [[package]]
@@ -10652,7 +10711,7 @@ dependencies = [
  "wasm-bindgen",
  "web-sys",
  "xmtp-workspace-hack",
- "xmtp_common",
+ "xmtp_common 1.10.0 (git+https://github.com/xmtp/libxmtp)",
  "xmtp_configuration",
  "xmtp_content_types",
  "xmtp_proto",
@@ -10685,10 +10744,22 @@ dependencies = [
  "tracing",
  "url",
  "xmtp-workspace-hack",
- "xmtp_common",
+ "xmtp_common 1.10.0 (git+https://github.com/xmtp/libxmtp)",
  "xmtp_configuration",
- "xmtp_cryptography",
+ "xmtp_cryptography 1.10.0 (git+https://github.com/xmtp/libxmtp)",
  "xmtp_proto",
+]
+
+[[package]]
+name = "xmtp_macro"
+version = "1.10.0"
+source = "git+https://github.com/xmtp/libxmtp?rev=171ca8e9f17e6c70be15f4fb8f35409402c331e5#171ca8e9f17e6c70be15f4fb8f35409402c331e5"
+dependencies = [
+ "num_cpus",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+ "xmtp-workspace-hack",
 ]
 
 [[package]]
@@ -10750,13 +10821,13 @@ dependencies = [
  "xmtp_api_d14n",
  "xmtp_api_grpc",
  "xmtp_archive",
- "xmtp_common",
+ "xmtp_common 1.10.0 (git+https://github.com/xmtp/libxmtp)",
  "xmtp_configuration",
  "xmtp_content_types",
- "xmtp_cryptography",
+ "xmtp_cryptography 1.10.0 (git+https://github.com/xmtp/libxmtp)",
  "xmtp_db",
  "xmtp_id",
- "xmtp_macro",
+ "xmtp_macro 1.10.0 (git+https://github.com/xmtp/libxmtp)",
  "xmtp_mls_common",
  "xmtp_proto",
  "zeroize",
@@ -10774,9 +10845,9 @@ dependencies = [
  "thiserror 2.0.18",
  "tls_codec",
  "xmtp-workspace-hack",
- "xmtp_common",
+ "xmtp_common 1.10.0 (git+https://github.com/xmtp/libxmtp)",
  "xmtp_configuration",
- "xmtp_cryptography",
+ "xmtp_cryptography 1.10.0 (git+https://github.com/xmtp/libxmtp)",
  "xmtp_db",
  "xmtp_id",
  "xmtp_proto",
@@ -10815,7 +10886,7 @@ dependencies = [
  "walkdir",
  "wasm-bindgen-test",
  "xmtp-workspace-hack",
- "xmtp_common",
+ "xmtp_common 1.10.0 (git+https://github.com/xmtp/libxmtp)",
  "xmtp_configuration",
  "xshell",
 ]

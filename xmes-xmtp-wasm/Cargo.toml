@@ -25,6 +25,7 @@ features = [
     "DedicatedWorkerGlobalScope",
     "HtmlScriptElement",
     "MessageEvent",
+    "console",
     "Url",
     "Window",
     "Worker",

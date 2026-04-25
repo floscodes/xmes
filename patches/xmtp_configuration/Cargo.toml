@@ -1,0 +1,16 @@
+[package]
+name = "xmtp_configuration"
+description = "global configuration for xmtp crates (xmes patch: PQ key packages disabled)"
+version = "1.10.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[dependencies]
+openmls = { git = "https://github.com/xmtp/openmls", rev = "42f1479cdb06727da98132dfc2cc3959f2c66a14", default-features = false, features = ["extensions-draft-08"] }
+xmtp_common = { git = "https://github.com/xmtp/libxmtp", rev = "171ca8e9f17e6c70be15f4fb8f35409402c331e5" }
+xmtp_cryptography = { git = "https://github.com/xmtp/libxmtp", rev = "171ca8e9f17e6c70be15f4fb8f35409402c331e5" }
+
+[features]
+test-utils = []
+dev = []
