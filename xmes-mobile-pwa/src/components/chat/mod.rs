@@ -2,7 +2,6 @@ use dioxus::prelude::*;
 use js_sys::Date;
 use xmes_xmtp_wasm::{ConversationSummary, IdentityInfo, MemberInfo, MessageInfo, XmtpHandle};
 use crate::View;
-use crate::components::add_members::AddMembersSheet;
 
 fn av_class(name: &str) -> &'static str {
     let idx = name.bytes().fold(0usize, |a, b| a.wrapping_add(b as usize)) % 8;
@@ -50,7 +49,7 @@ fn copy_to_clipboard(text: String, mut copied: Signal<bool>) {
 
 #[component]
 fn CopyBtn(text: String) -> Element {
-    let mut copied = use_signal(|| false);
+    let copied = use_signal(|| false);
     rsx! {
         button {
             class: "copy-btn",
@@ -93,53 +92,108 @@ fn role_class(role: u8) -> &'static str {
     }
 }
 
-/// Bottom sheet showing all group members and an "Add Member" option.
+/// Bottom sheet showing all group members, with sticky header (name + rename) and sticky add-member footer.
 #[component]
-fn ChatMembersSheet(
+fn ChatGroupSettingsSheet(
     conversation_id: String,
+    conv_name: Signal<String>,
     members: Vec<MemberInfo>,
     own_inbox_id: String,
     xmtp: Signal<Option<XmtpHandle>>,
     on_close: EventHandler<()>,
-    #[props(default = false)]
-    start_adding: bool,
 ) -> Element {
-    let mut show_add    = use_signal(move || start_adding);
-    let mut add_input   = use_signal(|| String::new());
-    // inbox_id of the member whose context menu is open
-    let mut menu_open: Signal<Option<String>> = use_signal(|| None);
-
-    let member_label = if members.len() == 1 { "1 Member".to_string() }
-                       else { format!("{} Members", members.len()) };
+    let mut add_input:    Signal<String>        = use_signal(|| String::new());
+    let mut menu_open:    Signal<Option<String>> = use_signal(|| None);
+    let mut show_rename:  Signal<bool>           = use_signal(|| false);
+    let mut rename_input: Signal<String>         = use_signal(move || conv_name.peek().clone());
 
     let own_role = members.iter()
         .find(|m| m.inbox_id == own_inbox_id)
         .map(|m| m.role)
         .unwrap_or(0);
 
-    // Focus the add-member input whenever it becomes visible
-    use_effect(move || {
-        if show_add() {
-            if let Some(win) = web_sys::window() {
-                if let Some(doc) = win.document() {
-                    if let Ok(Some(el)) = doc.query_selector(".add-member-input") {
-                        let html_el: Option<web_sys::HtmlElement> = wasm_bindgen::JsCast::dyn_into(el).ok();
-                        if let Some(e) = html_el { let _ = e.focus(); }
-                    }
-                }
-            }
-        }
-    });
+    let can_rename = own_role >= 1;
 
     rsx! {
         div {
             class: "sheet-backdrop",
             onclick: move |_| on_close.call(()),
         }
-        div { class: "identity-sheet",
-            // title row
-            div { class: "sheet-header",
-                span { class: "sheet-title", "{member_label}" }
+        div { class: "identity-sheet members-sheet",
+
+            // ── Sticky header: conversation name + optional rename ──
+            div { class: "members-sheet-header",
+                if show_rename() {
+                    // Inline rename input
+                    input {
+                        class: "members-rename-input",
+                        r#type: "text",
+                        value: "{rename_input}",
+                        oninput: move |e| rename_input.set(e.value()),
+                        onkeydown: {
+                            let conv_id = conversation_id.clone();
+                            move |e: Event<KeyboardData>| {
+                                if e.data().code().to_string() == "Enter" {
+                                    let name = rename_input.read().trim().to_string();
+                                    if !name.is_empty() {
+                                        conv_name.set(name.clone());
+                                        if let Some(h) = xmtp.peek().as_ref() {
+                                            h.request_update_group_name(&conv_id, &name);
+                                        }
+                                    }
+                                    show_rename.set(false);
+                                }
+                                if e.data().code().to_string() == "Escape" {
+                                    rename_input.set(conv_name.peek().clone());
+                                    show_rename.set(false);
+                                }
+                            }
+                        },
+                    }
+                    button {
+                        class: "members-rename-confirm",
+                        disabled: rename_input.read().trim().is_empty(),
+                        onclick: {
+                            let conv_id = conversation_id.clone();
+                            move |_| {
+                                let name = rename_input.read().trim().to_string();
+                                if !name.is_empty() {
+                                    conv_name.set(name.clone());
+                                    if let Some(h) = xmtp.peek().as_ref() {
+                                        h.request_update_group_name(&conv_id, &name);
+                                    }
+                                }
+                                show_rename.set(false);
+                            }
+                        },
+                        svg {
+                            xmlns: "http://www.w3.org/2000/svg", width: "16", height: "16",
+                            view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
+                            stroke_width: "2.8", stroke_linecap: "round", stroke_linejoin: "round",
+                            polyline { points: "20 6 9 17 4 12" }
+                        }
+                    }
+                } else {
+                    // Name display row
+                    div { class: "members-sheet-name-row",
+                        if can_rename {
+                            button {
+                                class: "member-menu-btn",
+                                title: "Rename group",
+                                onclick: move |_| show_rename.set(true),
+                                svg {
+                                    xmlns: "http://www.w3.org/2000/svg", width: "16", height: "16",
+                                    view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
+                                    stroke_width: "2", stroke_linecap: "round", stroke_linejoin: "round",
+                                    circle { cx: "12", cy: "5",  r: "1" }
+                                    circle { cx: "12", cy: "12", r: "1" }
+                                    circle { cx: "12", cy: "19", r: "1" }
+                                }
+                            }
+                        }
+                        span { class: "members-sheet-title", "{conv_name()}" }
+                    }
+                }
                 button {
                     class: "sheet-close-btn",
                     onclick: move |_| on_close.call(()),
@@ -153,8 +207,8 @@ fn ChatMembersSheet(
                 }
             }
 
-            // member list
-            div { class: "sheet-addr-list",
+            // ── Scrollable member list ─────────────────────────────
+            div { class: "sheet-addr-list members-sheet-list",
                 for m in members.iter() {
                     {
                         let m = m.clone();
@@ -198,7 +252,6 @@ fn ChatMembersSheet(
                                             }
                                             div { class: "member-dropdown",
                                                 onclick: move |e| e.stop_propagation(),
-                                                // Role actions (super admin only)
                                                 if own_role == 2 {
                                                     if m.role == 0 {
                                                         button {
@@ -261,7 +314,6 @@ fn ChatMembersSheet(
                                                         }
                                                     }
                                                 }
-                                                // Remove (admin and super admin)
                                                 button {
                                                     class: "member-dropdown-item member-dropdown-danger",
                                                     onclick: {
@@ -286,79 +338,54 @@ fn ChatMembersSheet(
                 }
             }
 
-            // Add member section
-            if show_add() {
-                div { class: "add-member-body",
-                    input {
-                        class: "add-member-input",
-                        r#type: "text",
-                        placeholder: "Inbox ID…",
-                        autofocus: true,
-                        value: "{add_input}",
-                        oninput: move |e| add_input.set(e.value()),
-                        onkeydown: {
-                            let conv_id = conversation_id.clone();
-                            move |e: Event<KeyboardData>| {
-                                if e.data().code().to_string() == "Enter" {
-                                    let id = add_input.read().trim().to_string();
-                                    if id.is_empty() { return; }
-                                    add_input.set(String::new());
-                                    show_add.set(false);
-                                    if let Some(h) = xmtp.peek().as_ref() {
-                                        h.request_add_members(&conv_id, &[id]);
-                                    }
-                                    on_close.call(());
-                                }
-                            }
-                        },
-                    }
-                    button {
-                        class: "add-member-btn",
-                        disabled: add_input.read().trim().is_empty(),
-                        onclick: {
-                            let conv_id = conversation_id.clone();
-                            move |_| {
+            // ── Sticky footer: add member ──────────────────────────
+            div { class: "members-sheet-footer",
+                input {
+                    class: "add-member-input",
+                    r#type: "text",
+                    placeholder: "Address / Inbox ID…",
+                    value: "{add_input}",
+                    oninput: move |e| add_input.set(e.value()),
+                    onkeydown: {
+                        let conv_id = conversation_id.clone();
+                        move |e: Event<KeyboardData>| {
+                            if e.data().code().to_string() == "Enter" {
                                 let id = add_input.read().trim().to_string();
                                 if id.is_empty() { return; }
                                 add_input.set(String::new());
-                                show_add.set(false);
                                 if let Some(h) = xmtp.peek().as_ref() {
                                     h.request_add_members(&conv_id, &[id]);
                                 }
                                 on_close.call(());
                             }
-                        },
-                        svg {
-                            xmlns: "http://www.w3.org/2000/svg", width: "16", height: "16",
-                            view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
-                            stroke_width: "2", stroke_linecap: "round", stroke_linejoin: "round",
-                            path { d: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" }
-                            circle { cx: "9", cy: "7", r: "4" }
-                            line { x1: "19", y1: "8", x2: "19", y2: "14" }
-                            line { x1: "22", y1: "11", x2: "16", y2: "11" }
                         }
-                        "Add"
-                    }
+                    },
                 }
-            }
-
-            // FAB to show add-member input
-            if !show_add() {
-                div { class: "sheet-fab-row",
-                    button {
-                        class: "sheet-fab",
-                        title: "Add member",
-                        onclick: move |_| show_add.set(true),
-                        svg {
-                            xmlns: "http://www.w3.org/2000/svg", width: "22", height: "22",
-                            view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
-                            stroke_width: "2.2", stroke_linecap: "round", stroke_linejoin: "round",
-                            path { d: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" }
-                            circle { cx: "9", cy: "7", r: "4" }
-                            line { x1: "19", y1: "8", x2: "19", y2: "14" }
-                            line { x1: "22", y1: "11", x2: "16", y2: "11" }
+                button {
+                    class: "add-member-btn",
+                    disabled: add_input.read().trim().is_empty(),
+                    onclick: {
+                        let conv_id = conversation_id.clone();
+                        move |_| {
+                            let id = add_input.read().trim().to_string();
+                            if id.is_empty() { return; }
+                            add_input.set(String::new());
+                            if let Some(h) = xmtp.peek().as_ref() {
+                                h.request_add_members(&conv_id, &[id]);
+                            }
+                            on_close.call(());
                         }
+                    },
+                    svg {
+                        xmlns: "http://www.w3.org/2000/svg", width: "16", height: "16",
+                        view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
+                        stroke_width: "2", stroke_linecap: "round", stroke_linejoin: "round",
+                        path { d: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" }
+                        circle { cx: "9", cy: "7", r: "4" }
+                        line { x1: "19", y1: "8", x2: "19", y2: "14" }
+                        line { x1: "22", y1: "11", x2: "16", y2: "11" }
                     }
+                    "Add"
                 }
             }
         }
@@ -379,12 +406,10 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
     let mut initial_scroll_done = use_signal(|| false);
     let mut user_scrolled_up   = use_signal(|| false);
     let mut loading            = use_signal(|| true);
-    let mut show_members       = use_signal(|| false);
-    let mut sheet_start_adding = use_signal(|| false);
+    let mut show_members = use_signal(|| false);
+    let mut conv_name     = use_signal(|| conversation.name.clone());
     let conv_id           = conversation.id.clone();
     let own_inbox         = identity_info.read().as_ref().map(|i| i.inbox_id.clone()).unwrap_or_default();
-    let av                = av_class(&conversation.name);
-    let av_text           = initials(&conversation.name);
 
     let member_count      = group_members.read().len();
     let member_label      = if member_count == 1 { "1 Member".to_string() }
@@ -458,9 +483,9 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                     }
                 }
                 div { class: "chat-header-center",
-                    div { class: "chat-header-avatar {av}", "{av_text}" }
+                    div { class: "chat-header-avatar {av_class(&conv_name())}", "{initials(&conv_name())}" }
                     div { class: "chat-header-info",
-                        span { class: "chat-header-name", "{conversation.name}" }
+                        span { class: "chat-header-name", "{conv_name()}" }
                         span { class: "chat-header-sub", "{member_label}" }
                     }
                 }
@@ -468,10 +493,7 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                 button {
                     class: "chat-menu-btn",
                     title: "Group members",
-                    onclick: move |_| {
-                        sheet_start_adding.set(false);
-                        show_members.set(true);
-                    },
+                    onclick: move |_| { show_members.set(true); },
                     svg {
                         xmlns: "http://www.w3.org/2000/svg",
                         width: "20", height: "20",
@@ -487,16 +509,13 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
 
             // ── Members sheet ─────────────────────────────────────
             if show_members() {
-                ChatMembersSheet {
+                ChatGroupSettingsSheet {
                     conversation_id: conversation.id.clone(),
+                    conv_name,
                     members: group_members.read().clone(),
                     own_inbox_id: own_inbox.clone(),
                     xmtp,
-                    start_adding: sheet_start_adding(),
-                    on_close: move |_| {
-                        sheet_start_adding.set(false);
-                        show_members.set(false);
-                    },
+                    on_close: move |_| show_members.set(false),
                 }
             }
 
@@ -541,7 +560,7 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                             } else {
                             div { class: if is_own { "bubble-row own" } else { "bubble-row other" },
                                 if !is_own {
-                                    div { class: "bubble-avatar {av}", "{av_text}" }
+                                    div { class: "bubble-avatar {av_class(&conv_name())}", "{initials(&conv_name())}" }
                                 }
                                 div { class: "bubble-col",
                                     div { class: if is_own { "bubble own" } else { "bubble other" },

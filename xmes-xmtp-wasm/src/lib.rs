@@ -240,12 +240,26 @@ impl Identity {
     pub fn inbox_id(&self) -> String {
         self.inbox_id.clone()
     }
-    pub async fn add_members_to_conversation(&self, conversation_id: String, inbox_ids: Vec<String>) -> Result<()> {
+    pub async fn add_members_to_conversation(&self, conversation_id: String, ids: Vec<String>) -> Result<()> {
         let convo = self.conversations()
             .find_group_by_id(conversation_id)
             .map_err(|_| Error::msg("Conversation not found"))?;
-        convo.add_members(inbox_ids).await
-            .map_err(|e| Error::msg(format!("{e:?}")))?;
+
+        let mut inbox_ids = Vec::new();
+        let mut identifiers = Vec::new();
+        for id in ids {
+            if id.starts_with("0x") || id.starts_with("0X") {
+                identifiers.push(Identifier { identifier: id.to_lowercase(), identifier_kind: IdentifierKind::Ethereum });
+            } else {
+                inbox_ids.push(id);
+            }
+        }
+        if !inbox_ids.is_empty() {
+            convo.add_members(inbox_ids).await.map_err(|e| Error::msg(format!("{e:?}")))?;
+        }
+        if !identifiers.is_empty() {
+            convo.add_members_by_identity(identifiers).await.map_err(|e| Error::msg(format!("{e:?}")))?;
+        }
         Ok(())
     }
 
@@ -313,6 +327,14 @@ impl Identity {
         } else {
             convo.remove_super_admin(inbox_id).await.map_err(|e| Error::msg(format!("{e:?}")))
         }
+    }
+
+    pub async fn update_group_name(&self, conversation_id: String, name: String) -> Result<()> {
+        let convo = self.conversations()
+            .find_group_by_id(conversation_id)
+            .map_err(|_| Error::msg("Conversation not found"))?;
+        convo.update_group_name(name).await
+            .map_err(|e| Error::msg(format!("{e:?}")))
     }
 
     pub async fn fetch_messages(&self, conversation_id: String) -> Result<Vec<MessageInfo>> {

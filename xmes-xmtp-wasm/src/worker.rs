@@ -192,6 +192,11 @@ async fn worker_run() {
                 let add = Reflect::get(&data, &"add".into()).ok().and_then(|v| v.as_bool()).unwrap_or(false);
                 spawn_local(handle_set_super_admin(scope, state, conversation_id, inbox_id, add));
             }
+            "update_group_name" => {
+                let conversation_id = str_field(&data, "conversation_id");
+                let name            = str_field(&data, "name");
+                spawn_local(handle_update_group_name(scope, state, conversation_id, name));
+            }
             "accept_invitation" => {
                 let id = str_field(&data, "id");
                 spawn_local(handle_accept_invitation(scope, state, id));
@@ -497,6 +502,22 @@ async fn handle_set_super_admin(
     }
 }
 
+async fn handle_update_group_name(
+    scope: web_sys::DedicatedWorkerGlobalScope,
+    state: StateRef,
+    conversation_id: String,
+    name: String,
+) {
+    let id = state.borrow().active_clone();
+    match id {
+        Some(id) => match id.update_group_name(conversation_id, name).await {
+            Ok(_)  => handle_list(scope, state).await,
+            Err(e) => post_error(&scope, &e.to_string()),
+        },
+        None => post_error(&scope, "No identity available"),
+    }
+}
+
 async fn handle_list_members(
     scope: web_sys::DedicatedWorkerGlobalScope,
     state: StateRef,
@@ -641,6 +662,13 @@ impl XmtpHandle {
         let msg = typed_obj("send_message");
         set_str(&msg, "conversation_id", conversation_id);
         set_str(&msg, "text", text);
+        self.worker.post_message(&msg).unwrap_throw();
+    }
+
+    pub fn request_update_group_name(&self, conversation_id: &str, name: &str) {
+        let msg = typed_obj("update_group_name");
+        set_str(&msg, "conversation_id", conversation_id);
+        set_str(&msg, "name", name);
         self.worker.post_message(&msg).unwrap_throw();
     }
 
@@ -941,6 +969,7 @@ fn post_error(scope: &web_sys::DedicatedWorkerGlobalScope, msg: &str) {
     set_str(&o, "msg", msg);
     scope.post_message(&o).unwrap_throw();
 }
+
 
 fn typed_obj(msg_type: &str) -> js_sys::Object {
     let o = js_sys::Object::new();
