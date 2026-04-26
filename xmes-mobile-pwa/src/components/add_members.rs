@@ -34,12 +34,12 @@ pub fn AddMembersSheet(
 
             div { class: "add-member-body",
                 p { class: "add-member-hint",
-                    "Enter the XMTP inbox ID of the person you want to add to this conversation."
+                    "Enter the address or inbox ID of the person you want to add."
                 }
                 input {
                     class: "add-member-input",
                     r#type: "text",
-                    placeholder: "Inbox ID…",
+                    placeholder: "Address / Inbox ID…",
                     autofocus: true,
                     value: "{inbox_input}",
                     oninput: move |e| inbox_input.set(e.value()),

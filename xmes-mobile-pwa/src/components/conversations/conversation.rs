@@ -96,6 +96,7 @@ pub fn Convo(
                                 if let Some(h) = xmtp.peek().as_ref() {
                                     h.request_accept_invitation(&inv_id_accept);
                                 }
+                                on_open.call(open_summary.clone());
                             },
                             svg {
                                 xmlns: "http://www.w3.org/2000/svg",
