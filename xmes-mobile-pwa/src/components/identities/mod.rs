@@ -37,7 +37,7 @@ fn copy_to_clipboard(text: String, mut copied: Signal<bool>) {
 /// Small inline copy button. Shows a checkmark for 1.5 s after clicking.
 #[component]
 fn CopyBtn(text: String) -> Element {
-    let mut copied = use_signal(|| false);
+    let copied = use_signal(|| false);
     rsx! {
         button {
             class: "copy-btn",
@@ -82,6 +82,10 @@ pub fn Identities() -> Element {
     let anim           = use_context::<Signal<&'static str>>();
     let confirm        = use_context::<Signal<Option<ConfirmAction>>>();
 
+    let mut fab_menu_open    = use_signal(|| false);
+    let mut show_restore     = use_signal(|| false);
+    let mut show_phrase_for: Signal<Option<Vec<String>>> = use_signal(|| None);
+
     rsx! {
         div { class: "app-shell",
 
@@ -116,22 +120,61 @@ pub fn Identities() -> Element {
                             view,
                             anim,
                             confirm,
+                            show_phrase_for,
                         }
                     }
                 }
             }
         }
 
-        // ── FAB — add new independent identity ──────────────────
-        button {
-            class: "fab",
-            title: "Add new identity",
-            disabled: !identity_ready(),
-            onclick: move |_| {
-                if let Some(h) = xmtp.read().as_ref() {
-                    h.request_create_identity();
+        // ── FAB menu overlay ────────────────────────────────────
+        if fab_menu_open() {
+            div {
+                class: "fab-menu-overlay",
+                onclick: move |_| fab_menu_open.set(false),
+            }
+            div { class: "fab-menu",
+                button {
+                    class: "fab-menu-item",
+                    onclick: move |_| {
+                        fab_menu_open.set(false);
+                        if let Some(h) = xmtp.read().as_ref() {
+                            h.request_create_identity();
+                        }
+                    },
+                    svg {
+                        xmlns: "http://www.w3.org/2000/svg", width: "18", height: "18",
+                        view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
+                        stroke_width: "2.2", stroke_linecap: "round", stroke_linejoin: "round",
+                        path { d: "M12 5v14" }
+                        path { d: "M5 12h14" }
+                    }
+                    span { "Create" }
                 }
-            },
+                button {
+                    class: "fab-menu-item",
+                    onclick: move |_| {
+                        fab_menu_open.set(false);
+                        show_restore.set(true);
+                    },
+                    svg {
+                        xmlns: "http://www.w3.org/2000/svg", width: "18", height: "18",
+                        view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
+                        stroke_width: "2.2", stroke_linecap: "round", stroke_linejoin: "round",
+                        path { d: "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" }
+                        path { d: "M3 3v5h5" }
+                    }
+                    span { "Restore" }
+                }
+            }
+        }
+
+        // ── FAB ─────────────────────────────────────────────────
+        button {
+            class: if fab_menu_open() { "fab fab-open" } else { "fab" },
+            title: "Add identity",
+            disabled: !identity_ready(),
+            onclick: move |_| fab_menu_open.set(!fab_menu_open()),
             svg {
                 xmlns: "http://www.w3.org/2000/svg",
                 width: "22", height: "22",
@@ -140,6 +183,173 @@ pub fn Identities() -> Element {
                 stroke_linecap: "round", stroke_linejoin: "round",
                 path { d: "M12 5v14" }
                 path { d: "M5 12h14" }
+            }
+        }
+
+        // ── Restore sheet ────────────────────────────────────────
+        if show_restore() {
+            RestoreMnemonicSheet {
+                xmtp,
+                on_close: move |_| show_restore.set(false),
+            }
+        }
+
+        // ── Show mnemonic sheet ───────────────────────────────────
+        if let Some(words) = show_phrase_for.read().clone() {
+            ShowMnemonicSheet {
+                words,
+                on_close: move |_| show_phrase_for.set(None),
+            }
+        }
+    }
+}
+
+#[component]
+fn RestoreMnemonicSheet(
+    xmtp: Signal<Option<XmtpHandle>>,
+    on_close: EventHandler<()>,
+) -> Element {
+    let mut words: Signal<[String; 12]> = use_signal(|| std::array::from_fn(|_| String::new()));
+    let all_filled = words.read().iter().all(|w| !w.trim().is_empty());
+
+    rsx! {
+        div { class: "sheet-backdrop", onclick: move |_| on_close.call(()), }
+        div { class: "identity-sheet restore-sheet",
+            div { class: "sheet-handle" }
+            div { class: "sheet-header",
+                span { class: "sheet-title", "Restore Identity" }
+                button {
+                    class: "sheet-close-btn",
+                    onclick: move |_| on_close.call(()),
+                    svg {
+                        xmlns: "http://www.w3.org/2000/svg", width: "14", height: "14",
+                        view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
+                        stroke_width: "2.5", stroke_linecap: "round", stroke_linejoin: "round",
+                        path { d: "M18 6L6 18" }
+                        path { d: "M6 6l12 12" }
+                    }
+                }
+            }
+            div { class: "restore-hint",
+                "Enter your 12-word recovery phrase."
+            }
+            div { class: "mnemonic-grid",
+                for i in 0..12usize {
+                    div { class: "mnemonic-word-wrap",
+                        span { class: "mnemonic-num", "{i + 1}" }
+                        input {
+                            class: "mnemonic-input",
+                            r#type: "text",
+                            autocomplete: "off",
+                            autocorrect: "off",
+                            autocapitalize: "none",
+                            spellcheck: false,
+                            value: "{words.read()[i]}",
+                            oninput: move |e| {
+                                words.write()[i] = e.value().trim().to_lowercase();
+                            },
+                        }
+                    }
+                }
+            }
+            div { class: "sheet-footer",
+                button {
+                    class: "add-member-btn",
+                    disabled: !all_filled,
+                    onclick: move |_| {
+                        let phrase = words.read().join(" ");
+                        if let Some(h) = xmtp.read().as_ref() {
+                            h.request_restore_identity(&phrase);
+                        }
+                        on_close.call(());
+                    },
+                    svg {
+                        xmlns: "http://www.w3.org/2000/svg", width: "16", height: "16",
+                        view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
+                        stroke_width: "2.2", stroke_linecap: "round", stroke_linejoin: "round",
+                        path { d: "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" }
+                        path { d: "M3 3v5h5" }
+                    }
+                    span { "Restore Identity" }
+                }
+            }
+        }
+    }
+}
+
+#[component]
+fn ShowMnemonicSheet(
+    words: Vec<String>,
+    on_close: EventHandler<()>,
+) -> Element {
+    let mut revealed = use_signal(|| false);
+    rsx! {
+        div { class: "sheet-backdrop", onclick: move |_| on_close.call(()), }
+        div { class: "identity-sheet restore-sheet",
+            div { class: "sheet-handle" }
+            div { class: "sheet-header",
+                span { class: "sheet-title", "Recovery Phrase" }
+                button {
+                    class: "sheet-close-btn",
+                    onclick: move |_| on_close.call(()),
+                    svg {
+                        xmlns: "http://www.w3.org/2000/svg", width: "14", height: "14",
+                        view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
+                        stroke_width: "2.5", stroke_linecap: "round", stroke_linejoin: "round",
+                        path { d: "M18 6L6 18" }
+                        path { d: "M6 6l12 12" }
+                    }
+                }
+            }
+
+            // Security warning
+            div { class: "mnemonic-security-warning",
+                svg {
+                    xmlns: "http://www.w3.org/2000/svg", width: "18", height: "18",
+                    view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
+                    stroke_width: "2.2", stroke_linecap: "round", stroke_linejoin: "round",
+                    path { d: "M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" }
+                    line { x1: "12", y1: "9", x2: "12", y2: "13" }
+                    line { x1: "12", y1: "17", x2: "12.01", y2: "17" }
+                }
+                span {
+                    "Never share this phrase with anyone. Anyone with this phrase can take control of your identity. Store it somewhere safe and private."
+                }
+            }
+
+            if words.is_empty() {
+                div { class: "restore-hint",
+                    "No recovery phrase available for this identity. It was created before phrase support was added. Create a new identity to get a recovery phrase."
+                }
+            } else {
+                if !revealed() {
+                    div { class: "mnemonic-reveal-wrap",
+                        button {
+                            class: "mnemonic-reveal-btn",
+                            onclick: move |_| revealed.set(true),
+                            svg {
+                                xmlns: "http://www.w3.org/2000/svg", width: "17", height: "17",
+                                view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
+                                stroke_width: "2.2", stroke_linecap: "round", stroke_linejoin: "round",
+                                path { d: "M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" }
+                                circle { cx: "12", cy: "12", r: "3" }
+                            }
+                            span { "I understand — show the phrase" }
+                        }
+                    }
+                }
+                div { class: "mnemonic-grid",
+                    for (i, word) in words.iter().enumerate() {
+                        div {
+                            class: if revealed() { "mnemonic-word-wrap" } else { "mnemonic-word-wrap mnemonic-blurred" },
+                            span { class: "mnemonic-num", "{i + 1}" }
+                            span { class: "mnemonic-word-text", "{word}" }
+                            if revealed() {
+                                CopyBtn { text: word.clone() }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -155,6 +365,7 @@ fn IdentityCard(
     view: Signal<View>,
     anim: Signal<&'static str>,
     confirm: Signal<Option<ConfirmAction>>,
+    show_phrase_for: Signal<Option<Vec<String>>>,
 ) -> Element {
     let mut offset   = use_signal(|| 0.0f64);
     let mut start_x  = use_signal(|| 0.0f64);
@@ -163,6 +374,11 @@ fn IdentityCard(
     let av          = inbox_avatar(&info.inbox_id);
     let addr_short  = short(&info.primary_address, 8);
     let inbox_short = short(&info.inbox_id, 8);
+    let words: Vec<String> = info.mnemonic.as_deref()
+        .unwrap_or("")
+        .split_whitespace()
+        .map(str::to_string)
+        .collect();
 
     let row_style = format!(
         "transform: translateX({}px); transition: {}; touch-action: pan-y; user-select: none;",
@@ -277,6 +493,25 @@ fn IdentityCard(
                             span { class: "identity-inbox", "{inbox_short}" }
                             CopyBtn { text: info.inbox_id.clone() }
                         }
+                    }
+
+                    // Show recovery phrase button (always visible)
+                    button {
+                        class: "show-phrase-btn",
+                        onpointerdown: move |e| e.stop_propagation(),
+                        onpointerup:   move |e| e.stop_propagation(),
+                        onclick: move |e| {
+                            e.stop_propagation();
+                            show_phrase_for.set(Some(words.clone()));
+                        },
+                        svg {
+                            xmlns: "http://www.w3.org/2000/svg", width: "12", height: "12",
+                            view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
+                            stroke_width: "2.2", stroke_linecap: "round", stroke_linejoin: "round",
+                            rect { x: "3", y: "11", width: "18", height: "11", rx: "2", ry: "2" }
+                            path { d: "M7 11V7a5 5 0 0 1 10 0v4" }
+                        }
+                        span { "Share with other device" }
                     }
                 }
 

@@ -39,6 +39,7 @@ pub struct ConversationSummary {
     pub id: String,
     pub name: String,
     pub last_sender: Option<String>,
+    pub last_sender_inbox_id: Option<String>,
     pub last_message_ns: Option<i64>,
     pub is_pending: bool,
 }
@@ -64,11 +65,22 @@ pub struct Identity {
     env: Env,
     client: Rc<Client>,
     signing_key: SigningKey,
+    mnemonic: Option<String>,
 }
 
 impl Identity {
     pub async fn new(env: Env) -> Result<Identity> {
-        let signer = PrivateKeySigner::random();
+        // Generate random entropy using a throwaway keypair, then derive everything from BIP39.
+        let entropy_key = PrivateKeySigner::random();
+        let entropy_bytes = entropy_key.credential().to_bytes();
+        let mnemonic_obj = bip39::Mnemonic::from_entropy(&entropy_bytes[..16])
+            .map_err(|_| Error::msg("Could not generate mnemonic"))?;
+        let phrase = mnemonic_obj.to_string();
+        let seed = mnemonic_obj.to_seed("");
+        let signing_key = SigningKey::from_bytes(k256::FieldBytes::from_slice(&seed[..32]))
+            .map_err(|_| Error::msg("Invalid signing key from seed"))?;
+        let signer = PrivateKeySigner::from_signing_key(signing_key.clone());
+
         let identifier = Identifier {
             identifier: signer.address().to_string(),
             identifier_kind: IdentifierKind::Ethereum,
@@ -104,7 +116,8 @@ impl Identity {
             inbox_id,
             env,
             client: Rc::new(client),
-            signing_key: signer.credential().clone(),
+            signing_key,
+            mnemonic: Some(phrase),
         })
     }
     async fn register(client: &mut Client, signer: &PrivateKeySigner) -> Result<()> {
@@ -136,9 +149,19 @@ impl Identity {
         Ok(())
     }
 
+    /// Restore an identity from a 12-word BIP39 mnemonic phrase.
+    pub async fn from_mnemonic(phrase: &str, env: Env) -> Result<Self> {
+        let mnemonic = bip39::Mnemonic::parse(phrase)
+            .map_err(|_| Error::msg("Invalid mnemonic phrase"))?;
+        let seed = mnemonic.to_seed("");
+        let key_hex = hex::encode(&seed[..32]);
+        let mut id = Self::from_key_hex(key_hex, None, env).await?;
+        id.mnemonic = Some(phrase.to_string());
+        Ok(id)
+    }
+
     /// Restore an identity from a previously stored private key hex string.
-    /// `address` and `inbox_id` are re-derived from the key — nothing else is stored.
-    pub async fn from_key_hex(hex_str: String, env: Env) -> Result<Self> {
+    pub async fn from_key_hex(hex_str: String, mnemonic: Option<String>, env: Env) -> Result<Self> {
         let key_bytes = hex::decode(&hex_str)
             .map_err(|_| Error::msg("Invalid signing key hex"))?;
         let signing_key = SigningKey::from_bytes(k256::FieldBytes::from_slice(&key_bytes))
@@ -170,12 +193,15 @@ impl Identity {
             Self::register(&mut client, &signer).await?;
         }
 
-        Ok(Identity { address, inbox_id, env, client: Rc::new(client), signing_key })
+        Ok(Identity { address, inbox_id, env, client: Rc::new(client), signing_key, mnemonic })
     }
 
-    /// Serialize to a 64-character hex string (the raw private key bytes).
     pub fn to_key_hex(&self) -> String {
         hex::encode(self.signing_key.to_bytes())
+    }
+
+    pub fn mnemonic(&self) -> Option<&str> {
+        self.mnemonic.as_deref()
     }
 
     pub fn signer(&self) -> PrivateKeySigner {
@@ -545,7 +571,7 @@ impl Identity {
                 .as_deref()
                 .and_then(|inbox_id| addr_map.get(inbox_id))
                 .cloned();
-            ConversationSummary { id: it.id, name: it.name, last_sender, last_message_ns: it.last_message_ns, is_pending: it.is_pending }
+            ConversationSummary { id: it.id, name: it.name, last_sender, last_sender_inbox_id: it.sender_inbox_id, last_message_ns: it.last_message_ns, is_pending: it.is_pending }
         }).collect();
 
         Ok(summaries)

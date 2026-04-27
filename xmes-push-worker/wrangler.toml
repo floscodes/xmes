@@ -1,0 +1,20 @@
+name = "xmes-push-worker"
+main = "src/index.ts"
+compatibility_date = "2024-10-22"
+
+# Create KV namespace with: wrangler kv namespace create SUBSCRIPTIONS
+# Then paste the returned id below.
+[[kv_namespaces]]
+binding = "SUBSCRIPTIONS"
+id = "5327ce6f33ef45288aa8efe742542bc1"
+
+[vars]
+# Public contact for VAPID JWT (mailto: or https:)
+VAPID_SUBJECT = "https://xmes.org"
+
+# Secrets — set via CLI, never commit values:
+#   wrangler secret put VAPID_PUBLIC_KEY
+#   wrangler secret put VAPID_PRIVATE_KEY
+#
+# Generate a key pair with:
+#   node scripts/generate-keys.mjs

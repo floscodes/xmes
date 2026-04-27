@@ -49,6 +49,12 @@ fn main() {
         init_worker_mode();
         return;
     }
+    // Expose push worker URL to JS (read by register-sw.js for push subscription).
+    // Set at startup so it's available before the load event fires.
+    let push_url = option_env!("PUSH_WORKER_URL").unwrap_or("");
+    if !push_url.is_empty() {
+        let _ = js_sys::eval(&format!("window.XMES_PUSH_WORKER_URL='{push_url}'"));
+    }
     dioxus::launch(App);
 }
 
@@ -63,7 +69,6 @@ fn keys_to_json(keys: &[String]) -> String {
 fn json_to_keys(s: &str) -> Vec<String> {
     let trimmed = s.trim();
     if trimmed.starts_with('[') {
-        // JSON array
         trimmed
             .trim_start_matches('[')
             .trim_end_matches(']')
@@ -72,10 +77,32 @@ fn json_to_keys(s: &str) -> Vec<String> {
             .filter(|k| k.len() == 64)
             .collect()
     } else {
-        // Legacy single key
         let k = trimmed.trim_matches('"').to_string();
         if k.len() == 64 { vec![k] } else { vec![] }
     }
+}
+
+/// Parse a JSON array of arbitrary strings (used for mnemonics).
+fn json_to_strings(s: &str) -> Vec<String> {
+    let trimmed = s.trim();
+    if trimmed.starts_with('[') {
+        trimmed
+            .trim_start_matches('[')
+            .trim_end_matches(']')
+            .split(',')
+            .map(|p| p.trim().trim_matches('"').to_string())
+            .collect()
+    } else {
+        vec![]
+    }
+}
+
+/// Serialize a list of optional strings as a JSON array (empty string for None).
+fn mnemonics_to_json(mnemonics: &[Option<String>]) -> String {
+    let items: Vec<String> = mnemonics.iter()
+        .map(|m| format!("\"{}\"", m.as_deref().unwrap_or("")))
+        .collect();
+    format!("[{}]", items.join(","))
 }
 
 #[component]
@@ -83,6 +110,9 @@ fn App() -> Element {
     // `signing_keys` stores a JSON array of private-key hex strings.
     // Legacy single-key values are migrated automatically by `json_to_keys`.
     let signing_keys: Signal<Option<String>> = use_storage::<LocalStorage, _>("signing_keys".to_string(), || None);
+    // `mnemonics_v1` stores a JSON array of BIP39 phrases parallel to signing_keys.
+    // Empty string means no mnemonic for that identity.
+    let mnemonics_storage: Signal<Option<String>> = use_storage::<LocalStorage, _>("mnemonics_v1".to_string(), || None);
 
     let mut xmtp_handle:   Signal<Option<XmtpHandle>>              = use_signal(|| None);
     let conversations:     Signal<Option<Vec<ConversationSummary>>> = use_signal(|| None);
@@ -123,6 +153,12 @@ fn App() -> Element {
         } else {
             vec![]
         };
+        let mnemonics_loaded: Vec<Option<String>> = if let Some(raw) = mnemonics_storage.peek().clone() {
+            let plaintext = crypto_store::decrypt(&raw).unwrap_or(raw);
+            json_to_strings(&plaintext).into_iter().map(|s| if s.is_empty() { None } else { Some(s) }).collect()
+        } else {
+            vec![]
+        };
 
         let env = if option_env!("PRODUCTION").is_some() {
             Env::Production(None)
@@ -133,6 +169,7 @@ fn App() -> Element {
         let handle = spawn_xmtp_worker(
             env,
             key_hexes,
+            mnemonics_loaded,
             move |update: IdentityListUpdate| {
                 // Encrypt and persist all keys as JSON array.
                 let keys: Vec<String> = update.identities.iter().map(|i| i.key_hex.clone()).collect();
@@ -141,9 +178,23 @@ fn App() -> Element {
                 if let Some(encrypted) = crypto_store::encrypt(&json) {
                     sk.set(Some(encrypted));
                 }
+                // Persist mnemonics in parallel.
+                let mnemos: Vec<Option<String>> = update.identities.iter().map(|i| i.mnemonic.clone()).collect();
+                let mnemonic_json = mnemonics_to_json(&mnemos);
+                let mut ms = mnemonics_storage;
+                if let Some(encrypted) = crypto_store::encrypt(&mnemonic_json) {
+                    ms.set(Some(encrypted));
+                }
 
                 // Active identity.
                 let active = update.identities.get(update.active_idx).cloned();
+                // Expose inbox ID to JS so register-sw.js can POST the push subscription.
+                if let Some(ref id) = active {
+                    let _ = js_sys::eval(&format!(
+                        "window.XMES_INBOX_ID='{}'",
+                        id.inbox_id.replace('\'', "\\'")
+                    ));
+                }
                 let mut ii = identity_info;
                 ii.set(active);
 
@@ -177,9 +228,9 @@ fn App() -> Element {
                     View::Chat(c) => Some(c.id),
                     _ => None,
                 };
-                let my_address = identity_info.peek()
+                let my_inbox_id = identity_info.peek()
                     .as_ref()
-                    .map(|i| i.primary_address.to_lowercase());
+                    .map(|i| i.inbox_id.clone());
                 let mut seen = last_seen_ns;
                 let mut unread = unread_ids;
                 for conv in &convos {
@@ -188,9 +239,9 @@ fn App() -> Element {
                         if ns > prev {
                             // Only mark unread when the conversation is not currently open
                             if Some(&conv.id) != open_id.as_ref() {
-                                let last_sender_is_me = conv.last_sender.as_deref()
-                                    .zip(my_address.as_deref())
-                                    .map(|(s, m)| s.to_lowercase() == m)
+                                let last_sender_is_me = my_inbox_id.as_deref()
+                                    .zip(conv.last_sender_inbox_id.as_deref())
+                                    .map(|(me, sender)| me == sender)
                                     .unwrap_or(false);
                                 if !last_sender_is_me {
                                     unread.write().insert(conv.id.clone());

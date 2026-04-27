@@ -452,10 +452,11 @@ body {
 }
 
 .identity-address {
-    font-size: 0.8125rem;
+    font-size: 0.9rem;
     color: var(--text-1);
     font-family: ui-monospace, 'Cascadia Code', 'Fira Mono', monospace;
-    font-weight: 500;
+    font-weight: 700;
+    letter-spacing: 0.01em;
 }
 
 .identity-inbox {
@@ -668,6 +669,16 @@ body {
 
 .bubble-row.own  .bubble-col { align-items: flex-end; }
 .bubble-row.other .bubble-col { align-items: flex-start; }
+
+.bubble-sender {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--primary);
+    font-family: ui-monospace, 'Cascadia Code', 'Fira Mono', monospace;
+    opacity: 0.75;
+    padding: 0 0.25rem;
+    margin-bottom: 0.125rem;
+}
 
 .bubble {
     padding: 0.625rem 0.875rem;
@@ -1498,4 +1509,200 @@ body {
 .convo-name-unread {
     font-weight: 700;
     color: var(--text-1);
+}
+
+/* ── FAB menu ─────────────────────────────────────────────────── */
+
+.fab-menu-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    background: transparent;
+}
+
+.fab-menu {
+    position: fixed;
+    bottom: 5.5rem;
+    right: 1.25rem;
+    z-index: 95;
+    background: var(--surface);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md), 0 0 0 1px var(--border);
+    padding: 0.5rem 0;
+    display: flex;
+    flex-direction: column;
+    min-width: 200px;
+    animation: fab-menu-in 0.15s ease-out;
+}
+
+@keyframes fab-menu-in {
+    from { opacity: 0; transform: translateY(8px) scale(0.96); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.fab-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 1rem 1.25rem;
+    background: none;
+    border: none;
+    color: var(--text-1);
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.12s;
+}
+
+.fab-menu-item:hover { background: var(--primary-light); color: var(--primary); }
+.fab-menu-item svg { flex-shrink: 0; width: 22px; height: 22px; color: var(--primary); }
+
+.fab-open {
+    transform: rotate(45deg) !important;
+}
+
+/* ── Restore mnemonic sheet ───────────────────────────────────── */
+
+.restore-sheet {
+    max-height: 92dvh;
+    overflow-y: auto;
+}
+
+.restore-hint {
+    font-size: 0.82rem;
+    color: var(--text-2);
+    padding: 0 0.75rem 0.75rem;
+}
+
+.mnemonic-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.45rem 0.5rem;
+    padding: 0 0.75rem 1rem;
+}
+
+.mnemonic-word-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: var(--surface-subtle);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 0.3rem 0.4rem;
+    min-width: 0;
+}
+
+.mnemonic-num {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--text-3);
+    min-width: 1rem;
+    flex-shrink: 0;
+    text-align: right;
+    user-select: none;
+}
+
+.mnemonic-input {
+    flex: 1;
+    min-width: 0;
+    width: 0;
+    border: none;
+    background: transparent;
+    font-size: 0.8rem;
+    color: var(--text-1);
+    outline: none;
+    font-family: var(--font);
+    padding: 0;
+}
+
+.mnemonic-word-wrap:focus-within {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+
+.mnemonic-word-wrap:focus-within .mnemonic-num {
+    color: var(--primary);
+}
+
+/* ── Show Recovery Phrase ─────────────────────────────────────── */
+
+.show-phrase-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.4rem;
+    padding: 0.3rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    background: var(--surface-subtle);
+    color: var(--text-2);
+    font-size: 0.72rem;
+    font-weight: 400;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+}
+
+.show-phrase-btn:hover { background: var(--primary-light); color: var(--primary); border-color: var(--primary); }
+.show-phrase-btn svg { flex-shrink: 0; }
+
+/* Security warning banner */
+.mnemonic-security-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    margin: 0 0.75rem 0.9rem;
+    padding: 0.75rem 0.9rem;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: var(--radius-sm);
+    color: #dc2626;
+    font-size: 0.78rem;
+    line-height: 1.45;
+}
+
+.mnemonic-security-warning svg { flex-shrink: 0; margin-top: 1px; }
+
+/* Reveal button */
+.mnemonic-reveal-wrap {
+    display: flex;
+    justify-content: center;
+    padding: 0 0.75rem 0.75rem;
+}
+
+.mnemonic-reveal-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.2rem;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: var(--radius-full);
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+}
+
+.mnemonic-reveal-btn:active { transform: scale(0.97); }
+
+/* Display-mode mnemonic words (read-only) */
+.mnemonic-word-wrap .mnemonic-word-text {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-1);
+    user-select: text;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mnemonic-blurred .mnemonic-word-text {
+    filter: blur(5px);
+    user-select: none;
+    pointer-events: none;
 }

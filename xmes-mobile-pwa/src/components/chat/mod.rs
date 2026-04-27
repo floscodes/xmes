@@ -35,6 +35,23 @@ fn short_addr(s: &str) -> String {
     else { format!("{}…{}", &s[..6], &s[s.len()-4..]) }
 }
 
+/// Fire-and-forget push notify to the push worker.
+/// PUSH_WORKER_URL is set at build time via env var; empty = disabled.
+fn notify_push(member_inbox_ids: &[String], sender_inbox_id: &str, group_name: &str) {
+    let url = option_env!("PUSH_WORKER_URL").unwrap_or("");
+    if url.is_empty() { return; }
+    let ids = member_inbox_ids.iter()
+        .map(|id| format!("\"{}\"", id.replace('"', "\\\"").replace('\\', "\\\\")))
+        .collect::<Vec<_>>()
+        .join(",");
+    let sender  = sender_inbox_id.replace('"', "");
+    let name    = group_name.replace('"', "").replace('\\', "");
+    let _ = js_sys::eval(&format!(
+        r#"fetch("{url}/notify",{{method:"POST",headers:{{"content-type":"application/json"}},body:JSON.stringify({{member_inbox_ids:[{ids}],sender_inbox_id:"{sender}",group_name:"{name}"}})}}).catch(()=>{{}})"#,
+        url=url, ids=ids, sender=sender, name=name
+    ));
+}
+
 fn copy_to_clipboard(text: String, mut copied: Signal<bool>) {
     let _ = js_sys::eval(&format!(
         "navigator.clipboard.writeText('{}')",
@@ -554,6 +571,11 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                         let time    = format_time_ns(msg.sent_at_ns);
                         let text    = msg.text.clone();
                         let deliv   = msg.delivered;
+                        let sender_addr = if !is_own {
+                            group_members.read().iter()
+                                .find(|m| m.inbox_id == msg.sender_inbox_id)
+                                .map(|m| short_addr(&m.address))
+                        } else { None };
                         rsx! {
                             if let Some(ref st) = system_text {
                                 div { class: "system-event", "{st}" }
@@ -563,6 +585,9 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                                     div { class: "bubble-avatar {av_class(&conv_name())}", "{initials(&conv_name())}" }
                                 }
                                 div { class: "bubble-col",
+                                    if let Some(ref addr) = sender_addr {
+                                        span { class: "bubble-sender", "{addr}" }
+                                    }
                                     div { class: if is_own { "bubble own" } else { "bubble other" },
                                         "{text}"
                                     }
@@ -602,7 +627,7 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                     value: "{text_input}",
                     oninput: move |e| text_input.set(e.value()),
                     onkeydown: {
-                        let conv_id = conversation.id.clone();
+                        let conv_id   = conversation.id.clone();
                         let own_inbox2 = own_inbox.clone();
                         move |e: Event<KeyboardData>| {
                             if e.data().code().to_string() == "Enter" {
@@ -623,6 +648,9 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                                 if let Some(h) = xmtp.read().as_ref() {
                                     h.request_send_message(&conv_id, &text);
                                 }
+                                let ids: Vec<String> = group_members.read().iter()
+                                    .map(|m| m.inbox_id.clone()).collect();
+                                notify_push(&ids, &own_inbox2, &conv_name.peek());
                             }
                         }
                     },
@@ -632,7 +660,7 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                     disabled: text_input.read().trim().is_empty(),
                     title: "Send",
                     onclick: {
-                        let conv_id = conversation.id.clone();
+                        let conv_id    = conversation.id.clone();
                         let own_inbox3 = own_inbox.clone();
                         move |_| {
                             let text = text_input.read().trim().to_string();
@@ -652,6 +680,9 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                             if let Some(h) = xmtp.read().as_ref() {
                                 h.request_send_message(&conv_id, &text);
                             }
+                            let ids: Vec<String> = group_members.read().iter()
+                                .map(|m| m.inbox_id.clone()).collect();
+                            notify_push(&ids, &own_inbox3, &conv_name.peek());
                         }
                     },
                     svg {
