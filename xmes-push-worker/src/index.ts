@@ -82,7 +82,7 @@ app.delete('/subscribe', async (c) => {
 // ── POST /notify ─────────────────────────────────────────────────────────────
 
 app.post('/notify', async (c) => {
-  let body: { member_inbox_ids?: string[]; sender_inbox_id?: string; group_name?: string }
+  let body: { member_inbox_ids?: string[]; sender_inbox_id?: string; group_name?: string; title?: string; body?: string }
   try { body = await c.req.json() } catch { return c.json({ error: 'Invalid JSON' }, 400) }
 
   const { member_inbox_ids, sender_inbox_id, group_name } = body
@@ -104,8 +104,8 @@ app.post('/notify', async (c) => {
     try { subscription = JSON.parse(raw) } catch { return }
 
     const payload = JSON.stringify({
-      title: group_name ?? 'xmes',
-      body: 'New message',
+      title: body.title ?? group_name ?? 'xmes',
+      body:  body.body  ?? 'New message',
     })
 
     try {

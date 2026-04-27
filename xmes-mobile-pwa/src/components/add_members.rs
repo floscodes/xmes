@@ -2,9 +2,19 @@ use dioxus::prelude::*;
 use xmes_xmtp_wasm::XmtpHandle;
 use crate::components::qr::QrScannerSheet;
 
+fn notify_push_invite(new_member_inbox_id: &str, group_name: &str) {
+    let id   = new_member_inbox_id.replace('"', "");
+    let name = group_name.replace('"', "").replace('\\', "");
+    let _ = js_sys::eval(&format!(
+        r#"(function(){{var u=window.XMES_PUSH_WORKER_URL;if(!u)return;fetch(u+"/notify",{{method:"POST",headers:{{"content-type":"application/json"}},body:JSON.stringify({{member_inbox_ids:["{id}"],sender_inbox_id:"",group_name:"{name}",title:"Group invitation",body:"You have been added to a group"}})}}).catch(()=>{{}})}})()"#,
+        id=id, name=name
+    ));
+}
+
 #[component]
 pub fn AddMembersSheet(
     conversation_id: String,
+    conversation_name: String,
     xmtp: Signal<Option<XmtpHandle>>,
     on_close: EventHandler<()>,
 ) -> Element {
@@ -47,11 +57,13 @@ pub fn AddMembersSheet(
                         value: "{inbox_input}",
                         oninput: move |e| inbox_input.set(e.value()),
                         onkeydown: {
-                            let conv_id = conversation_id.clone();
+                            let conv_id   = conversation_id.clone();
+                            let conv_name = conversation_name.clone();
                             move |e: Event<KeyboardData>| {
                                 if e.data().code().to_string() == "Enter" && can_add {
                                     let id = inbox_input.read().trim().to_string();
                                     inbox_input.set(String::new());
+                                    notify_push_invite(&id, &conv_name);
                                     if let Some(h) = xmtp.read().as_ref() {
                                         h.request_add_members(&conv_id, &[id]);
                                     }
@@ -85,11 +97,13 @@ pub fn AddMembersSheet(
                     class: "add-member-btn",
                     disabled: !can_add,
                     onclick: {
-                        let conv_id = conversation_id.clone();
+                        let conv_id   = conversation_id.clone();
+                        let conv_name = conversation_name.clone();
                         move |_| {
                             let id = inbox_input.read().trim().to_string();
                             if id.is_empty() { return; }
                             inbox_input.set(String::new());
+                            notify_push_invite(&id, &conv_name);
                             if let Some(h) = xmtp.read().as_ref() {
                                 h.request_add_members(&conv_id, &[id]);
                             }

@@ -35,20 +35,28 @@ fn short_addr(s: &str) -> String {
     else { format!("{}…{}", &s[..6], &s[s.len()-4..]) }
 }
 
-/// Fire-and-forget push notify to the push worker.
-/// PUSH_WORKER_URL is set at build time via env var; empty = disabled.
-fn notify_push(member_inbox_ids: &[String], sender_inbox_id: &str, group_name: &str) {
-    let url = option_env!("PUSH_WORKER_URL").unwrap_or("");
-    if url.is_empty() { return; }
+/// Fire-and-forget push notify. URL read at runtime from window.XMES_PUSH_WORKER_URL.
+fn notify_push(member_inbox_ids: &[String], exclude_inbox_ids: &[String], sender_inbox_id: &str, group_name: &str) {
     let ids = member_inbox_ids.iter()
+        .filter(|id| !exclude_inbox_ids.contains(id))
         .map(|id| format!("\"{}\"", id.replace('"', "\\\"").replace('\\', "\\\\")))
         .collect::<Vec<_>>()
         .join(",");
-    let sender  = sender_inbox_id.replace('"', "");
-    let name    = group_name.replace('"', "").replace('\\', "");
+    let sender = sender_inbox_id.replace('"', "");
+    let name   = group_name.replace('"', "").replace('\\', "");
     let _ = js_sys::eval(&format!(
-        r#"fetch("{url}/notify",{{method:"POST",headers:{{"content-type":"application/json"}},body:JSON.stringify({{member_inbox_ids:[{ids}],sender_inbox_id:"{sender}",group_name:"{name}"}})}}).catch(()=>{{}})"#,
-        url=url, ids=ids, sender=sender, name=name
+        r#"(function(){{var u=window.XMES_PUSH_WORKER_URL;if(!u)return;fetch(u+"/notify",{{method:"POST",headers:{{"content-type":"application/json"}},body:JSON.stringify({{member_inbox_ids:[{ids}],sender_inbox_id:"{sender}",group_name:"{name}"}})}}).catch(()=>{{}})}})()"#,
+        ids=ids, sender=sender, name=name
+    ));
+}
+
+/// Send an invitation push to a newly added member.
+fn notify_push_invite(new_member_inbox_id: &str, group_name: &str) {
+    let id   = new_member_inbox_id.replace('"', "");
+    let name = group_name.replace('"', "").replace('\\', "");
+    let _ = js_sys::eval(&format!(
+        r#"(function(){{var u=window.XMES_PUSH_WORKER_URL;if(!u)return;fetch(u+"/notify",{{method:"POST",headers:{{"content-type":"application/json"}},body:JSON.stringify({{member_inbox_ids:["{id}"],sender_inbox_id:"",group_name:"{name}",title:"Group invitation",body:"You have been added to a group"}})}}).catch(()=>{{}})}})()"#,
+        id=id, name=name
     ));
 }
 
@@ -117,6 +125,7 @@ fn ChatGroupSettingsSheet(
     members: Vec<MemberInfo>,
     own_inbox_id: String,
     xmtp: Signal<Option<XmtpHandle>>,
+    pending_members: Signal<Vec<String>>,
     on_close: EventHandler<()>,
 ) -> Element {
     let mut add_input:    Signal<String>        = use_signal(|| String::new());
@@ -366,12 +375,20 @@ fn ChatGroupSettingsSheet(
                         value: "{add_input}",
                         oninput: move |e| add_input.set(e.value()),
                         onkeydown: {
-                            let conv_id = conversation_id.clone();
+                            let conv_id   = conversation_id.clone();
+                            let conv_name = conv_name.clone();
                             move |e: Event<KeyboardData>| {
                                 if e.data().code().to_string() == "Enter" {
                                     let id = add_input.read().trim().to_string();
                                     if id.is_empty() { return; }
                                     add_input.set(String::new());
+                                    notify_push_invite(&id, &conv_name.peek());
+                                    pending_members.write().push(id.clone());
+                                    let id_clone = id.clone();
+                                    spawn(async move {
+                                        gloo_timers::future::TimeoutFuture::new(90_000).await;
+                                        pending_members.write().retain(|x| x != &id_clone);
+                                    });
                                     if let Some(h) = xmtp.peek().as_ref() {
                                         h.request_add_members(&conv_id, &[id]);
                                     }
@@ -402,11 +419,19 @@ fn ChatGroupSettingsSheet(
                     class: "add-member-btn",
                     disabled: add_input.read().trim().is_empty(),
                     onclick: {
-                        let conv_id = conversation_id.clone();
+                        let conv_id   = conversation_id.clone();
+                        let conv_name = conv_name.clone();
                         move |_| {
                             let id = add_input.read().trim().to_string();
                             if id.is_empty() { return; }
                             add_input.set(String::new());
+                            notify_push_invite(&id, &conv_name.peek());
+                            pending_members.write().push(id.clone());
+                            let id_clone = id.clone();
+                            spawn(async move {
+                                gloo_timers::future::TimeoutFuture::new(90_000).await;
+                                pending_members.write().retain(|x| x != &id_clone);
+                            });
                             if let Some(h) = xmtp.peek().as_ref() {
                                 h.request_add_members(&conv_id, &[id]);
                             }
@@ -454,6 +479,9 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
     let mut initial_scroll_done = use_signal(|| false);
     let mut user_scrolled_up   = use_signal(|| false);
     let mut loading            = use_signal(|| true);
+    // Inbox IDs of members added during this session — excluded from message push
+    // for 90 s to avoid notifying them before they have synced the group welcome.
+    let mut pending_members: Signal<Vec<String>> = use_signal(|| vec![]);
     let mut show_members = use_signal(|| false);
     let mut conv_name     = use_signal(|| conversation.name.clone());
     let conv_id           = conversation.id.clone();
@@ -563,6 +591,7 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                     members: group_members.read().clone(),
                     own_inbox_id: own_inbox.clone(),
                     xmtp,
+                    pending_members,
                     on_close: move |_| show_members.set(false),
                 }
             }
@@ -681,7 +710,8 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                                 }
                                 let ids: Vec<String> = group_members.read().iter()
                                     .map(|m| m.inbox_id.clone()).collect();
-                                notify_push(&ids, &own_inbox2, &conv_name.peek());
+                                let excl = pending_members.read().clone();
+                                notify_push(&ids, &excl, &own_inbox2, &conv_name.peek());
                             }
                         }
                     },
@@ -713,7 +743,8 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                             }
                             let ids: Vec<String> = group_members.read().iter()
                                 .map(|m| m.inbox_id.clone()).collect();
-                            notify_push(&ids, &own_inbox3, &conv_name.peek());
+                            let excl = pending_members.read().clone();
+                            notify_push(&ids, &excl, &own_inbox3, &conv_name.peek());
                         }
                     },
                     svg {
