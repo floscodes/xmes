@@ -49,6 +49,12 @@ fn main() {
         init_worker_mode();
         return;
     }
+    // Expose push worker URL to JS (read by register-sw.js for push subscription).
+    // Set at startup so it's available before the load event fires.
+    let push_url = option_env!("PUSH_WORKER_URL").unwrap_or("");
+    if !push_url.is_empty() {
+        let _ = js_sys::eval(&format!("window.XMES_PUSH_WORKER_URL='{push_url}'"));
+    }
     dioxus::launch(App);
 }
 
