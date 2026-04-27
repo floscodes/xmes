@@ -17,16 +17,17 @@ pub fn Conversations() -> Element {
     let mut unread_ids = use_context::<Signal<std::collections::HashSet<String>>>();
 
     // Auto-request push permission 2 s after first open, if not yet granted.
+    // Read push support and permission state at runtime (not compile-time),
+    // because XMES_PUSH_WORKER_URL is set by WASM and checked inside the JS functions.
     let push_supported = js_sys::eval("'Notification' in window && 'PushManager' in window")
         .ok()
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
-    let push_worker_configured = !option_env!("PUSH_WORKER_URL").unwrap_or("").is_empty();
     let initial_perm = js_sys::eval("typeof Notification!=='undefined'?Notification.permission:'granted'")
         .ok()
         .and_then(|v| v.as_string())
         .unwrap_or_else(|| "granted".into());
-    let needs_push = push_supported && push_worker_configured && initial_perm != "granted";
+    let needs_push = push_supported && initial_perm == "default";
 
     use_effect(move || {
         if needs_push {
