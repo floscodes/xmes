@@ -88,6 +88,16 @@ fn start_camera_js() {
             window.__xmes_qr_error  = null;
             window.__xmes_qr_status = 'Starting camera…';
             try {
+                // Ensure jsQR is loaded before we start scanning
+                if (!window.jsQR) {
+                    await new Promise((res, rej) => {
+                        const s = document.createElement('script');
+                        s.src = '/jsqr.min.js';
+                        s.onload = res; s.onerror = rej;
+                        document.head.appendChild(s);
+                    });
+                }
+
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
                 });
