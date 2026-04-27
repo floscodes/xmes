@@ -317,31 +317,36 @@ fn ShowMnemonicSheet(
                 }
             }
 
-            if !revealed() {
-                div { class: "mnemonic-reveal-wrap",
-                    button {
-                        class: "mnemonic-reveal-btn",
-                        onclick: move |_| revealed.set(true),
-                        svg {
-                            xmlns: "http://www.w3.org/2000/svg", width: "17", height: "17",
-                            view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
-                            stroke_width: "2.2", stroke_linecap: "round", stroke_linejoin: "round",
-                            path { d: "M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" }
-                            circle { cx: "12", cy: "12", r: "3" }
+            if words.is_empty() {
+                div { class: "restore-hint",
+                    "No recovery phrase available for this identity. It was created before phrase support was added. Create a new identity to get a recovery phrase."
+                }
+            } else {
+                if !revealed() {
+                    div { class: "mnemonic-reveal-wrap",
+                        button {
+                            class: "mnemonic-reveal-btn",
+                            onclick: move |_| revealed.set(true),
+                            svg {
+                                xmlns: "http://www.w3.org/2000/svg", width: "17", height: "17",
+                                view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
+                                stroke_width: "2.2", stroke_linecap: "round", stroke_linejoin: "round",
+                                path { d: "M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" }
+                                circle { cx: "12", cy: "12", r: "3" }
+                            }
+                            span { "I understand — show the phrase" }
                         }
-                        span { "I understand — show the phrase" }
                     }
                 }
-            }
-
-            div { class: "mnemonic-grid",
-                for (i, word) in words.iter().enumerate() {
-                    div {
-                        class: if revealed() { "mnemonic-word-wrap" } else { "mnemonic-word-wrap mnemonic-blurred" },
-                        span { class: "mnemonic-num", "{i + 1}" }
-                        span { class: "mnemonic-word-text", "{word}" }
-                        if revealed() {
-                            CopyBtn { text: word.clone() }
+                div { class: "mnemonic-grid",
+                    for (i, word) in words.iter().enumerate() {
+                        div {
+                            class: if revealed() { "mnemonic-word-wrap" } else { "mnemonic-word-wrap mnemonic-blurred" },
+                            span { class: "mnemonic-num", "{i + 1}" }
+                            span { class: "mnemonic-word-text", "{word}" }
+                            if revealed() {
+                                CopyBtn { text: word.clone() }
+                            }
                         }
                     }
                 }
@@ -369,6 +374,11 @@ fn IdentityCard(
     let av          = inbox_avatar(&info.inbox_id);
     let addr_short  = short(&info.primary_address, 8);
     let inbox_short = short(&info.inbox_id, 8);
+    let words: Vec<String> = info.mnemonic.as_deref()
+        .unwrap_or("")
+        .split_whitespace()
+        .map(str::to_string)
+        .collect();
 
     let row_style = format!(
         "transform: translateX({}px); transition: {}; touch-action: pan-y; user-select: none;",
@@ -485,34 +495,23 @@ fn IdentityCard(
                         }
                     }
 
-                    // Show recovery phrase button (only if mnemonic available)
-                    if info.mnemonic.is_some() {
-                        {
-                            let words: Vec<String> = info.mnemonic.as_deref()
-                                .unwrap_or("")
-                                .split_whitespace()
-                                .map(str::to_string)
-                                .collect();
-                            rsx! {
-                                button {
-                                    class: "show-phrase-btn",
-                                    onpointerdown: move |e| e.stop_propagation(),
-                                    onpointerup:   move |e| e.stop_propagation(),
-                                    onclick: move |e| {
-                                        e.stop_propagation();
-                                        show_phrase_for.set(Some(words.clone()));
-                                    },
-                                    svg {
-                                        xmlns: "http://www.w3.org/2000/svg", width: "12", height: "12",
-                                        view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
-                                        stroke_width: "2.2", stroke_linecap: "round", stroke_linejoin: "round",
-                                        rect { x: "3", y: "11", width: "18", height: "11", rx: "2", ry: "2" }
-                                        path { d: "M7 11V7a5 5 0 0 1 10 0v4" }
-                                    }
-                                    span { "Show recovery phrase" }
-                                }
-                            }
+                    // Show recovery phrase button (always visible)
+                    button {
+                        class: "show-phrase-btn",
+                        onpointerdown: move |e| e.stop_propagation(),
+                        onpointerup:   move |e| e.stop_propagation(),
+                        onclick: move |e| {
+                            e.stop_propagation();
+                            show_phrase_for.set(Some(words.clone()));
+                        },
+                        svg {
+                            xmlns: "http://www.w3.org/2000/svg", width: "12", height: "12",
+                            view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
+                            stroke_width: "2.2", stroke_linecap: "round", stroke_linejoin: "round",
+                            rect { x: "3", y: "11", width: "18", height: "11", rx: "2", ry: "2" }
+                            path { d: "M7 11V7a5 5 0 0 1 10 0v4" }
                         }
+                        span { "Show recovery phrase" }
                     }
                 }
 
