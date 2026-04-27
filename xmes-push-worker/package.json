@@ -1,0 +1,18 @@
+{
+  "name": "xmes-push-worker",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "generate-vapid-keys": "node -e \"const {generateVAPIDKeys}=require('./scripts/generate-keys');generateVAPIDKeys()\""
+  },
+  "dependencies": {
+    "hono": "^4.6.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241022.0",
+    "typescript": "^5.5.0",
+    "wrangler": "^3.80.0"
+  }
+}
