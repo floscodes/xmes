@@ -248,6 +248,7 @@ pub fn Convo(
             if show_add() {
                 AddMembersSheet {
                     conversation_id: summary.id.clone(),
+                    conversation_name: summary.name.clone(),
                     xmtp,
                     on_close: move |_| show_add.set(false),
                 }
