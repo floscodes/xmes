@@ -270,8 +270,20 @@ fn App() -> Element {
         xmtp_handle.set(Some(handle));
     });
 
-    // Periodic sync every 12 seconds
+    // Burst sync: fire every 3 s for the first 5 calls, then fall back to 12 s steady polling.
     use_effect(move || {
+        let burst_count = std::rc::Rc::new(std::cell::Cell::new(0u8));
+        let burst_count2 = burst_count.clone();
+        let burst = gloo_timers::callback::Interval::new(3_000, move || {
+            let n = burst_count2.get();
+            if n >= 5 { return; }
+            burst_count2.set(n + 1);
+            if let Some(h) = xmtp_handle.peek().as_ref() {
+                h.request_list();
+            }
+        });
+        burst.forget();
+
         let interval = gloo_timers::callback::Interval::new(12_000, move || {
             if let Some(h) = xmtp_handle.peek().as_ref() {
                 h.request_list();
