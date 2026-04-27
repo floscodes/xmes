@@ -82,8 +82,9 @@ pub fn Identities() -> Element {
     let anim           = use_context::<Signal<&'static str>>();
     let confirm        = use_context::<Signal<Option<ConfirmAction>>>();
 
-    let mut fab_menu_open  = use_signal(|| false);
-    let mut show_restore   = use_signal(|| false);
+    let mut fab_menu_open    = use_signal(|| false);
+    let mut show_restore     = use_signal(|| false);
+    let mut show_phrase_for: Signal<Option<Vec<String>>> = use_signal(|| None);
 
     rsx! {
         div { class: "app-shell",
@@ -119,6 +120,7 @@ pub fn Identities() -> Element {
                             view,
                             anim,
                             confirm,
+                            show_phrase_for,
                         }
                     }
                 }
@@ -189,6 +191,14 @@ pub fn Identities() -> Element {
             RestoreMnemonicSheet {
                 xmtp,
                 on_close: move |_| show_restore.set(false),
+            }
+        }
+
+        // ── Show mnemonic sheet ───────────────────────────────────
+        if let Some(words) = show_phrase_for.read().clone() {
+            ShowMnemonicSheet {
+                words,
+                on_close: move |_| show_phrase_for.set(None),
             }
         }
     }
@@ -268,6 +278,79 @@ fn RestoreMnemonicSheet(
 }
 
 #[component]
+fn ShowMnemonicSheet(
+    words: Vec<String>,
+    on_close: EventHandler<()>,
+) -> Element {
+    let mut revealed = use_signal(|| false);
+    rsx! {
+        div { class: "sheet-backdrop", onclick: move |_| on_close.call(()), }
+        div { class: "identity-sheet restore-sheet",
+            div { class: "sheet-handle" }
+            div { class: "sheet-header",
+                span { class: "sheet-title", "Recovery Phrase" }
+                button {
+                    class: "sheet-close-btn",
+                    onclick: move |_| on_close.call(()),
+                    svg {
+                        xmlns: "http://www.w3.org/2000/svg", width: "14", height: "14",
+                        view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
+                        stroke_width: "2.5", stroke_linecap: "round", stroke_linejoin: "round",
+                        path { d: "M18 6L6 18" }
+                        path { d: "M6 6l12 12" }
+                    }
+                }
+            }
+
+            // Security warning
+            div { class: "mnemonic-security-warning",
+                svg {
+                    xmlns: "http://www.w3.org/2000/svg", width: "18", height: "18",
+                    view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
+                    stroke_width: "2.2", stroke_linecap: "round", stroke_linejoin: "round",
+                    path { d: "M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" }
+                    line { x1: "12", y1: "9", x2: "12", y2: "13" }
+                    line { x1: "12", y1: "17", x2: "12.01", y2: "17" }
+                }
+                span {
+                    "Never share this phrase with anyone. Anyone with this phrase can take control of your identity. Store it somewhere safe and private."
+                }
+            }
+
+            if !revealed() {
+                div { class: "mnemonic-reveal-wrap",
+                    button {
+                        class: "mnemonic-reveal-btn",
+                        onclick: move |_| revealed.set(true),
+                        svg {
+                            xmlns: "http://www.w3.org/2000/svg", width: "17", height: "17",
+                            view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
+                            stroke_width: "2.2", stroke_linecap: "round", stroke_linejoin: "round",
+                            path { d: "M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" }
+                            circle { cx: "12", cy: "12", r: "3" }
+                        }
+                        span { "I understand — show the phrase" }
+                    }
+                }
+            }
+
+            div { class: "mnemonic-grid",
+                for (i, word) in words.iter().enumerate() {
+                    div {
+                        class: if revealed() { "mnemonic-word-wrap" } else { "mnemonic-word-wrap mnemonic-blurred" },
+                        span { class: "mnemonic-num", "{i + 1}" }
+                        span { class: "mnemonic-word-text", "{word}" }
+                        if revealed() {
+                            CopyBtn { text: word.clone() }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[component]
 fn IdentityCard(
     idx: usize,
     info: IdentityInfo,
@@ -277,6 +360,7 @@ fn IdentityCard(
     view: Signal<View>,
     anim: Signal<&'static str>,
     confirm: Signal<Option<ConfirmAction>>,
+    show_phrase_for: Signal<Option<Vec<String>>>,
 ) -> Element {
     let mut offset   = use_signal(|| 0.0f64);
     let mut start_x  = use_signal(|| 0.0f64);
@@ -398,6 +482,36 @@ fn IdentityCard(
                         div { class: "identity-copy-row identity-copy-row--small",
                             span { class: "identity-inbox", "{inbox_short}" }
                             CopyBtn { text: info.inbox_id.clone() }
+                        }
+                    }
+
+                    // Show recovery phrase button (only if mnemonic available)
+                    if info.mnemonic.is_some() {
+                        {
+                            let words: Vec<String> = info.mnemonic.as_deref()
+                                .unwrap_or("")
+                                .split_whitespace()
+                                .map(str::to_string)
+                                .collect();
+                            rsx! {
+                                button {
+                                    class: "show-phrase-btn",
+                                    onpointerdown: move |e| e.stop_propagation(),
+                                    onpointerup:   move |e| e.stop_propagation(),
+                                    onclick: move |e| {
+                                        e.stop_propagation();
+                                        show_phrase_for.set(Some(words.clone()));
+                                    },
+                                    svg {
+                                        xmlns: "http://www.w3.org/2000/svg", width: "12", height: "12",
+                                        view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
+                                        stroke_width: "2.2", stroke_linecap: "round", stroke_linejoin: "round",
+                                        rect { x: "3", y: "11", width: "18", height: "11", rx: "2", ry: "2" }
+                                        path { d: "M7 11V7a5 5 0 0 1 10 0v4" }
+                                    }
+                                    span { "Show recovery phrase" }
+                                }
+                            }
                         }
                     }
                 }

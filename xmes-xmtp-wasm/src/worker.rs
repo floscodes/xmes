@@ -18,10 +18,10 @@ use crate::{ConversationSummary, Env, Identity, MemberInfo, MessageInfo};
 pub struct IdentityInfo {
     pub key_hex:         String,
     pub inbox_id:        String,
-    /// The address derived from this identity's own signing key (cannot be removed).
     pub primary_address: String,
-    /// All Ethereum addresses linked to this inbox (fetched from the network).
     pub addresses:       Vec<String>,
+    /// BIP39 mnemonic phrase for backup/restore. None for identities created before this feature.
+    pub mnemonic:        Option<String>,
 }
 
 /// Sent whenever the identity list or active selection changes.
@@ -111,6 +111,13 @@ async fn worker_run() {
                 let key_hexes: Vec<String> = (0..arr.length())
                     .filter_map(|i| arr.get(i).as_string())
                     .collect();
+                let mnemonic_arr = Reflect::get(&data, &"mnemonics".into())
+                    .ok()
+                    .and_then(|v| v.dyn_into::<js_sys::Array>().ok())
+                    .unwrap_or_default();
+                let mnemonics: Vec<Option<String>> = (0..mnemonic_arr.length())
+                    .map(|i| mnemonic_arr.get(i).as_string().filter(|s| !s.is_empty()))
+                    .collect();
                 let env = match msg_type.as_str() {
                     "init_production_env" => Env::Production(None),
                     "init_local_env"      => {
@@ -119,7 +126,7 @@ async fn worker_run() {
                     }
                     _                     => Env::Dev(None),
                 };
-                spawn_local(handle_init(env, scope, state, key_hexes));
+                spawn_local(handle_init(env, scope, state, key_hexes, mnemonics));
             }
             "create_identity" => spawn_local(handle_create_identity(scope, state)),
             "remove_identity" => {
@@ -205,6 +212,10 @@ async fn worker_run() {
                 let id = str_field(&data, "id");
                 spawn_local(handle_decline_invitation(scope, state, id));
             }
+            "restore_identity" => {
+                let phrase = str_field(&data, "phrase");
+                spawn_local(handle_restore_identity(scope, state, phrase));
+            }
             "list"         => spawn_local(handle_list(scope, state)),
             "create_group" => spawn_local(handle_create_group(scope, state)),
             "leave" => {
@@ -229,13 +240,14 @@ async fn handle_init(
     scope: web_sys::DedicatedWorkerGlobalScope,
     state: StateRef,
     key_hexes: Vec<String>,
+    mnemonics: Vec<Option<String>>,
 ) {
-
     let mut identities: Vec<Identity> = Vec::new();
-    for hex in key_hexes {
-        match Identity::from_key_hex(hex, env.clone()).await {
+    for (i, hex) in key_hexes.into_iter().enumerate() {
+        let mnemonic = mnemonics.get(i).and_then(|m| m.clone());
+        match Identity::from_key_hex(hex, mnemonic, env.clone()).await {
             Ok(id)  => identities.push(id),
-            Err(_)  => {} // skip corrupt keys
+            Err(_)  => {}
         }
     }
 
@@ -269,6 +281,27 @@ async fn handle_create_identity(
         handle_list(scope, state).await;
     } else {
         post_error(&scope, "Failed to create new identity");
+    }
+}
+
+async fn handle_restore_identity(
+    scope: web_sys::DedicatedWorkerGlobalScope,
+    state: StateRef,
+    phrase: String,
+) {
+    let env = state.borrow().env.clone();
+    match Identity::from_mnemonic(&phrase, env).await {
+        Ok(id) => {
+            let new_idx = {
+                let mut s = state.borrow_mut();
+                s.identities.push(id);
+                s.identities.len() - 1
+            };
+            state.borrow_mut().active = new_idx;
+            post_identity_list_async(&scope, &state).await;
+            handle_list(scope, state).await;
+        }
+        Err(e) => post_error(&scope, &e.to_string()),
     }
 }
 
@@ -587,6 +620,12 @@ impl XmtpHandle {
     pub fn request_create_group(&self)                { self.send("create_group"); }
     pub fn request_create_identity(&self) { self.send("create_identity"); }
 
+    pub fn request_restore_identity(&self, phrase: &str) {
+        let msg = typed_obj("restore_identity");
+        set_str(&msg, "phrase", phrase);
+        self.worker.post_message(&msg).unwrap_throw();
+    }
+
     pub fn request_remove_identity(&self, idx: usize) {
         let msg = typed_obj("remove_identity");
         Reflect::set(&msg, &"index".into(), &JsValue::from_f64(idx as f64)).unwrap_throw();
@@ -703,6 +742,7 @@ impl XmtpHandle {
 pub fn spawn_xmtp_worker(
     env: Env,
     key_hexes: Vec<String>,
+    mnemonics: Vec<Option<String>>,
     on_identity_update: impl Fn(IdentityListUpdate) + 'static,
     on_conversations:   impl Fn(Vec<ConversationSummary>) + 'static,
     on_messages:        impl Fn(String, Vec<MessageInfo>) + 'static,
@@ -736,6 +776,11 @@ pub fn spawn_xmtp_worker(
                     arr.push(&JsValue::from_str(hex));
                 }
                 Reflect::set(&msg, &"key_hexes".into(), &arr).unwrap_throw();
+                let mnemonic_arr = js_sys::Array::new();
+                for m in &mnemonics {
+                    mnemonic_arr.push(&m.as_deref().map(JsValue::from_str).unwrap_or(JsValue::from_str("")));
+                }
+                Reflect::set(&msg, &"mnemonics".into(), &mnemonic_arr).unwrap_throw();
                 worker_cb.post_message(&msg).unwrap_throw();
             }
             "identity_list" => {
@@ -763,6 +808,9 @@ pub fn spawn_xmtp_worker(
                             inbox_id:        str_field(&item, "inbox_id"),
                             primary_address: str_field(&item, "primary_address"),
                             addresses,
+                            mnemonic: Reflect::get(&item, &"mnemonic".into())
+                                .ok()
+                                .and_then(|v| v.as_string()),
                         }
                     })
                     .collect();
@@ -893,6 +941,11 @@ async fn post_identity_list_async(
         set_str(&item, "key_hex",         &id.to_key_hex());
         set_str(&item, "inbox_id",        &id.inbox_id());
         set_str(&item, "primary_address", &id.address());
+        Reflect::set(
+            &item,
+            &"mnemonic".into(),
+            &id.mnemonic().map(JsValue::from_str).unwrap_or(JsValue::null()),
+        ).unwrap_throw();
 
         let addr_arr = js_sys::Array::new();
         for a in &addresses {
