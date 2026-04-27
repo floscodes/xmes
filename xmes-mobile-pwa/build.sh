@@ -12,6 +12,7 @@ export CC="$PWD/clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu-22.04/bin/clang"
 export CC_wasm32_unknown_unknown="$PWD/clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu-22.04/bin/clang"
 
 export PRODUCTION=1
+export PUSH_WORKER_URL="https://push-worker.xmes.org"
 dx build --release --web
 
 mkdir -p target/dx/xmes-mobile-pwa/release/web
