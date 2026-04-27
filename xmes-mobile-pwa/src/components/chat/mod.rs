@@ -554,6 +554,11 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                         let time    = format_time_ns(msg.sent_at_ns);
                         let text    = msg.text.clone();
                         let deliv   = msg.delivered;
+                        let sender_addr = if !is_own {
+                            group_members.read().iter()
+                                .find(|m| m.inbox_id == msg.sender_inbox_id)
+                                .map(|m| short_addr(&m.address))
+                        } else { None };
                         rsx! {
                             if let Some(ref st) = system_text {
                                 div { class: "system-event", "{st}" }
@@ -563,6 +568,9 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                                     div { class: "bubble-avatar {av_class(&conv_name())}", "{initials(&conv_name())}" }
                                 }
                                 div { class: "bubble-col",
+                                    if let Some(ref addr) = sender_addr {
+                                        span { class: "bubble-sender", "{addr}" }
+                                    }
                                     div { class: if is_own { "bubble own" } else { "bubble other" },
                                         "{text}"
                                     }

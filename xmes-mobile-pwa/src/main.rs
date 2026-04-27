@@ -177,9 +177,9 @@ fn App() -> Element {
                     View::Chat(c) => Some(c.id),
                     _ => None,
                 };
-                let my_address = identity_info.peek()
+                let my_inbox_id = identity_info.peek()
                     .as_ref()
-                    .map(|i| i.primary_address.to_lowercase());
+                    .map(|i| i.inbox_id.clone());
                 let mut seen = last_seen_ns;
                 let mut unread = unread_ids;
                 for conv in &convos {
@@ -188,9 +188,9 @@ fn App() -> Element {
                         if ns > prev {
                             // Only mark unread when the conversation is not currently open
                             if Some(&conv.id) != open_id.as_ref() {
-                                let last_sender_is_me = conv.last_sender.as_deref()
-                                    .zip(my_address.as_deref())
-                                    .map(|(s, m)| s.to_lowercase() == m)
+                                let last_sender_is_me = my_inbox_id.as_deref()
+                                    .zip(conv.last_sender_inbox_id.as_deref())
+                                    .map(|(me, sender)| me == sender)
                                     .unwrap_or(false);
                                 if !last_sender_is_me {
                                     unread.write().insert(conv.id.clone());

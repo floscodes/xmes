@@ -39,6 +39,7 @@ pub struct ConversationSummary {
     pub id: String,
     pub name: String,
     pub last_sender: Option<String>,
+    pub last_sender_inbox_id: Option<String>,
     pub last_message_ns: Option<i64>,
     pub is_pending: bool,
 }
@@ -545,7 +546,7 @@ impl Identity {
                 .as_deref()
                 .and_then(|inbox_id| addr_map.get(inbox_id))
                 .cloned();
-            ConversationSummary { id: it.id, name: it.name, last_sender, last_message_ns: it.last_message_ns, is_pending: it.is_pending }
+            ConversationSummary { id: it.id, name: it.name, last_sender, last_sender_inbox_id: it.sender_inbox_id, last_message_ns: it.last_message_ns, is_pending: it.is_pending }
         }).collect();
 
         Ok(summaries)

@@ -864,6 +864,9 @@ fn parse_conversations(arr: &js_sys::Array) -> Vec<ConversationSummary> {
                 last_sender: Reflect::get(&item, &"last_sender".into())
                     .ok()
                     .and_then(|v| v.as_string()),
+                last_sender_inbox_id: Reflect::get(&item, &"last_sender_inbox_id".into())
+                    .ok()
+                    .and_then(|v| v.as_string()),
                 last_message_ns,
                 is_pending,
             })
@@ -950,6 +953,11 @@ fn post_conversations(scope: &web_sys::DedicatedWorkerGlobalScope, convos: &[Con
             &item,
             &"last_sender".into(),
             &c.last_sender.as_deref().map(JsValue::from_str).unwrap_or(JsValue::null()),
+        ).unwrap_throw();
+        Reflect::set(
+            &item,
+            &"last_sender_inbox_id".into(),
+            &c.last_sender_inbox_id.as_deref().map(JsValue::from_str).unwrap_or(JsValue::null()),
         ).unwrap_throw();
         Reflect::set(
             &item,
