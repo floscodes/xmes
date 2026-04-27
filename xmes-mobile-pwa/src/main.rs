@@ -276,7 +276,34 @@ fn App() -> Element {
                 h.request_list();
             }
         });
-        interval.forget(); // keep running for the lifetime of the app
+        interval.forget();
+    });
+
+    // Refresh on foreground: register a JS visibilitychange listener that sets a
+    // flag, then poll every second and trigger the right request when it fires.
+    use_effect(move || {
+        let _ = js_sys::eval(
+            "document.addEventListener('visibilitychange',function(){\
+                if(!document.hidden)window.__xmes_became_visible=1;\
+            })"
+        );
+        let interval = gloo_timers::callback::Interval::new(1_000, move || {
+            let flagged = js_sys::eval("window.__xmes_became_visible||0")
+                .ok()
+                .and_then(|v| v.as_f64())
+                .unwrap_or(0.0) as u8;
+            if flagged == 0 { return; }
+            let _ = js_sys::eval("window.__xmes_became_visible=0");
+
+            if let Some(h) = xmtp_handle.peek().as_ref() {
+                h.request_list();
+                if let View::Chat(conv) = view.peek().clone() {
+                    h.request_list_messages(&conv.id);
+                    h.request_list_members(&conv.id);
+                }
+            }
+        });
+        interval.forget();
     });
 
     let in_chat = matches!(*view.read(), View::Chat(_));
