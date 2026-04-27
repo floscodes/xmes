@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use dioxus::prelude::*;
 use xmes_xmtp_wasm::{IdentityInfo, XmtpHandle};
-use crate::{ConfirmAction, View};
+use crate::{components::qr::ShowAddressQrSheet, ConfirmAction, View};
 
 const LOGO: Asset = asset!("/assets/icons/xmes-icon.svg");
 
@@ -85,6 +85,7 @@ pub fn Identities() -> Element {
     let mut fab_menu_open    = use_signal(|| false);
     let mut show_restore     = use_signal(|| false);
     let mut show_phrase_for: Signal<Option<Vec<String>>> = use_signal(|| None);
+    let mut show_qr_for:     Signal<Option<String>>      = use_signal(|| None);
 
     rsx! {
         div { class: "app-shell",
@@ -121,6 +122,7 @@ pub fn Identities() -> Element {
                             anim,
                             confirm,
                             show_phrase_for,
+                            show_qr_for,
                         }
                     }
                 }
@@ -199,6 +201,14 @@ pub fn Identities() -> Element {
             ShowMnemonicSheet {
                 words,
                 on_close: move |_| show_phrase_for.set(None),
+            }
+        }
+
+        // ── Show address QR sheet ─────────────────────────────────
+        if let Some(addr) = show_qr_for.read().clone() {
+            ShowAddressQrSheet {
+                address: addr,
+                on_close: move |_| show_qr_for.set(None),
             }
         }
     }
@@ -366,6 +376,7 @@ fn IdentityCard(
     anim: Signal<&'static str>,
     confirm: Signal<Option<ConfirmAction>>,
     show_phrase_for: Signal<Option<Vec<String>>>,
+    show_qr_for: Signal<Option<String>>,
 ) -> Element {
     let mut offset   = use_signal(|| 0.0f64);
     let mut start_x  = use_signal(|| 0.0f64);
@@ -481,10 +492,37 @@ fn IdentityCard(
                             span { class: "identity-active-badge", "Active" }
                         }
                     }
-                    // Primary address with copy button
+                    // Primary address with copy + QR buttons
                     div { class: "identity-copy-row",
                         span { class: "identity-address", "{addr_short}" }
                         CopyBtn { text: info.primary_address.clone() }
+                        {
+                            let addr = info.primary_address.clone();
+                            rsx! {
+                                button {
+                                    class: "copy-btn",
+                                    title: "Show QR code",
+                                    onpointerdown: move |e| e.stop_propagation(),
+                                    onpointerup:   move |e| e.stop_propagation(),
+                                    onclick: move |e| {
+                                        e.stop_propagation();
+                                        show_qr_for.set(Some(addr.clone()));
+                                    },
+                                    svg {
+                                        xmlns: "http://www.w3.org/2000/svg", width: "13", height: "13",
+                                        view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
+                                        stroke_width: "2", stroke_linecap: "round", stroke_linejoin: "round",
+                                        rect { x: "3", y: "3", width: "7", height: "7" }
+                                        rect { x: "14", y: "3", width: "7", height: "7" }
+                                        rect { x: "3", y: "14", width: "7", height: "7" }
+                                        rect { x: "14", y: "14", width: "3", height: "3" }
+                                        rect { x: "18", y: "14", width: "3", height: "3" }
+                                        rect { x: "14", y: "18", width: "3", height: "3" }
+                                        rect { x: "18", y: "18", width: "3", height: "3" }
+                                    }
+                                }
+                            }
+                        }
                     }
                     // Inbox ID small
                     div { class: "identity-addr-section",
@@ -511,7 +549,7 @@ fn IdentityCard(
                             rect { x: "3", y: "11", width: "18", height: "11", rx: "2", ry: "2" }
                             path { d: "M7 11V7a5 5 0 0 1 10 0v4" }
                         }
-                        span { "Share with other device" }
+                        span { "Share identity with other device" }
                     }
                 }
 

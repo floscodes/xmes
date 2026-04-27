@@ -1,10 +1,11 @@
-const CACHE = 'xmes-v1';
+const CACHE = 'xmes-v2';
 
 const PRECACHE = [
   '/',
   '/assets/manifest.webmanifest',
   '/assets/icons/icon-192x192.png',
   '/assets/icons/icon-512x512.png',
+  '/jsqr.min.js',
 ];
 
 // Install: precache shell assets

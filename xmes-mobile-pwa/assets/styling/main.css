@@ -1377,6 +1377,11 @@ body {
     flex: 1;
 }
 
+.members-sheet-footer .add-member-input-row {
+    flex: 1;
+    min-width: 0;
+}
+
 .members-rename-input {
     flex: 1;
     background: var(--bg);
@@ -1706,3 +1711,87 @@ body {
     user-select: none;
     pointer-events: none;
 }
+
+/* ── QR sheets ───────────────────────────────────────────────── */
+
+.qr-sheet {
+    align-items: center;
+}
+
+.qr-svg-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px 16px 8px;
+    background: white;
+    border-radius: var(--radius-md);
+    margin: 16px;
+}
+
+.qr-address-label {
+    font-size: 0.78rem;
+    color: var(--text-2);
+    word-break: break-all;
+    text-align: center;
+    padding: 0 20px 16px;
+    margin: 0;
+}
+
+.qr-scanner-video {
+    display: block;
+    width: calc(100% - 32px);
+    max-width: 320px;
+    height: 300px;
+    object-fit: cover;
+    border-radius: var(--radius-md);
+    background: #000;
+    margin: 16px auto 0;
+}
+
+.qr-scanner-hint {
+    font-size: 0.82rem;
+    color: var(--text-2);
+    text-align: center;
+    padding: 12px 20px 16px;
+    margin: 0;
+}
+
+.qr-scanner-error {
+    margin: 20px 16px;
+    padding: 12px 14px;
+    background: #FEF2F2;
+    color: var(--danger);
+    border-radius: var(--radius-sm);
+    font-size: 0.84rem;
+    text-align: center;
+}
+
+/* Add-member input row (input + QR button side-by-side) */
+.add-member-input-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    width: 100%;
+}
+
+.add-member-input-row .add-member-input {
+    flex: 1;
+    min-width: 0;
+}
+
+.qr-scan-btn {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-sm);
+    background: var(--primary-light);
+    color: var(--primary);
+    border: 1.5px solid #C7D2FE;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.qr-scan-btn:hover { background: #E0E7FF; }
