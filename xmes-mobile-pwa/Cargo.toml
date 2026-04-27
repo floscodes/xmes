@@ -10,21 +10,29 @@ path = "src/main.rs"
 
 [dependencies]
 dioxus = { version = "*", features = [] }
-dioxus-primitives = { git = "https://github.com/DioxusLabs/components", version = "0.0.1", default-features = false }
 dioxus-sdk = { version = "0.7.0", features = ["storage"] }
 xmes-xmtp-wasm.workspace = true
 js-sys = "0.3"
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
-web-sys = { version = "0.3", features = ["Window", "Document", "Element", "HtmlElement", "Storage"] }
+web-sys = { version = "0.3", features = ["Window", "Document", "Element", "HtmlElement", "Storage", "HtmlCanvasElement", "HtmlVideoElement", "CanvasRenderingContext2d", "ImageData", "MediaStream"] }
 aes-gcm = "0.10"
 getrandom = { version = "0.2", features = ["js"] }
 base64 = "0.22"
 gloo-timers = { version = "0.3", features = ["futures"] }
 qrcode = "0.14"
+rqrr = "0.10"
+image = { version = "0.25", default-features = false }
 
 [features]
 default = ["web"]
 web = ["dioxus/web"]
 desktop = ["dioxus/desktop"]
 mobile = ["dioxus/mobile"]
+
+[profile.release]
+opt-level = "z"
+lto = true
+strip = true
+codegen-units = 1
+panic = "abort"

@@ -190,9 +190,10 @@ fn App() -> Element {
                 let active = update.identities.get(update.active_idx).cloned();
                 // Expose inbox ID to JS, then auto-subscribe push if already permitted.
                 if let Some(ref id) = active {
-                    let escaped = id.inbox_id.replace('\'', "\\'");
+                    let escaped_inbox = id.inbox_id.replace('\'', "\\'");
+                    let escaped_addr  = id.primary_address.replace('\'', "\\'");
                     let _ = js_sys::eval(&format!(
-                        "window.XMES_INBOX_ID='{escaped}';window.xmesSubscribePush&&window.xmesSubscribePush()"
+                        "window.XMES_INBOX_ID='{escaped_inbox}';window.XMES_ETH_ADDRESS='{escaped_addr}';window.xmesSubscribePush&&window.xmesSubscribePush()"
                     ));
                 }
                 let mut ii = identity_info;
@@ -269,8 +270,20 @@ fn App() -> Element {
         xmtp_handle.set(Some(handle));
     });
 
-    // Periodic sync every 12 seconds
+    // Burst sync: fire every 3 s for the first 5 calls, then fall back to 12 s steady polling.
     use_effect(move || {
+        let burst_count = std::rc::Rc::new(std::cell::Cell::new(0u8));
+        let burst_count2 = burst_count.clone();
+        let burst = gloo_timers::callback::Interval::new(3_000, move || {
+            let n = burst_count2.get();
+            if n >= 5 { return; }
+            burst_count2.set(n + 1);
+            if let Some(h) = xmtp_handle.peek().as_ref() {
+                h.request_list();
+            }
+        });
+        burst.forget();
+
         let interval = gloo_timers::callback::Interval::new(12_000, move || {
             if let Some(h) = xmtp_handle.peek().as_ref() {
                 h.request_list();

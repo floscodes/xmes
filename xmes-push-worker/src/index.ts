@@ -51,17 +51,18 @@ app.get('/vapid-public-key', (c) => {
 // ── POST /subscribe ──────────────────────────────────────────────────────────
 
 app.post('/subscribe', async (c) => {
-  let body: { inbox_id?: string; subscription?: PushSubscriptionJSON }
+  let body: { inbox_id?: string; address?: string; subscription?: PushSubscriptionJSON }
   try { body = await c.req.json() } catch { return c.json({ error: 'Invalid JSON' }, 400) }
 
-  const { inbox_id, subscription } = body
+  const { inbox_id, address, subscription } = body
   if (!inbox_id || !subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {
     return c.json({ error: 'Missing inbox_id or subscription' }, 400)
   }
 
-  await c.env.SUBSCRIPTIONS.put(`sub:${inbox_id}`, JSON.stringify(subscription), {
-    expirationTtl: 30 * 24 * 3600, // 30 days
-  })
+  const ttl = { expirationTtl: 30 * 24 * 3600 }
+  const subJson = JSON.stringify(subscription)
+  await c.env.SUBSCRIPTIONS.put(`sub:${inbox_id}`, subJson, ttl)
+  if (address) await c.env.SUBSCRIPTIONS.put(`sub:addr:${address.toLowerCase()}`, subJson, ttl)
 
   return c.json({ ok: true })
 })
@@ -69,13 +70,14 @@ app.post('/subscribe', async (c) => {
 // ── DELETE /subscribe ────────────────────────────────────────────────────────
 
 app.delete('/subscribe', async (c) => {
-  let body: { inbox_id?: string }
+  let body: { inbox_id?: string; address?: string }
   try { body = await c.req.json() } catch { return c.json({ error: 'Invalid JSON' }, 400) }
 
-  const { inbox_id } = body
+  const { inbox_id, address } = body
   if (!inbox_id) return c.json({ error: 'Missing inbox_id' }, 400)
 
   await c.env.SUBSCRIPTIONS.delete(`sub:${inbox_id}`)
+  if (address) await c.env.SUBSCRIPTIONS.delete(`sub:addr:${address.toLowerCase()}`)
   return c.json({ ok: true })
 })
 
@@ -97,7 +99,10 @@ app.post('/notify', async (c) => {
   let failed = 0
 
   await Promise.all(targets.map(async (inbox_id) => {
-    const raw = await c.env.SUBSCRIPTIONS.get(`sub:${inbox_id}`)
+    let raw = await c.env.SUBSCRIPTIONS.get(`sub:${inbox_id}`)
+    if (!raw && inbox_id.startsWith('0x')) {
+      raw = await c.env.SUBSCRIPTIONS.get(`sub:addr:${inbox_id.toLowerCase()}`)
+    }
     if (!raw) return
 
     let subscription: PushSubscriptionJSON

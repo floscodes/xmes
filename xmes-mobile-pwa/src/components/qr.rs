@@ -66,76 +66,95 @@ pub fn ShowAddressQrSheet(address: String, on_close: EventHandler<()>) -> Elemen
 
 // ── QrScannerSheet ────────────────────────────────────────────────────────────
 
-fn is_valid_eth_address(s: &str) -> bool {
+/// Accept Ethereum addresses (0x + 40 hex) and XMTP inbox IDs (64 hex).
+fn is_valid_qr_result(s: &str) -> bool {
     let s = s.trim();
-    s.len() == 42
+    (s.len() == 42
         && (s.starts_with("0x") || s.starts_with("0X"))
-        && s[2..].chars().all(|c| c.is_ascii_hexdigit())
+        && s[2..].chars().all(|c| c.is_ascii_hexdigit()))
+    || (s.len() == 64 && s.chars().all(|c| c.is_ascii_hexdigit()))
 }
 
+/// Start camera; Rust side will read frames via the canvas element.
 fn start_camera_js() {
-    let _ = js_sys::eval(
-        r#"(async () => {
-            window.__xmes_qr_result = null;
-            window.__xmes_qr_error  = null;
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'environment' }
-                });
-                const video = document.getElementById('xmes-qr-video');
-                if (!video) { stream.getTracks().forEach(t => t.stop()); return; }
-                video.srcObject = stream;
-                video.play();
-                window.__xmes_qr_stream = stream;
+    let _ = js_sys::eval(r#"(async () => {
+        window.__xmes_cam_error = null;
+        window.__xmes_cam_ready = false;
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+            });
+            const video = document.getElementById('xmes-qr-video');
+            if (!video) { stream.getTracks().forEach(t => t.stop()); return; }
+            video.srcObject = stream;
+            await video.play();
+            window.__xmes_qr_stream = stream;
 
-                if ('BarcodeDetector' in window) {
-                    const det = new BarcodeDetector({ formats: ['qr_code'] });
-                    window.__xmes_qr_timer = setInterval(async () => {
-                        try {
-                            const r = await det.detect(video);
-                            if (r.length > 0) window.__xmes_qr_result = r[0].rawValue;
-                        } catch(_) {}
-                    }, 400);
-                } else {
-                    // Fallback: jsQR via canvas (Safari / WebKit)
-                    if (!window.jsQR) {
-                        await new Promise((res, rej) => {
-                            const s = document.createElement('script');
-                            s.src = '/jsqr.min.js';
-                            s.onload = res; s.onerror = rej;
-                            document.head.appendChild(s);
-                        });
-                    }
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    window.__xmes_qr_timer = setInterval(() => {
-                        try {
-                            if (!video.videoWidth) return;
-                            canvas.width  = video.videoWidth;
-                            canvas.height = video.videoHeight;
-                            ctx.drawImage(video, 0, 0);
-                            const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                            const code = window.jsQR(img.data, img.width, img.height);
-                            if (code && code.data) window.__xmes_qr_result = code.data;
-                        } catch(_) {}
-                    }, 400);
-                }
-            } catch(e) {
-                window.__xmes_qr_error = e.message || 'Camera access denied';
+            // Off-screen canvas that Rust reads pixel data from
+            let canvas = document.getElementById('__xmes_qr_canvas');
+            if (!canvas) {
+                canvas = document.createElement('canvas');
+                canvas.id = '__xmes_qr_canvas';
+                canvas.style.cssText = 'position:fixed;top:-9999px;left:-9999px;';
+                document.body.appendChild(canvas);
             }
-        })()"#,
-    );
+            window.__xmes_cam_ready = true;
+        } catch(e) {
+            window.__xmes_cam_error = e.message || 'Camera access denied';
+        }
+    })()"#);
 }
 
 fn stop_camera_js() {
-    let _ = js_sys::eval(
-        r#"(function() {
-            if (window.__xmes_qr_timer) { clearInterval(window.__xmes_qr_timer); window.__xmes_qr_timer = null; }
-            if (window.__xmes_qr_stream) { window.__xmes_qr_stream.getTracks().forEach(t => t.stop()); window.__xmes_qr_stream = null; }
-            window.__xmes_qr_result = null;
-            window.__xmes_qr_error  = null;
-        })()"#,
-    );
+    let _ = js_sys::eval(r#"(function() {
+        window.__xmes_cam_ready = false;
+        if (window.__xmes_qr_stream) {
+            window.__xmes_qr_stream.getTracks().forEach(t => t.stop());
+            window.__xmes_qr_stream = null;
+        }
+        const c = document.getElementById('__xmes_qr_canvas');
+        if (c) c.remove();
+    })()"#);
+}
+
+/// Read one video frame into the canvas and return RGBA pixels + dimensions.
+fn capture_frame() -> Option<(Vec<u8>, u32, u32)> {
+    use wasm_bindgen::JsCast;
+    let doc = web_sys::window()?.document()?;
+
+    let video = doc.get_element_by_id("xmes-qr-video")
+        .and_then(|e| e.dyn_into::<web_sys::HtmlVideoElement>().ok())?;
+    let w = video.video_width();
+    let h = video.video_height();
+    if w == 0 || h == 0 { return None; }
+
+    let canvas = doc.get_element_by_id("__xmes_qr_canvas")
+        .and_then(|e| e.dyn_into::<web_sys::HtmlCanvasElement>().ok())?;
+    canvas.set_width(w);
+    canvas.set_height(h);
+
+    let ctx = canvas.get_context("2d").ok()??
+        .dyn_into::<web_sys::CanvasRenderingContext2d>().ok()?;
+    ctx.draw_image_with_html_video_element(&video, 0.0, 0.0).ok()?;
+
+    let img_data = ctx.get_image_data(0.0, 0.0, w as f64, h as f64).ok()?;
+    Some((img_data.data().to_vec(), w, h))
+}
+
+/// Decode a QR code from raw RGBA pixels using rqrr.
+fn decode_qr(rgba: &[u8], width: u32, height: u32) -> Option<String> {
+    let luma = image::GrayImage::from_fn(width, height, |x, y| {
+        let i = (y * width + x) as usize * 4;
+        let l = (rgba[i] as u32 * 299 + rgba[i+1] as u32 * 587 + rgba[i+2] as u32 * 114) / 1000;
+        image::Luma([l as u8])
+    });
+    let mut prepared = rqrr::PreparedImage::prepare(luma);
+    for grid in prepared.detect_grids() {
+        if let Ok((_, content)) = grid.decode() {
+            return Some(content);
+        }
+    }
+    None
 }
 
 #[component]
@@ -144,30 +163,43 @@ pub fn QrScannerSheet(
     xmtp: Signal<Option<XmtpHandle>>,
     on_close: EventHandler<()>,
 ) -> Element {
-    let mut error_msg: Signal<Option<String>> = use_signal(|| None);
-    let mut scanned:   Signal<Option<String>> = use_signal(|| None);
-    let mut active:    Signal<bool>           = use_signal(|| true);
+    let mut error_msg:   Signal<Option<String>> = use_signal(|| None);
+    let mut scanned:     Signal<Option<String>> = use_signal(|| None);
+    let mut active:      Signal<bool>           = use_signal(|| true);
+    let mut status_text: Signal<String>         = use_signal(|| "Starting camera…".into());
 
     use_effect(move || {
         start_camera_js();
         spawn(async move {
+            // Wait for camera to be ready
             loop {
-                gloo_timers::future::TimeoutFuture::new(500).await;
+                gloo_timers::future::TimeoutFuture::new(200).await;
+                if !*active.peek() { return; }
+
+                if let Ok(v) = js_sys::eval("window.__xmes_cam_error||''") {
+                    let s = v.as_string().unwrap_or_default();
+                    if !s.is_empty() { error_msg.set(Some(s)); return; }
+                }
+                let ready = js_sys::eval("!!window.__xmes_cam_ready")
+                    .ok().and_then(|v| v.as_bool()).unwrap_or(false);
+                if ready { break; }
+            }
+
+            status_text.set("Scanning…".into());
+
+            // Scan loop: capture frames and decode with rqrr
+            loop {
+                gloo_timers::future::TimeoutFuture::new(250).await;
                 if !*active.peek() { break; }
 
-                if let Ok(v) = js_sys::eval("window.__xmes_qr_error||''") {
-                    let s = v.as_string().unwrap_or_default();
-                    if !s.is_empty() {
-                        error_msg.set(Some(s));
-                        let _ = js_sys::eval("window.__xmes_qr_error=null");
-                    }
-                }
-                if let Ok(v) = js_sys::eval("window.__xmes_qr_result||''") {
-                    let s = v.as_string().unwrap_or_default();
-                    if !s.is_empty() && is_valid_eth_address(&s) {
-                        let _ = js_sys::eval("window.__xmes_qr_result=null");
-                        scanned.set(Some(s));
-                        break;
+                if let Some((rgba, w, h)) = capture_frame() {
+                    if let Some(result) = decode_qr(&rgba, w, h) {
+                        if is_valid_qr_result(&result) {
+                            scanned.set(Some(result));
+                            break;
+                        } else {
+                            status_text.set(format!("Found (invalid): {:.20}", result));
+                        }
                     }
                 }
             }
@@ -221,6 +253,7 @@ pub fn QrScannerSheet(
                     playsinline: true,
                 }
                 p { class: "qr-scanner-hint", "Point the camera at an Ethereum address QR code." }
+                p { class: "qr-scanner-status", "{status_text}" }
             }
         }
     }

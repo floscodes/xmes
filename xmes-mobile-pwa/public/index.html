@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+  <title>xmes</title>
+  <style>
+    #xmes-splash {
+      position: fixed; inset: 0;
+      background: #ffffff;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.35s ease;
+    }
+    #xmes-splash.fade { opacity: 0; pointer-events: none; }
+    @keyframes splash-spin { to { transform: rotate(360deg); } }
+    .splash-ring {
+      width: 44px; height: 44px;
+      border: 3px solid #e8e8f0;
+      border-top-color: #4F46E5;
+      border-radius: 50%;
+      animation: splash-spin 0.75s linear infinite;
+    }
+    .splash-wordmark {
+      margin-top: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: #1a1a2e;
+    }
+    .splash-sub {
+      margin-top: 6px;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 13px;
+      color: #9090a0;
+    }
+  </style>
+</head>
+<body>
+  <div id="xmes-splash">
+    <div class="splash-ring"></div>
+    <div class="splash-wordmark">xmes</div>
+    <div class="splash-sub">Loading…</div>
+  </div>
+  <div id="main"></div>
+  <script>
+    (function () {
+      var splash = document.getElementById('xmes-splash');
+      var main   = document.getElementById('main');
+      var obs = new MutationObserver(function () {
+        if (main.children.length > 0) {
+          splash.classList.add('fade');
+          setTimeout(function () { splash.remove(); }, 380);
+          obs.disconnect();
+        }
+      });
+      obs.observe(main, { childList: true });
+    })();
+  </script>
+</body>
+</html>

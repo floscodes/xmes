@@ -6,7 +6,7 @@ fn notify_push_invite(new_member_inbox_id: &str, group_name: &str) {
     let id   = new_member_inbox_id.replace('"', "");
     let name = group_name.replace('"', "").replace('\\', "");
     let _ = js_sys::eval(&format!(
-        r#"(function(){{var u=window.XMES_PUSH_WORKER_URL;if(!u)return;fetch(u+"/notify",{{method:"POST",headers:{{"content-type":"application/json"}},body:JSON.stringify({{member_inbox_ids:["{id}"],sender_inbox_id:"",group_name:"{name}",title:"Group invitation",body:"You have been added to a group"}})}}).catch(()=>{{}})}})()"#,
+        r#"(function(){{var u=window.XMES_PUSH_WORKER_URL;if(!u)return;fetch(u+"/notify",{{method:"POST",headers:{{"content-type":"application/json"}},body:JSON.stringify({{member_inbox_ids:["{id}"],sender_inbox_id:"",group_name:"{name}",title:"Group welcome",body:"You have been added to group {name}"}})}}).catch(()=>{{}})}})()"#,
         id=id, name=name
     ));
 }
