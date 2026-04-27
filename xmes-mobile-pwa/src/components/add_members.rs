@@ -1,5 +1,6 @@
 use dioxus::prelude::*;
 use xmes_xmtp_wasm::XmtpHandle;
+use crate::components::qr::QrScannerSheet;
 
 #[component]
 pub fn AddMembersSheet(
@@ -7,7 +8,8 @@ pub fn AddMembersSheet(
     xmtp: Signal<Option<XmtpHandle>>,
     on_close: EventHandler<()>,
 ) -> Element {
-    let mut inbox_input = use_signal(|| String::new());
+    let mut inbox_input  = use_signal(|| String::new());
+    let mut show_scanner = use_signal(|| false);
 
     let can_add = !inbox_input.read().trim().is_empty();
 
@@ -36,26 +38,45 @@ pub fn AddMembersSheet(
                 p { class: "add-member-hint",
                     "Enter the address or inbox ID of the person you want to add."
                 }
-                input {
-                    class: "add-member-input",
-                    r#type: "text",
-                    placeholder: "Address / Inbox ID…",
-                    autofocus: true,
-                    value: "{inbox_input}",
-                    oninput: move |e| inbox_input.set(e.value()),
-                    onkeydown: {
-                        let conv_id = conversation_id.clone();
-                        move |e: Event<KeyboardData>| {
-                            if e.data().code().to_string() == "Enter" && can_add {
-                                let id = inbox_input.read().trim().to_string();
-                                inbox_input.set(String::new());
-                                if let Some(h) = xmtp.read().as_ref() {
-                                    h.request_add_members(&conv_id, &[id]);
+                div { class: "add-member-input-row",
+                    input {
+                        class: "add-member-input",
+                        r#type: "text",
+                        placeholder: "Address / Inbox ID…",
+                        autofocus: true,
+                        value: "{inbox_input}",
+                        oninput: move |e| inbox_input.set(e.value()),
+                        onkeydown: {
+                            let conv_id = conversation_id.clone();
+                            move |e: Event<KeyboardData>| {
+                                if e.data().code().to_string() == "Enter" && can_add {
+                                    let id = inbox_input.read().trim().to_string();
+                                    inbox_input.set(String::new());
+                                    if let Some(h) = xmtp.read().as_ref() {
+                                        h.request_add_members(&conv_id, &[id]);
+                                    }
+                                    on_close.call(());
                                 }
-                                on_close.call(());
                             }
+                        },
+                    }
+                    button {
+                        class: "qr-scan-btn",
+                        title: "Scan QR code",
+                        onclick: move |_| show_scanner.set(true),
+                        svg {
+                            xmlns: "http://www.w3.org/2000/svg", width: "18", height: "18",
+                            view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
+                            stroke_width: "2", stroke_linecap: "round", stroke_linejoin: "round",
+                            path { d: "M11 3H5a2 2 0 0 0-2 2v6" }
+                            path { d: "M13 21h6a2 2 0 0 0 2-2v-6" }
+                            path { d: "M3 13v6a2 2 0 0 0 2 2h6" }
+                            path { d: "M21 11V5a2 2 0 0 0-2-2h-6" }
+                            rect { x: "7", y: "7", width: "4", height: "4" }
+                            rect { x: "13", y: "7", width: "4", height: "4" }
+                            rect { x: "7", y: "13", width: "4", height: "4" }
                         }
-                    },
+                    }
                 }
             }
 
@@ -88,6 +109,17 @@ pub fn AddMembersSheet(
                     }
                     span { "Add" }
                 }
+            }
+        }
+
+        if show_scanner() {
+            QrScannerSheet {
+                conversation_id: conversation_id.clone(),
+                xmtp,
+                on_close: move |_| {
+                    show_scanner.set(false);
+                    on_close.call(());
+                },
             }
         }
     }

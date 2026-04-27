@@ -21,6 +21,7 @@ aes-gcm = "0.10"
 getrandom = { version = "0.2", features = ["js"] }
 base64 = "0.22"
 gloo-timers = { version = "0.3", features = ["futures"] }
+qrcode = "0.14"
 
 [features]
 default = ["web"]
