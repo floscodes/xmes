@@ -66,11 +66,19 @@ pub fn ShowAddressQrSheet(address: String, on_close: EventHandler<()>) -> Elemen
 
 // ── QrScannerSheet ────────────────────────────────────────────────────────────
 
-fn is_valid_eth_address(s: &str) -> bool {
+/// Accept both Ethereum addresses (0x + 40 hex) and XMTP inbox IDs (64 hex).
+fn is_valid_qr_result(s: &str) -> bool {
     let s = s.trim();
-    s.len() == 42
+    if s.len() == 42
         && (s.starts_with("0x") || s.starts_with("0X"))
         && s[2..].chars().all(|c| c.is_ascii_hexdigit())
+    {
+        return true;
+    }
+    if s.len() == 64 && s.chars().all(|c| c.is_ascii_hexdigit()) {
+        return true;
+    }
+    false
 }
 
 fn start_camera_js() {
@@ -80,46 +88,50 @@ fn start_camera_js() {
             window.__xmes_qr_error  = null;
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: 'environment' }
+                    video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
                 });
                 const video = document.getElementById('xmes-qr-video');
                 if (!video) { stream.getTracks().forEach(t => t.stop()); return; }
                 video.srcObject = stream;
-                video.play();
+                await video.play();
                 window.__xmes_qr_stream = stream;
 
-                if ('BarcodeDetector' in window) {
-                    const det = new BarcodeDetector({ formats: ['qr_code'] });
-                    window.__xmes_qr_timer = setInterval(async () => {
-                        try {
-                            const r = await det.detect(video);
-                            if (r.length > 0) window.__xmes_qr_result = r[0].rawValue;
-                        } catch(_) {}
-                    }, 400);
-                } else {
-                    // Fallback: jsQR via canvas (Safari / WebKit)
-                    if (!window.jsQR) {
-                        await new Promise((res, rej) => {
-                            const s = document.createElement('script');
-                            s.src = '/jsqr.min.js';
-                            s.onload = res; s.onerror = rej;
-                            document.head.appendChild(s);
-                        });
-                    }
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
-                    window.__xmes_qr_timer = setInterval(() => {
-                        try {
-                            if (!video.videoWidth) return;
-                            canvas.width  = video.videoWidth;
-                            canvas.height = video.videoHeight;
-                            ctx.drawImage(video, 0, 0);
-                            const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const canvas = document.createElement('canvas');
+                const ctx    = canvas.getContext('2d', { willReadFrequently: true });
+
+                const hasBD = 'BarcodeDetector' in window;
+                const det   = hasBD ? new BarcodeDetector({ formats: ['qr_code'] }) : null;
+
+                // Pre-load jsQR when BarcodeDetector is unavailable (Safari / WebKit)
+                if (!det && !window.jsQR) {
+                    await new Promise((res, rej) => {
+                        const s = document.createElement('script');
+                        s.src = '/jsqr.min.js';
+                        s.onload = res; s.onerror = rej;
+                        document.head.appendChild(s);
+                    });
+                }
+
+                window.__xmes_qr_timer = setInterval(async () => {
+                    try {
+                        if (!video.videoWidth || !video.videoHeight) return;
+                        canvas.width  = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        ctx.drawImage(video, 0, 0);
+
+                        if (det) {
+                            // BarcodeDetector on a canvas bitmap is more reliable than live video
+                            const bmp = await createImageBitmap(canvas);
+                            const r   = await det.detect(bmp);
+                            bmp.close();
+                            if (r.length > 0) { window.__xmes_qr_result = r[0].rawValue; return; }
+                        } else if (window.jsQR) {
+                            const img  = ctx.getImageData(0, 0, canvas.width, canvas.height);
                             const code = window.jsQR(img.data, img.width, img.height);
                             if (code && code.data) window.__xmes_qr_result = code.data;
-                        } catch(_) {}
-                    }, 400);
-                }
+                        }
+                    } catch(_) {}
+                }, 300);
             } catch(e) {
                 window.__xmes_qr_error = e.message || 'Camera access denied';
             }
@@ -164,7 +176,7 @@ pub fn QrScannerSheet(
                 }
                 if let Ok(v) = js_sys::eval("window.__xmes_qr_result||''") {
                     let s = v.as_string().unwrap_or_default();
-                    if !s.is_empty() && is_valid_eth_address(&s) {
+                    if !s.is_empty() && is_valid_qr_result(&s) {
                         let _ = js_sys::eval("window.__xmes_qr_result=null");
                         scanned.set(Some(s));
                         break;
