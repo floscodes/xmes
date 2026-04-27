@@ -1639,7 +1639,7 @@ body {
     background: var(--surface-subtle);
     color: var(--text-2);
     font-size: 0.72rem;
-    font-weight: 500;
+    font-weight: 400;
     cursor: pointer;
     transition: background 0.12s, color 0.12s;
 }
