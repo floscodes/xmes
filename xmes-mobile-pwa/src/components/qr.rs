@@ -88,14 +88,13 @@ fn start_camera_js() {
             window.__xmes_qr_error  = null;
             window.__xmes_qr_status = 'Starting camera…';
             try {
-                // Ensure jsQR is loaded before we start scanning
+                // Load jsQR via fetch + Function() to avoid module-system conflicts
                 if (!window.jsQR) {
-                    await new Promise((res, rej) => {
-                        const s = document.createElement('script');
-                        s.src = '/jsqr.min.js';
-                        s.onload = res; s.onerror = rej;
-                        document.head.appendChild(s);
-                    });
+                    const src = await fetch('/jsqr.min.js', { cache: 'no-cache' }).then(r => r.text());
+                    const mod = { exports: {} };
+                    new Function('module', 'exports', src)(mod, mod.exports);
+                    window.jsQR = typeof mod.exports === 'function' ? mod.exports
+                                : mod.exports.default || mod.exports.jsQR || null;
                 }
 
                 const stream = await navigator.mediaDevices.getUserMedia({
