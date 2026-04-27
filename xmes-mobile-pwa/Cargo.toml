@@ -10,7 +10,6 @@ path = "src/main.rs"
 
 [dependencies]
 dioxus = { version = "*", features = [] }
-dioxus-primitives = { git = "https://github.com/DioxusLabs/components", version = "0.0.1", default-features = false }
 dioxus-sdk = { version = "0.7.0", features = ["storage"] }
 xmes-xmtp-wasm.workspace = true
 js-sys = "0.3"
@@ -36,3 +35,4 @@ opt-level = "z"
 lto = true
 strip = true
 codegen-units = 1
+panic = "abort"
