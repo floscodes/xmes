@@ -50,6 +50,36 @@ fn notify_push(member_inbox_ids: &[String], exclude_inbox_ids: &[String], sender
     ));
 }
 
+/// Load pending-push-exclusion list for a conversation from localStorage.
+fn pending_load(conv_id: &str) -> Vec<String> {
+    let key = conv_id.replace('\'', "");
+    let now_days = js_sys::Date::now() as u64 / 86_400_000;
+    let raw = js_sys::eval(&format!("localStorage.getItem('pending_push_{key}')||''"))
+        .ok()
+        .and_then(|v| v.as_string())
+        .unwrap_or_default();
+    // Format: "inbox_id:day_added,inbox_id:day_added,..."
+    raw.split(',')
+        .filter_map(|entry| {
+            let mut parts = entry.splitn(2, ':');
+            let id  = parts.next()?.trim().to_string();
+            let day: u64 = parts.next().and_then(|d| d.trim().parse().ok()).unwrap_or(0);
+            if id.is_empty() || now_days.saturating_sub(day) > 7 { None } else { Some(id) }
+        })
+        .collect()
+}
+
+/// Persist the pending list to localStorage.
+fn pending_save(conv_id: &str, members: &[String]) {
+    let key  = conv_id.replace('\'', "");
+    let day  = (js_sys::Date::now() as u64 / 86_400_000).to_string();
+    let data = members.iter()
+        .map(|m| format!("{}:{day}", m.replace(['\'', ',', ':'], "")))
+        .collect::<Vec<_>>()
+        .join(",");
+    let _ = js_sys::eval(&format!("localStorage.setItem('pending_push_{key}','{data}')"));
+}
+
 /// Send an invitation push to a newly added member.
 fn notify_push_invite(new_member_inbox_id: &str, group_name: &str) {
     let id   = new_member_inbox_id.replace('"', "");
@@ -384,11 +414,7 @@ fn ChatGroupSettingsSheet(
                                     add_input.set(String::new());
                                     notify_push_invite(&id, &conv_name.peek());
                                     pending_members.write().push(id.clone());
-                                    let id_clone = id.clone();
-                                    spawn(async move {
-                                        gloo_timers::future::TimeoutFuture::new(90_000).await;
-                                        pending_members.write().retain(|x| x != &id_clone);
-                                    });
+                                    pending_save(&conv_id, &pending_members.read());
                                     if let Some(h) = xmtp.peek().as_ref() {
                                         h.request_add_members(&conv_id, &[id]);
                                     }
@@ -427,11 +453,7 @@ fn ChatGroupSettingsSheet(
                             add_input.set(String::new());
                             notify_push_invite(&id, &conv_name.peek());
                             pending_members.write().push(id.clone());
-                            let id_clone = id.clone();
-                            spawn(async move {
-                                gloo_timers::future::TimeoutFuture::new(90_000).await;
-                                pending_members.write().retain(|x| x != &id_clone);
-                            });
+                            pending_save(&conv_id, &pending_members.read());
                             if let Some(h) = xmtp.peek().as_ref() {
                                 h.request_add_members(&conv_id, &[id]);
                             }
@@ -479,9 +501,12 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
     let mut initial_scroll_done = use_signal(|| false);
     let mut user_scrolled_up   = use_signal(|| false);
     let mut loading            = use_signal(|| true);
-    // Inbox IDs of members added during this session — excluded from message push
-    // for 90 s to avoid notifying them before they have synced the group welcome.
-    let mut pending_members: Signal<Vec<String>> = use_signal(|| vec![]);
+    // Members excluded from message push until they send their first message
+    // (proof they have synced the group welcome). Persisted in localStorage.
+    let conv_id_for_pending = conversation.id.clone();
+    let mut pending_members: Signal<Vec<String>> = use_signal(move || {
+        pending_load(&conv_id_for_pending)
+    });
     let mut show_members = use_signal(|| false);
     let mut conv_name     = use_signal(|| conversation.name.clone());
     let conv_id           = conversation.id.clone();
@@ -490,6 +515,18 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
     let member_count      = group_members.read().len();
     let member_label      = if member_count == 1 { "1 Member".to_string() }
                             else { format!("{} Members", member_count) };
+
+    // When a pending member sends a message they have synced the group — remove from pending.
+    let conv_id_pending = conversation.id.clone();
+    use_effect(move || {
+        let msgs = messages.read();
+        let mut pending = pending_members.write();
+        let before = pending.len();
+        pending.retain(|id| !msgs.iter().any(|m| &m.sender_inbox_id == id));
+        if pending.len() != before {
+            pending_save(&conv_id_pending, &pending);
+        }
+    });
 
     // Clear stale messages immediately, then fetch fresh ones
     let conv_id_unread = conversation.id.clone();
