@@ -86,6 +86,7 @@ fn start_camera_js() {
         r#"(async () => {
             window.__xmes_qr_result = null;
             window.__xmes_qr_error  = null;
+            window.__xmes_qr_status = 'Starting camera…';
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
@@ -95,43 +96,31 @@ fn start_camera_js() {
                 video.srcObject = stream;
                 await video.play();
                 window.__xmes_qr_stream = stream;
+                window.__xmes_qr_status = 'Camera ready — scanning…';
 
                 const canvas = document.createElement('canvas');
                 const ctx    = canvas.getContext('2d', { willReadFrequently: true });
 
-                const hasBD = 'BarcodeDetector' in window;
-                const det   = hasBD ? new BarcodeDetector({ formats: ['qr_code'] }) : null;
-
-                // Pre-load jsQR when BarcodeDetector is unavailable (Safari / WebKit)
-                if (!det && !window.jsQR) {
-                    await new Promise((res, rej) => {
-                        const s = document.createElement('script');
-                        s.src = '/jsqr.min.js';
-                        s.onload = res; s.onerror = rej;
-                        document.head.appendChild(s);
-                    });
-                }
-
-                window.__xmes_qr_timer = setInterval(async () => {
+                window.__xmes_qr_timer = setInterval(() => {
+                    if (!video.videoWidth || !video.videoHeight) return;
                     try {
-                        if (!video.videoWidth || !video.videoHeight) return;
                         canvas.width  = video.videoWidth;
                         canvas.height = video.videoHeight;
                         ctx.drawImage(video, 0, 0);
-
-                        if (det) {
-                            // BarcodeDetector on a canvas bitmap is more reliable than live video
-                            const bmp = await createImageBitmap(canvas);
-                            const r   = await det.detect(bmp);
-                            bmp.close();
-                            if (r.length > 0) { window.__xmes_qr_result = r[0].rawValue; return; }
-                        } else if (window.jsQR) {
-                            const img  = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                            const code = window.jsQR(img.data, img.width, img.height);
-                            if (code && code.data) window.__xmes_qr_result = code.data;
+                        if (!window.jsQR) {
+                            window.__xmes_qr_status = 'jsQR not loaded';
+                            return;
                         }
-                    } catch(_) {}
-                }, 300);
+                        const img  = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        const code = window.jsQR(img.data, img.width, img.height);
+                        if (code && code.data) {
+                            window.__xmes_qr_status = 'Found: ' + code.data.substring(0, 20);
+                            window.__xmes_qr_result = code.data;
+                        }
+                    } catch(e) {
+                        window.__xmes_qr_status = 'Scan error: ' + e.message;
+                    }
+                }, 200);
             } catch(e) {
                 window.__xmes_qr_error = e.message || 'Camera access denied';
             }
@@ -156,16 +145,23 @@ pub fn QrScannerSheet(
     xmtp: Signal<Option<XmtpHandle>>,
     on_close: EventHandler<()>,
 ) -> Element {
-    let mut error_msg: Signal<Option<String>> = use_signal(|| None);
-    let mut scanned:   Signal<Option<String>> = use_signal(|| None);
-    let mut active:    Signal<bool>           = use_signal(|| true);
+    let mut error_msg:   Signal<Option<String>> = use_signal(|| None);
+    let mut scanned:     Signal<Option<String>> = use_signal(|| None);
+    let mut active:      Signal<bool>           = use_signal(|| true);
+    let mut status_text: Signal<String>         = use_signal(|| "Starting…".into());
 
     use_effect(move || {
         start_camera_js();
         spawn(async move {
             loop {
-                gloo_timers::future::TimeoutFuture::new(500).await;
+                gloo_timers::future::TimeoutFuture::new(300).await;
                 if !*active.peek() { break; }
+
+                // Update visible status from JS
+                if let Ok(v) = js_sys::eval("window.__xmes_qr_status||''") {
+                    let s = v.as_string().unwrap_or_default();
+                    if !s.is_empty() { status_text.set(s); }
+                }
 
                 if let Ok(v) = js_sys::eval("window.__xmes_qr_error||''") {
                     let s = v.as_string().unwrap_or_default();
@@ -176,10 +172,16 @@ pub fn QrScannerSheet(
                 }
                 if let Ok(v) = js_sys::eval("window.__xmes_qr_result||''") {
                     let s = v.as_string().unwrap_or_default();
-                    if !s.is_empty() && is_valid_qr_result(&s) {
-                        let _ = js_sys::eval("window.__xmes_qr_result=null");
-                        scanned.set(Some(s));
-                        break;
+                    if !s.is_empty() {
+                        if is_valid_qr_result(&s) {
+                            let _ = js_sys::eval("window.__xmes_qr_result=null");
+                            scanned.set(Some(s));
+                            break;
+                        } else {
+                            // Show raw result so we can debug invalid formats
+                            status_text.set(format!("Invalid: {}", &s[..s.len().min(30)]));
+                            let _ = js_sys::eval("window.__xmes_qr_result=null");
+                        }
                     }
                 }
             }
@@ -233,6 +235,7 @@ pub fn QrScannerSheet(
                     playsinline: true,
                 }
                 p { class: "qr-scanner-hint", "Point the camera at an Ethereum address QR code." }
+                p { class: "qr-scanner-status", "{status_text}" }
             }
         }
     }
