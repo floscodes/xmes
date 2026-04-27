@@ -1,6 +1,8 @@
 // ── Service Worker registration + Push subscription ──────────────────────────
-
-const PUSH_WORKER_URL = window.XMES_PUSH_WORKER_URL ?? '';
+//
+// NOTE: window.XMES_PUSH_WORKER_URL is set by WASM *after* this script runs,
+// so we must read it lazily (at call time) inside each function — never capture
+// it as a top-level constant.
 
 // Register SW (no user gesture needed)
 (async function () {
@@ -16,6 +18,7 @@ const PUSH_WORKER_URL = window.XMES_PUSH_WORKER_URL ?? '';
 // Registers a one-shot capture-phase listener so the NEXT natural user tap
 // triggers the permission dialog (guaranteed user-gesture context on iOS).
 window.xmesEnablePushOnNextTap = function () {
+  if (!window.XMES_PUSH_WORKER_URL) return;
   if (typeof Notification === 'undefined' || Notification.permission !== 'default') return;
   const handler = async function () {
     document.removeEventListener('touchend', handler, true);
@@ -29,7 +32,8 @@ window.xmesEnablePushOnNextTap = function () {
 // ── Called from Rust after XMES_INBOX_ID is set ──────────────────────────────
 // Auto-subscribes silently when permission is already granted.
 window.xmesSubscribePush = async function () {
-  if (!PUSH_WORKER_URL) return;
+  const pushUrl = window.XMES_PUSH_WORKER_URL;
+  if (!pushUrl) return;
   if (!('PushManager' in window)) return;
   if (typeof Notification === 'undefined') return;
   if (Notification.permission !== 'granted') return;
@@ -42,7 +46,7 @@ window.xmesSubscribePush = async function () {
     let sub   = await sw.pushManager.getSubscription();
 
     if (!sub) {
-      const res        = await fetch(`${PUSH_WORKER_URL}/vapid-public-key`);
+      const res           = await fetch(`${pushUrl}/vapid-public-key`);
       const { publicKey } = await res.json();
       if (!publicKey) return;
       sub = await sw.pushManager.subscribe({
@@ -51,7 +55,7 @@ window.xmesSubscribePush = async function () {
       });
     }
 
-    await fetch(`${PUSH_WORKER_URL}/subscribe`, {
+    await fetch(`${pushUrl}/subscribe`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ inbox_id: inboxId, subscription: sub.toJSON() }),
@@ -61,10 +65,11 @@ window.xmesSubscribePush = async function () {
   }
 };
 
-// ── Called from a Rust onclick handler (user gesture) ────────────────────────
-// Requests permission, then subscribes. Must be triggered by a user tap.
+// ── Called from a user-gesture context (touchend handler) ────────────────────
+// Requests permission, then subscribes.
 window.xmesRequestPushPermission = async function () {
-  if (!PUSH_WORKER_URL) return;
+  const pushUrl = window.XMES_PUSH_WORKER_URL;
+  if (!pushUrl) return;
   if (!('Notification' in window) || !('PushManager' in window)) return;
 
   try {
