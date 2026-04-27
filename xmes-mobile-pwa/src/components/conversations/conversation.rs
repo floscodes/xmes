@@ -62,80 +62,17 @@ pub fn Convo(
         if *dragging.read() { "none" } else { "transform 0.22s cubic-bezier(0.4,0,0.2,1)" }
     );
 
-    if summary.is_pending {
-        // ── Pending invitation row ────────────────────────────────────
-        let inv_id_accept  = summary.id.clone();
-        let inv_id_decline = summary.id.clone();
-        rsx! {
-            div { class: "convo-item",
-                div { class: "convo-row invite-row",
-                    div { class: "convo-avatar {av_class}", "{av_text}" }
-                    div { class: "convo-info",
-                        span { class: "convo-name", "{summary.name}" }
-                        div {
-                            span { class: "convo-sub invite-label", "Group invitation" }
-                        }
-                    }
-                    div { class: "invite-actions",
-                        button {
-                            class: "invite-btn invite-accept",
-                            title: "Accept",
-                            onclick: move |_| {
-                                let mut convos = conversations;
-                                let id_ref = inv_id_accept.clone();
-                                let updated = convos.peek().as_ref().map(|list| {
-                                    list.iter().map(|c| {
-                                        if c.id == id_ref {
-                                            let mut c2 = c.clone();
-                                            c2.is_pending = false;
-                                            c2
-                                        } else { c.clone() }
-                                    }).collect::<Vec<_>>()
-                                });
-                                if let Some(u) = updated { convos.set(Some(u)); }
-                                if let Some(h) = xmtp.peek().as_ref() {
-                                    h.request_accept_invitation(&inv_id_accept);
-                                }
-                                on_open.call(open_summary.clone());
-                            },
-                            svg {
-                                xmlns: "http://www.w3.org/2000/svg",
-                                width: "18", height: "18",
-                                view_box: "0 0 24 24", fill: "none",
-                                stroke: "currentColor", stroke_width: "2.5",
-                                stroke_linecap: "round", stroke_linejoin: "round",
-                                polyline { points: "20 6 9 17 4 12" }
-                            }
-                        }
-                        button {
-                            class: "invite-btn invite-decline",
-                            title: "Decline",
-                            onclick: move |_| {
-                                let mut convos = conversations;
-                                let id_ref = inv_id_decline.clone();
-                                let filtered = convos.peek().as_ref().map(|list| {
-                                    list.iter().filter(|c| c.id != id_ref).cloned().collect::<Vec<_>>()
-                                });
-                                if let Some(f) = filtered { convos.set(Some(f)); }
-                                if let Some(h) = xmtp.peek().as_ref() {
-                                    h.request_decline_invitation(&inv_id_decline);
-                                }
-                            },
-                            svg {
-                                xmlns: "http://www.w3.org/2000/svg",
-                                width: "18", height: "18",
-                                view_box: "0 0 24 24", fill: "none",
-                                stroke: "currentColor", stroke_width: "2.5",
-                                stroke_linecap: "round", stroke_linejoin: "round",
-                                line { x1: "18", y1: "6", x2: "6", y2: "18" }
-                                line { x1: "6", y1: "6", x2: "18", y2: "18" }
-                            }
-                        }
-                    }
-                }
+    // Auto-accept pending groups immediately — no user confirmation needed.
+    let auto_accept_id = summary.id.clone();
+    use_effect(move || {
+        if summary.is_pending {
+            if let Some(h) = xmtp.peek().as_ref() {
+                h.request_accept_invitation(&auto_accept_id);
             }
         }
-    } else {
+    });
+
+    {
         rsx! {
             div { class: "convo-item",
 
