@@ -55,10 +55,12 @@ window.xmesSubscribePush = async function () {
       });
     }
 
+    const body = { inbox_id: inboxId, subscription: sub.toJSON() };
+    if (window.XMES_ETH_ADDRESS) body.address = window.XMES_ETH_ADDRESS;
     await fetch(`${pushUrl}/subscribe`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ inbox_id: inboxId, subscription: sub.toJSON() }),
+      body:    JSON.stringify(body),
     });
   } catch (e) {
     console.warn('[xmes] xmesSubscribePush failed:', e);
