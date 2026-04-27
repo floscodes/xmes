@@ -12,6 +12,20 @@ const PUSH_WORKER_URL = window.XMES_PUSH_WORKER_URL ?? '';
   }
 })();
 
+// ── Called from Rust on mount when permission is still 'default' ─────────────
+// Registers a one-shot capture-phase listener so the NEXT natural user tap
+// triggers the permission dialog (guaranteed user-gesture context on iOS).
+window.xmesEnablePushOnNextTap = function () {
+  if (typeof Notification === 'undefined' || Notification.permission !== 'default') return;
+  const handler = async function () {
+    document.removeEventListener('touchend', handler, true);
+    document.removeEventListener('click',    handler, true);
+    await window.xmesRequestPushPermission();
+  };
+  document.addEventListener('touchend', handler, { capture: true, once: true });
+  document.addEventListener('click',    handler, { capture: true, once: true });
+};
+
 // ── Called from Rust after XMES_INBOX_ID is set ──────────────────────────────
 // Auto-subscribes silently when permission is already granted.
 window.xmesSubscribePush = async function () {
