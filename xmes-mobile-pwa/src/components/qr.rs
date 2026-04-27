@@ -87,17 +87,39 @@ fn start_camera_js() {
                 video.srcObject = stream;
                 video.play();
                 window.__xmes_qr_stream = stream;
-                if (!('BarcodeDetector' in window)) {
-                    window.__xmes_qr_error = 'QR scanner not supported in this browser';
-                    return;
+
+                if ('BarcodeDetector' in window) {
+                    const det = new BarcodeDetector({ formats: ['qr_code'] });
+                    window.__xmes_qr_timer = setInterval(async () => {
+                        try {
+                            const r = await det.detect(video);
+                            if (r.length > 0) window.__xmes_qr_result = r[0].rawValue;
+                        } catch(_) {}
+                    }, 400);
+                } else {
+                    // Fallback: jsQR via canvas (Safari / WebKit)
+                    if (!window.jsQR) {
+                        await new Promise((res, rej) => {
+                            const s = document.createElement('script');
+                            s.src = '/jsqr.min.js';
+                            s.onload = res; s.onerror = rej;
+                            document.head.appendChild(s);
+                        });
+                    }
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    window.__xmes_qr_timer = setInterval(() => {
+                        try {
+                            if (!video.videoWidth) return;
+                            canvas.width  = video.videoWidth;
+                            canvas.height = video.videoHeight;
+                            ctx.drawImage(video, 0, 0);
+                            const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                            const code = window.jsQR(img.data, img.width, img.height);
+                            if (code && code.data) window.__xmes_qr_result = code.data;
+                        } catch(_) {}
+                    }, 400);
                 }
-                const det = new BarcodeDetector({ formats: ['qr_code'] });
-                window.__xmes_qr_timer = setInterval(async () => {
-                    try {
-                        const r = await det.detect(video);
-                        if (r.length > 0) window.__xmes_qr_result = r[0].rawValue;
-                    } catch(_) {}
-                }, 400);
             } catch(e) {
                 window.__xmes_qr_error = e.message || 'Camera access denied';
             }
