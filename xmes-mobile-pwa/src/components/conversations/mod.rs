@@ -30,12 +30,9 @@ pub fn Conversations() -> Element {
 
     use_effect(move || {
         if needs_push {
-            spawn(async move {
-                gloo_timers::future::TimeoutFuture::new(2_000).await;
-                let _ = js_sys::eval(
-                    "window.xmesRequestPushPermission&&window.xmesRequestPushPermission()"
-                );
-            });
+            let _ = js_sys::eval(
+                "window.xmesEnablePushOnNextTap&&window.xmesEnablePushOnNextTap()"
+            );
         }
     });
 
