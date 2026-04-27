@@ -16,6 +16,20 @@ pub fn Conversations() -> Element {
     let pending_open = use_context::<Signal<Option<()>>>();
     let mut unread_ids = use_context::<Signal<std::collections::HashSet<String>>>();
 
+    // Show push-opt-in bell when Notification permission is not yet granted.
+    // Hides after the user grants (or denies) permission.
+    let push_supported = js_sys::eval("'Notification' in window && 'PushManager' in window")
+        .ok()
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let push_worker_configured = !option_env!("PUSH_WORKER_URL").unwrap_or("").is_empty();
+    let initial_perm = js_sys::eval("typeof Notification!=='undefined'?Notification.permission:'granted'")
+        .ok()
+        .and_then(|v| v.as_string())
+        .unwrap_or_else(|| "granted".into());
+    let mut push_perm: Signal<String> = use_signal(|| initial_perm);
+    let show_bell = push_supported && push_worker_configured && *push_perm.read() != "granted";
+
     rsx! {
         div { class: "app-shell",
 
@@ -24,6 +38,24 @@ pub fn Conversations() -> Element {
                 div { class: "app-logo",
                     img { class: "app-logo-mark", src: LOGO, alt: "xmes logo" }
                     span { class: "app-logo-name", "xmes" }
+                }
+                if show_bell {
+                    button {
+                        class: "push-bell-btn",
+                        title: "Enable push notifications",
+                        onclick: move |_| {
+                            let _ = js_sys::eval("window.xmesRequestPushPermission&&window.xmesRequestPushPermission()");
+                            // Update local state so the button hides immediately after tap
+                            push_perm.set("granted".into());
+                        },
+                        svg {
+                            xmlns: "http://www.w3.org/2000/svg", width: "20", height: "20",
+                            view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
+                            stroke_width: "1.8", stroke_linecap: "round", stroke_linejoin: "round",
+                            path { d: "M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" }
+                            path { d: "M13.73 21a2 2 0 0 1-3.46 0" }
+                        }
+                    }
                 }
             }
 

@@ -1712,6 +1712,23 @@ body {
     pointer-events: none;
 }
 
+/* ── Push notification bell ──────────────────────────────────── */
+
+.push-bell-btn {
+    background: none;
+    border: none;
+    padding: 6px;
+    cursor: pointer;
+    color: var(--text-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-full);
+    transition: color 0.15s, background 0.15s;
+}
+
+.push-bell-btn:hover { color: var(--primary); background: var(--primary-light); }
+
 /* ── QR sheets ───────────────────────────────────────────────── */
 
 .qr-sheet {

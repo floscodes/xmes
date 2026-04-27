@@ -188,11 +188,11 @@ fn App() -> Element {
 
                 // Active identity.
                 let active = update.identities.get(update.active_idx).cloned();
-                // Expose inbox ID to JS so register-sw.js can POST the push subscription.
+                // Expose inbox ID to JS, then auto-subscribe push if already permitted.
                 if let Some(ref id) = active {
+                    let escaped = id.inbox_id.replace('\'', "\\'");
                     let _ = js_sys::eval(&format!(
-                        "window.XMES_INBOX_ID='{}'",
-                        id.inbox_id.replace('\'', "\\'")
+                        "window.XMES_INBOX_ID='{escaped}';window.xmesSubscribePush&&window.xmesSubscribePush()"
                     ));
                 }
                 let mut ii = identity_info;
