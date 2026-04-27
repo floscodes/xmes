@@ -37,7 +37,7 @@ fn copy_to_clipboard(text: String, mut copied: Signal<bool>) {
 /// Small inline copy button. Shows a checkmark for 1.5 s after clicking.
 #[component]
 fn CopyBtn(text: String) -> Element {
-    let mut copied = use_signal(|| false);
+    let copied = use_signal(|| false);
     rsx! {
         button {
             class: "copy-btn",
@@ -511,7 +511,7 @@ fn IdentityCard(
                             rect { x: "3", y: "11", width: "18", height: "11", rx: "2", ry: "2" }
                             path { d: "M7 11V7a5 5 0 0 1 10 0v4" }
                         }
-                        span { "Show recovery phrase" }
+                        span { "Share with other device (Mnemonic phrase)" }
                     }
                 }
 

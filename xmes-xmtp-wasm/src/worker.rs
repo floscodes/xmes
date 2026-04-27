@@ -749,8 +749,8 @@ pub fn spawn_xmtp_worker(
     on_group_members:   impl Fn(Vec<MemberInfo>) + 'static,
 ) -> XmtpHandle {
     let arr = js_sys::Array::of1(&JsValue::from_str(WORKER_BOOTSTRAP));
-    let mut props = web_sys::BlobPropertyBag::new();
-    props.type_("application/javascript");
+    let props = web_sys::BlobPropertyBag::new();
+    props.set_type("application/javascript");
     let blob      = web_sys::Blob::new_with_str_sequence_and_options(&arr, &props).unwrap_throw();
     let blob_url  = web_sys::Url::create_object_url_with_blob(&blob).unwrap_throw();
     let worker    = web_sys::Worker::new(&blob_url).unwrap_throw();
