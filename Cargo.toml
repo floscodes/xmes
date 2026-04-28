@@ -5,5 +5,13 @@ members = ["xmes-xmtp-wasm", "xmes-mobile-pwa"]
 [workspace.dependencies]
 xmes-xmtp-wasm = { path = "xmes-xmtp-wasm" }
 
+[profile.release]
+opt-level = "z"
+lto = true
+strip = true
+debug = false
+codegen-units = 1
+panic = "abort"
+
 [patch."https://github.com/xmtp/libxmtp"]
 xmtp_configuration = { path = "patches/xmtp_configuration" }
