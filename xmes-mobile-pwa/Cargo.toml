@@ -30,4 +30,10 @@ web = ["dioxus/web"]
 desktop = ["dioxus/desktop"]
 mobile = ["dioxus/mobile"]
 
-# profile.release is defined in workspace root Cargo.toml
+[profile.release]
+opt-level = "z"
+lto = true
+strip = true
+debug = false
+codegen-units = 1
+panic = "abort"
