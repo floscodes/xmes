@@ -1,0 +1,162 @@
+/* ============================================================
+   XMES brand overrides for the goyo theme — dark theme only
+   ============================================================ */
+
+/* ── Background ── */
+[data-theme="goyo-dark"] body {
+    background: linear-gradient(135deg, #07080f 0%, #0d0f1a 100%);
+}
+
+/* ── Hero section ── */
+[data-theme="goyo-dark"] .hero-background {
+    background: radial-gradient(ellipse at 50% 40%,
+        rgba(109, 40, 217, 0.18) 0%,
+        rgba(7, 8, 15, 0) 65%);
+}
+
+[data-theme="goyo-dark"] .hero-title {
+    background: linear-gradient(135deg, #c4b5fd 0%, #818cf8 50%, #6366f1 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+}
+
+[data-theme="goyo-dark"] .hero-badge {
+    color: #c4b5fd;
+    background: rgba(109, 40, 217, 0.15);
+    border: 1px solid rgba(139, 92, 246, 0.4);
+}
+
+[data-theme="goyo-dark"] .hero-description {
+    color: #94a3b8;
+}
+
+[data-theme="goyo-dark"] .hero-cta-primary {
+    color: #fff;
+    background: linear-gradient(135deg, #7c3aed, #4f46e5);
+    box-shadow: 0 4px 24px rgba(124, 58, 237, 0.4);
+    border: none;
+}
+
+[data-theme="goyo-dark"] .hero-cta-secondary {
+    color: #c4b5fd;
+    background: rgba(109, 40, 217, 0.08);
+    border: 1px solid rgba(139, 92, 246, 0.35);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+[data-theme="goyo-dark"] .hero-cta-secondary:hover {
+    background: rgba(109, 40, 217, 0.18);
+    border-color: rgba(139, 92, 246, 0.6);
+}
+
+/* ── Section headings ── */
+[data-theme="goyo-dark"] h2 {
+    background-image: linear-gradient(135deg, #c4b5fd 0%, #818cf8 100%);
+}
+
+[data-theme="goyo-dark"] h2::after {
+    background: linear-gradient(90deg, #7c3aed, #6366f1);
+}
+
+/* ── Feature cards ── */
+[data-theme="goyo-dark"] .feature-card {
+    background: rgba(13, 15, 26, 0.85);
+    border: 1px solid rgba(139, 92, 246, 0.12);
+    box-shadow: none;
+}
+
+[data-theme="goyo-dark"] .feature-card:hover {
+    border-color: rgba(139, 92, 246, 0.35);
+    box-shadow: 0 8px 32px rgba(109, 40, 217, 0.18);
+}
+
+[data-theme="goyo-dark"] .feature-icon-bg {
+    background: rgba(109, 40, 217, 0.12);
+    border: 1px solid rgba(139, 92, 246, 0.25);
+}
+
+[data-theme="goyo-dark"] .feature-icon {
+    color: #a78bfa;
+}
+
+[data-theme="goyo-dark"] .feature-title {
+    color: #e2e8f0;
+}
+
+[data-theme="goyo-dark"] .feature-description {
+    color: #64748b;
+}
+
+/* ── Final CTA ── */
+[data-theme="goyo-dark"] .btn-final-cta-section {
+    background: linear-gradient(135deg, #7c3aed, #4f46e5) !important;
+    color: #fff !important;
+    box-shadow: 0 8px 32px rgba(124, 58, 237, 0.4);
+}
+
+/* ── Navbar logo ── */
+[data-theme="goyo-dark"] .navbar a.btn-ghost {
+    background: linear-gradient(135deg, #c4b5fd, #818cf8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* ── Light theme ── */
+[data-theme="goyo-light"] body {
+    background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+}
+
+[data-theme="goyo-light"] .hero-title {
+    background: linear-gradient(135deg, #5b21b6 0%, #4338ca 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+}
+
+[data-theme="goyo-light"] .hero-badge {
+    color: #6d28d9;
+    background: rgba(109, 40, 217, 0.08);
+    border: 1px solid rgba(109, 40, 217, 0.25);
+}
+
+[data-theme="goyo-light"] .hero-description {
+    color: #475569;
+}
+
+[data-theme="goyo-light"] .hero-cta-primary {
+    color: #fff;
+    background: linear-gradient(135deg, #7c3aed, #4f46e5);
+    border: none;
+    box-shadow: 0 4px 20px rgba(124, 58, 237, 0.3);
+}
+
+[data-theme="goyo-light"] .hero-cta-secondary {
+    color: #6d28d9;
+    background: rgba(109, 40, 217, 0.06);
+    border: 1px solid rgba(109, 40, 217, 0.3);
+}
+
+[data-theme="goyo-light"] h2 {
+    background-image: linear-gradient(135deg, #5b21b6 0%, #4338ca 100%);
+}
+
+[data-theme="goyo-light"] h2::after {
+    background: linear-gradient(90deg, #7c3aed, #6366f1);
+}
+
+[data-theme="goyo-light"] .feature-icon-bg {
+    background: rgba(109, 40, 217, 0.08);
+    border: 1px solid rgba(109, 40, 217, 0.2);
+}
+
+[data-theme="goyo-light"] .feature-icon {
+    color: #7c3aed;
+}
+
+[data-theme="goyo-light"] .btn-final-cta-section {
+    background: linear-gradient(135deg, #7c3aed, #4f46e5) !important;
+    color: #fff !important;
+}

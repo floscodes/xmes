@@ -1,0 +1,33 @@
+base_url = "https://xmes.org"
+title = "xmes"
+description = "Decentralized messaging powered by XMTP. No account, no installation — just open your browser."
+compile_sass = true
+build_search_index = false
+theme = "goyo"
+
+[markdown]
+
+[markdown.highlighting]
+theme = "catppuccin-mocha"
+
+[extra]
+enable_custom_css = true
+footer_html = "© 2025 xmes &nbsp;·&nbsp; <a href='https://github.com/floscodes/xmes' class='font-medium text-base-content/70 hover:text-base-content transition-colors duration-200'>Open Source</a> &nbsp;·&nbsp; Powered by <a href='https://xmtp.org' class='font-medium text-base-content/70 hover:text-base-content transition-colors duration-200'>XMTP</a>"
+
+[extra.theme]
+colorset = "dark"
+brightness = "normal"
+disable_toggle = false
+
+[extra.logo]
+text = "xmes"
+
+[[extra.nav]]
+name = "Open App"
+url = "https://app.xmes.org"
+type = "link"
+
+[[extra.nav]]
+name = "GitHub"
+url = "https://github.com/floscodes/xmes"
+type = "link"
