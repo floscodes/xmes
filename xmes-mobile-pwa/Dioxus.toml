@@ -3,9 +3,6 @@
 [web.app]
 title = "xmes"
 
-[web.wasm-opt]
-level = 4
-
 [web.resource]
 style = []
 script = []
