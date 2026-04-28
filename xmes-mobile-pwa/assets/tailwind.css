@@ -194,6 +194,9 @@
   .block {
     display: block;
   }
+  .grid {
+    display: grid;
+  }
   .inline {
     display: inline;
   }

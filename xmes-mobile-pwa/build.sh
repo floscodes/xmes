@@ -4,14 +4,12 @@ source "$HOME/.cargo/env"
 
 rustup target add wasm32-unknown-unknown
 
-cargo install wasm-opt
-
-curl -sSL https://dioxus.dev/install.sh | bash
-
 curl -L https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.6/clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu-22.04.tar.xz | tar -xJ
 export PATH="$PWD/clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu-22.04/bin:$PATH"
 export CC="$PWD/clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu-22.04/bin/clang"
 export CC_wasm32_unknown_unknown="$PWD/clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu-22.04/bin/clang"
+
+curl -sSL https://dioxus.dev/install.sh | bash
 
 export PRODUCTION=1
 export PUSH_WORKER_URL="https://push-worker.xmes.org"
