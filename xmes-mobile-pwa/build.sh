@@ -4,7 +4,9 @@ source "$HOME/.cargo/env"
 
 rustup target add wasm32-unknown-unknown
 
-cargo install dioxus-cli
+cargo install wasm-opt
+
+curl -sSL https://dioxus.dev/install.sh | bash
 
 curl -L https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.6/clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu-22.04.tar.xz | tar -xJ
 export PATH="$PWD/clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu-22.04/bin:$PATH"
