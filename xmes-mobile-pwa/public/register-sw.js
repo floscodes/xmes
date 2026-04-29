@@ -45,23 +45,41 @@ window.xmesSubscribePush = async function () {
     const sw  = await navigator.serviceWorker.ready;
     let sub   = await sw.pushManager.getSubscription();
 
+    const res           = await fetch(`${pushUrl}/vapid-public-key`);
+    const { publicKey } = await res.json();
+    if (!publicKey) { console.warn('[xmes] no VAPID public key'); return; }
+
+    // If an existing subscription uses a different server key, unsubscribe first
+    // so we always register a fresh FCM/APNs subscription.
+    if (sub) {
+      const existingKey = sub.options && sub.options.applicationServerKey
+        ? btoa(String.fromCharCode(...new Uint8Array(sub.options.applicationServerKey)))
+            .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
+        : null;
+      if (existingKey !== publicKey) {
+        console.log('[xmes] server key mismatch, resubscribing');
+        await sub.unsubscribe();
+        sub = null;
+      }
+    }
+
     if (!sub) {
-      const res           = await fetch(`${pushUrl}/vapid-public-key`);
-      const { publicKey } = await res.json();
-      if (!publicKey) return;
+      console.log('[xmes] creating new push subscription');
       sub = await sw.pushManager.subscribe({
         userVisibleOnly:      true,
         applicationServerKey: urlBase64ToUint8Array(publicKey),
       });
+      console.log('[xmes] subscribed:', sub.endpoint);
     }
 
     const body = { inbox_id: inboxId, subscription: sub.toJSON() };
     if (window.XMES_ETH_ADDRESS) body.address = window.XMES_ETH_ADDRESS;
-    await fetch(`${pushUrl}/subscribe`, {
+    const r = await fetch(`${pushUrl}/subscribe`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify(body),
     });
+    console.log('[xmes] subscription registered, status:', r.status);
   } catch (e) {
     console.warn('[xmes] xmesSubscribePush failed:', e);
   }

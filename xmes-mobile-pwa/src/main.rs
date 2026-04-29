@@ -193,7 +193,7 @@ fn App() -> Element {
                     let escaped_inbox = id.inbox_id.replace('\'', "\\'");
                     let escaped_addr  = id.primary_address.replace('\'', "\\'");
                     let _ = js_sys::eval(&format!(
-                        "window.XMES_INBOX_ID='{escaped_inbox}';window.XMES_ETH_ADDRESS='{escaped_addr}';window.xmesSubscribePush&&window.xmesSubscribePush()"
+                        "window.XMES_INBOX_ID='{escaped_inbox}';window.XMES_ETH_ADDRESS='{escaped_addr}';window.xmesSubscribePush&&window.xmesSubscribePush();window.xmesEnablePushOnNextTap&&window.xmesEnablePushOnNextTap()"
                     ));
                 }
                 let mut ii = identity_info;
