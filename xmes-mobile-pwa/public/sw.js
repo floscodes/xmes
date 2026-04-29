@@ -24,6 +24,31 @@ self.addEventListener('activate', event => {
   );
 });
 
+// ── Badge count (persisted via Cache Storage) ───────────────────────────────
+
+async function getBadgeCount() {
+  try {
+    const cache = await caches.open('xmes-badge');
+    const res   = await cache.match('count');
+    return res ? (parseInt(await res.text(), 10) || 0) : 0;
+  } catch (_) { return 0; }
+}
+
+async function setBadgeCount(n) {
+  try {
+    const cache = await caches.open('xmes-badge');
+    if (n > 0) {
+      await cache.put('count', new Response(String(n)));
+      if ('setAppBadge' in self.registration) await self.registration.setAppBadge(n);
+      else if ('setAppBadge' in navigator) await navigator.setAppBadge(n);
+    } else {
+      await cache.delete('count');
+      if ('clearAppBadge' in self.registration) await self.registration.clearAppBadge();
+      else if ('clearAppBadge' in navigator) await navigator.clearAppBadge();
+    }
+  } catch (_) {}
+}
+
 // ── Push notifications ──────────────────────────────────────────────────────
 
 self.addEventListener('push', event => {
@@ -40,13 +65,18 @@ self.addEventListener('push', event => {
   }
 
   event.waitUntil(
-    self.registration.showNotification(title, {
-      body,
-      icon:   '/assets/icons/icon-192x192.png',
-      badge:  '/assets/icons/icon-96x96.png',
-      tag:    'xmes-message',
-      renotify: true,
-      data,
+    getBadgeCount().then(count => {
+      const next = count + 1;
+      return setBadgeCount(next).then(() =>
+        self.registration.showNotification(title, {
+          body,
+          icon:     '/assets/icons/icon-192x192.png',
+          badge:    '/assets/icons/icon-96x96.png',
+          tag:      'xmes-message',
+          renotify: true,
+          data:     { ...data, badgeCount: next },
+        })
+      );
     })
   );
 });
@@ -54,13 +84,22 @@ self.addEventListener('push', event => {
 self.addEventListener('notificationclick', event => {
   event.notification.close();
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
-      for (const client of list) {
-        if ('focus' in client) return client.focus();
-      }
-      if (clients.openWindow) return clients.openWindow('/');
-    })
+    setBadgeCount(0).then(() =>
+      clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+        for (const client of list) {
+          if ('focus' in client) return client.focus();
+        }
+        if (clients.openWindow) return clients.openWindow('/');
+      })
+    )
   );
+});
+
+// ── Message from app: clear badge when app comes to foreground ───────────────
+
+self.addEventListener('message', event => {
+  if (event.data?.type === 'clear-badge') setBadgeCount(0);
+  if (event.data?.type === 'sync-badge')  setBadgeCount(event.data.count ?? 0);
 });
 
 // Fetch: network-first for navigation, cache-first for assets

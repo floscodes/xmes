@@ -14,6 +14,7 @@
   }
 })();
 
+
 // ── Called from Rust on mount when permission is still 'default' ─────────────
 // Registers a one-shot capture-phase listener so the NEXT natural user tap
 // triggers the permission dialog (guaranteed user-gesture context on iOS).

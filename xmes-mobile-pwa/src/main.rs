@@ -141,6 +141,23 @@ fn App() -> Element {
     use_context_provider(|| group_members);
     use_context_provider(|| unread_ids);
 
+    // Keep app-icon badge in sync with unread conversation count.
+    use_effect(move || {
+        let count = unread_ids.read().len();
+        let js = if count > 0 {
+            format!(
+                "var n={count};\
+                 if('setAppBadge' in navigator) navigator.setAppBadge(n);\
+                 navigator.serviceWorker&&navigator.serviceWorker.ready.then(function(sw){{sw.active&&sw.active.postMessage({{type:'sync-badge',count:n}})}});"
+            )
+        } else {
+            "if('clearAppBadge' in navigator) navigator.clearAppBadge();\
+             navigator.serviceWorker&&navigator.serviceWorker.ready.then(function(sw){sw.active&&sw.active.postMessage({type:'sync-badge',count:0})});"
+                .to_string()
+        };
+        let _ = js_sys::eval(&js);
+    });
+
     use_resource(move || async move {
         if xmtp_handle.read().is_some() {
             return;
