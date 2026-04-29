@@ -1,0 +1,22 @@
+{% import "macros/head.html" as macros_head %}
+{% import "macros/footer.html" as macros_footer %}
+
+{% set config_file = load_data(path="/config.toml", format="toml", required=false) %}
+
+<!DOCTYPE html>
+{{ macros_head::html_tag(config=config, lang=lang) }}
+<head>
+    {{ macros_head::head(config=config, page=page, section=false, current_url=config.base_url, config_file=config_file) }}
+</head>
+<body class="flex flex-col min-h-screen">
+    <div class="flex-1 flex flex-col items-center justify-center px-6 py-20">
+        <div class="max-w-xl w-full">
+            <h1 class="text-4xl font-black mb-8 hero-title">{{ page.title }}</h1>
+            <div class="hero-description leading-relaxed space-y-4">
+                {{ page.content | safe }}
+            </div>
+        </div>
+    </div>
+    {{ macros_footer::footer(config=config) }}
+</body>
+</html>

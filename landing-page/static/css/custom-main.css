@@ -7,6 +7,21 @@
     display: none !important;
 }
 
+/* ── Footer: minimal spacing, always at page bottom ── */
+footer {
+    margin-top: auto;
+    padding-top: 0.75rem !important;
+    padding-bottom: 0.75rem !important;
+}
+
+/* Make drawer-content full height so footer reaches bottom */
+.drawer-content {
+    min-height: 100vh;
+    display: flex !important;
+    flex-direction: column !important;
+    padding-top: 0 !important;
+}
+
 /* ── Badge row: logo + badge inline, screenshot anchored right ── */
 .hero-badge-row {
     position: relative;
