@@ -4,9 +4,9 @@
 {% macro render_hero(section) %}
     {# Hero Section - Ashen Minimalist Style #}
     {% if section.extra.hero %}
-        <div class="relative min-h-[calc(100vh-theme(spacing.16))] flex items-center justify-center text-center overflow-hidden">
-            <!-- Subtle Animated Background -->
-            <div class="absolute inset-0">
+        <div class="relative min-h-screen flex items-center justify-center text-center">
+            <!-- Subtle Animated Background (overflow contained here) -->
+            <div class="absolute inset-0 overflow-hidden">
                 <div class="absolute inset-0 hero-background"></div>
                 {% set gradient_opacity = section.extra.hero.gradient_opacity | default(value=20) %}
                 <div class="absolute inset-0 opacity-{{ gradient_opacity }}">
@@ -26,11 +26,16 @@
                     </picture>
                 {% endif %}
             </div>
-            <!-- Hero text: completely unmodified, centered -->
+            <!-- Hero text: centered, no layout change -->
             <div class="relative z-10 p-8 max-w-6xl mx-auto">
                 {% if section.extra.hero.badge %}
-                <div class="mb-8">
-                    <span class="inline-block px-6 py-2 rounded-full text-sm font-medium hero-badge mb-6">
+                <!-- Badge row: logo + typed letters + badge -->
+                <div class="hero-badge-row mb-8">
+                    <img src="/images/xmes.svg" alt="xmes" class="hero-inline-logo">
+                    <span class="hero-logo-typed" aria-label="mes">
+                        <span class="hero-logo-letter" style="animation-delay:0.4s">m</span><span class="hero-logo-letter" style="animation-delay:0.75s">e</span><span class="hero-logo-letter" style="animation-delay:1.1s">s</span>
+                    </span>
+                    <span class="inline-block px-6 py-2 rounded-full text-sm font-medium hero-badge">
                         {{ section.extra.hero.badge }}
                     </span>
                 </div>
@@ -62,7 +67,7 @@
                     </div>
                 {% endif %}
             </div>
-            <!-- Screenshot overlay: absolutely positioned, no effect on layout -->
+            <!-- Screenshot: absolutely positioned in hero, no layout effect -->
             {% if section.extra.hero.screenshot %}
             <div class="hero-screenshot-container">
                 <img src="{{ section.extra.hero.screenshot | safe }}"
@@ -304,7 +309,7 @@
                         {{ section.extra.final_cta_section.title }}
                     </span>
                 </h2>
-                <p class="max-w-3xl mx-auto text-xl hero-description mb-12 leading-relaxed">
+                <p class="max-w-3xl mx-auto text-xl hero-description mb-12 leading-relaxed" style="white-space: pre-line;">
                     {{ section.extra.final_cta_section.description }}
                 </p>
                 {% if section.extra.final_cta_section.image %}

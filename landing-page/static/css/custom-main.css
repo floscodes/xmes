@@ -2,15 +2,51 @@
    XMES brand overrides — dark + light mode, content-identical
    ============================================================ */
 
-/* ── Navbar: logo spacing from top edge ── */
+/* ── Hide navbar entirely ── */
 .navbar {
-    padding-top: 1.8rem;
-    padding-bottom: 1.8rem;
+    display: none !important;
 }
-.navbar a.btn-ghost img {
-    height: 4.2rem;
+
+/* ── Badge row: logo + badge inline, screenshot anchored right ── */
+.hero-badge-row {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.hero-inline-logo {
+    height: 5.5rem;
     width: auto;
 }
+
+/* ── Typewriter letters next to logo ── */
+.hero-logo-typed {
+    display: inline-flex;
+    align-items: center;
+    font-size: 3.2rem;
+    font-weight: 900;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    margin-left: -0.15rem;
+}
+
+@keyframes hero-letter-in {
+    from { opacity: 0; max-width: 0; }
+    to   { opacity: 1; max-width: 1.8em; }
+}
+
+.hero-logo-letter {
+    opacity: 0;
+    max-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    display: inline-block;
+    animation: hero-letter-in 0.22s cubic-bezier(0.25, 0, 0.4, 1) forwards;
+}
+
+[data-theme="goyo-dark"] .hero-logo-typed  { color: #c4b5fd; }
+[data-theme="goyo-light"] .hero-logo-typed { color: #5b21b6; }
 
 /* ── Hero text: constrained on desktop so it doesn't overlap screenshot ── */
 @media (min-width: 768px) {
@@ -19,16 +55,17 @@
     }
 }
 
-/* ── Hero screenshot container — absolute overlay, desktop only ── */
+/* ── Hero screenshot container — absolute in hero, top-right ── */
+/* Hidden below 1200px so it never overlaps the centered hero title */
 .hero-screenshot-container {
     display: none;
 }
-@media (min-width: 768px) {
+@media (min-width: 1500px) {
     .hero-screenshot-container {
         display: block;
-        position: fixed;
-        top: 8rem;
-        right: 3rem;
+        position: absolute;
+        top: 12%;
+        right: 4%;
         z-index: 0;
         pointer-events: none;
     }
@@ -36,7 +73,7 @@
 
 /* ── Hero screenshot — iPhone-style ── */
 .hero-screenshot {
-    width: min(270px, 26vw);
+    width: min(200px, 20vw);
     border-radius: 2.5rem;
     box-shadow: 0 32px 80px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255,255,255,0.08);
     display: block;
