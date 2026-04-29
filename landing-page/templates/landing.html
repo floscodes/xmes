@@ -33,8 +33,64 @@
                 <div class="hero-badge-row mb-8">
                     <img src="/images/xmes.svg" alt="xmes" class="hero-inline-logo">
                     <span class="hero-logo-typed" aria-label="mes">
-                        <span class="hero-logo-letter" style="animation-delay:0.4s">m</span><span class="hero-logo-letter" style="animation-delay:0.75s">e</span><span class="hero-logo-letter" style="animation-delay:1.1s">s</span>
+                        <span class="hero-logo-letter">m</span><span class="hero-logo-letter">e</span><span class="hero-logo-letter">s</span><span class="hero-logo-cursor">|</span>
                     </span>
+                    <script>
+                    (function() {
+                        var CYCLE = 20000;
+                        var IN_DELAYS  = [0.4, 0.75, 1.1];
+                        var IN_DUR     = 0.22;
+                        var OUT_DELAYS = [0, 0, 0];
+                        var OUT_DUR    = 1.8;
+                        var letters, cursor;
+
+                        function playIn() {
+                            cursor.style.opacity = '1';
+                            cursor.classList.add('blink');
+                            letters.forEach(function(el, i) {
+                                el.style.animation  = 'none';
+                                el.style.maxWidth   = '';
+                                el.style.opacity    = '';
+                                el.offsetHeight;
+                                el.style.animation =
+                                    'hero-letter-in ' + IN_DUR + 's cubic-bezier(0.25,0,0.4,1) ' + IN_DELAYS[i] + 's forwards';
+                            });
+                            // hide cursor ~1.5s after last letter finishes
+                            setTimeout(function() {
+                                cursor.classList.remove('blink');
+                                cursor.style.opacity = '0';
+                            }, (IN_DELAYS[2] + IN_DUR + 1.5) * 1000);
+                        }
+
+                        function playOut(done) {
+                            letters.forEach(function(el) {
+                                el.style.maxWidth = '1.8em';
+                                el.style.opacity  = '1';
+                                el.style.animation = 'none';
+                                el.offsetHeight;
+                                el.style.animation = 'hero-letter-out ' + OUT_DUR + 's ease forwards';
+                            });
+                            setTimeout(function() {
+                                if (done) done();
+                            }, (OUT_DUR + 0.2) * 1000);
+                        }
+
+                        function init() {
+                            letters = Array.from(document.querySelectorAll('.hero-logo-letter'));
+                            cursor  = document.querySelector('.hero-logo-cursor');
+                            playIn();
+                            setInterval(function() {
+                                playOut(function() {
+                                    setTimeout(playIn, 400);
+                                });
+                            }, CYCLE);
+                        }
+
+                        if (document.readyState === 'loading') {
+                            document.addEventListener('DOMContentLoaded', init);
+                        } else { init(); }
+                    })();
+                    </script>
                     <span class="inline-block px-6 py-2 rounded-full text-sm font-medium hero-badge">
                         {{ section.extra.hero.badge }}
                     </span>
