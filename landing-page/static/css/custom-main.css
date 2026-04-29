@@ -1,0 +1,260 @@
+/* ============================================================
+   XMES brand overrides — dark + light mode, content-identical
+   ============================================================ */
+
+/* ── Navbar: logo spacing from top edge ── */
+.navbar {
+    padding-top: 0.6rem;
+    padding-bottom: 0.6rem;
+}
+.navbar a.btn-ghost img {
+    height: 2.4rem;
+    width: auto;
+}
+
+/* ── Remove h2 underline decoration from goyo theme ── */
+h2::after {
+    display: none !important;
+}
+
+/* ── Disable hover effects on feature cards and trust logos ── */
+.feature-card,
+.group:hover .feature-card,
+.group-hover\:scale-105:is(:where(.group):hover *).feature-card {
+    scale: 1 !important;
+    transform: none !important;
+    transition: none !important;
+}
+[data-theme="goyo-dark"] .group:hover .feature-card {
+    border-color: rgba(139, 92, 246, 0.12) !important;
+    box-shadow: none !important;
+}
+[data-theme="goyo-light"] .group:hover .feature-card {
+    border-color: rgba(109, 40, 217, 0.12) !important;
+    box-shadow: 0 2px 12px rgba(109, 40, 217, 0.06) !important;
+}
+.trust-section-logo,
+.group:hover .trust-section-logo,
+.group-hover\:scale-110:is(:where(.group):hover *).trust-section-logo {
+    scale: 1 !important;
+    transform: none !important;
+    transition: none !important;
+}
+
+/* ── Reduce section vertical spacing ── */
+.py-20 {
+    padding-top: 3rem !important;
+    padding-bottom: 3rem !important;
+}
+@media (min-width: 768px) {
+    .md\:py-40 {
+        padding-top: 5rem !important;
+        padding-bottom: 5rem !important;
+    }
+}
+
+/* ────────────────────────────────────────
+   DARK MODE
+   ──────────────────────────────────────── */
+
+[data-theme="goyo-dark"] body {
+    background: linear-gradient(135deg, #07080f 0%, #0d0f1a 100%);
+}
+
+[data-theme="goyo-dark"] .hero-background {
+    background: radial-gradient(ellipse at 50% 40%,
+        rgba(109, 40, 217, 0.18) 0%,
+        rgba(7, 8, 15, 0) 65%);
+}
+
+[data-theme="goyo-dark"] .hero-title {
+    background: none !important;
+    background-image: none !important;
+    -webkit-background-clip: initial !important;
+    background-clip: initial !important;
+    -webkit-text-fill-color: #c4b5fd !important;
+    color: #c4b5fd;
+}
+
+[data-theme="goyo-dark"] .hero-badge {
+    color: #c4b5fd;
+    background: rgba(109, 40, 217, 0.15);
+    border: 1px solid rgba(139, 92, 246, 0.4);
+}
+
+[data-theme="goyo-dark"] .hero-description {
+    color: #94a3b8;
+}
+
+[data-theme="goyo-dark"] .hero-cta-primary {
+    color: #fff;
+    background: linear-gradient(135deg, #7c3aed, #4f46e5);
+    box-shadow: 0 4px 24px rgba(124, 58, 237, 0.4);
+    border: none;
+}
+
+[data-theme="goyo-dark"] .hero-cta-secondary {
+    color: #c4b5fd;
+    background: rgba(109, 40, 217, 0.08);
+    border: 1px solid rgba(139, 92, 246, 0.35);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+[data-theme="goyo-dark"] .hero-cta-secondary:hover {
+    background: rgba(109, 40, 217, 0.18);
+    border-color: rgba(139, 92, 246, 0.6);
+}
+
+[data-theme="goyo-dark"] .feature-card {
+    background: rgba(13, 15, 26, 0.85);
+    border: 1px solid rgba(139, 92, 246, 0.12);
+    box-shadow: none;
+}
+
+[data-theme="goyo-dark"] .feature-card:hover {
+    background: rgba(13, 15, 26, 0.85) !important;
+    border-color: rgba(139, 92, 246, 0.12) !important;
+    box-shadow: none !important;
+}
+
+[data-theme="goyo-dark"] .feature-icon-bg {
+    background: rgba(109, 40, 217, 0.12);
+    border: 1px solid rgba(139, 92, 246, 0.25);
+}
+
+[data-theme="goyo-dark"] .feature-icon { color: #a78bfa; }
+[data-theme="goyo-dark"] .feature-title {
+    background: none !important;
+    background-image: none !important;
+    -webkit-background-clip: initial !important;
+    background-clip: initial !important;
+    -webkit-text-fill-color: #e2e8f0 !important;
+    color: #e2e8f0;
+}
+[data-theme="goyo-dark"] .feature-description { color: #64748b; }
+
+[data-theme="goyo-dark"] .trust-section-title { color: #94a3b8; }
+
+[data-theme="goyo-dark"] .trust-section-logo { filter: brightness(0) invert(1); opacity: 0.5; }
+
+[data-theme="goyo-dark"] .testimonial-card {
+    background: rgba(13, 15, 26, 0.85);
+    border: 1px solid rgba(139, 92, 246, 0.12);
+}
+
+[data-theme="goyo-dark"] .testimonial-card:hover {
+    border-color: rgba(139, 92, 246, 0.35);
+}
+
+[data-theme="goyo-dark"] .testimonial-avatar-border { border-color: rgba(139, 92, 246, 0.4); }
+[data-theme="goyo-dark"] .testimonial-author { color: #e2e8f0; }
+[data-theme="goyo-dark"] .testimonial-role { color: #a78bfa; }
+[data-theme="goyo-dark"] .testimonial-quote { color: #94a3b8; }
+
+[data-theme="goyo-dark"] .btn-final-cta-section {
+    background: linear-gradient(135deg, #7c3aed, #4f46e5) !important;
+    color: #fff !important;
+    box-shadow: 0 8px 32px rgba(124, 58, 237, 0.4);
+}
+
+/* ────────────────────────────────────────
+   LIGHT MODE
+   ──────────────────────────────────────── */
+
+[data-theme="goyo-light"] body {
+    background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+}
+
+[data-theme="goyo-light"] .hero-background {
+    background: radial-gradient(ellipse at 50% 40%,
+        rgba(109, 40, 217, 0.10) 0%,
+        rgba(245, 243, 255, 0) 65%);
+}
+
+[data-theme="goyo-light"] .hero-title {
+    background: none !important;
+    background-image: none !important;
+    -webkit-background-clip: initial !important;
+    background-clip: initial !important;
+    -webkit-text-fill-color: #5b21b6 !important;
+    color: #5b21b6;
+}
+
+[data-theme="goyo-light"] .hero-badge {
+    color: #6d28d9;
+    background: rgba(109, 40, 217, 0.08);
+    border: 1px solid rgba(109, 40, 217, 0.25);
+}
+
+[data-theme="goyo-light"] .hero-description { color: #475569; }
+
+[data-theme="goyo-light"] .hero-cta-primary {
+    color: #fff;
+    background: linear-gradient(135deg, #7c3aed, #4f46e5);
+    border: none;
+    box-shadow: 0 4px 20px rgba(124, 58, 237, 0.3);
+}
+
+[data-theme="goyo-light"] .hero-cta-secondary {
+    color: #6d28d9;
+    background: rgba(109, 40, 217, 0.06);
+    border: 1px solid rgba(109, 40, 217, 0.3);
+}
+
+[data-theme="goyo-light"] .hero-cta-secondary:hover {
+    background: rgba(109, 40, 217, 0.12);
+}
+
+[data-theme="goyo-light"] .feature-card {
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(109, 40, 217, 0.12);
+    box-shadow: 0 2px 12px rgba(109, 40, 217, 0.06);
+}
+
+[data-theme="goyo-light"] .feature-card:hover {
+    background: rgba(255, 255, 255, 0.8) !important;
+    border-color: rgba(109, 40, 217, 0.12) !important;
+    box-shadow: 0 2px 12px rgba(109, 40, 217, 0.06) !important;
+}
+
+[data-theme="goyo-light"] .feature-icon-bg {
+    background: rgba(109, 40, 217, 0.08);
+    border: 1px solid rgba(109, 40, 217, 0.2);
+}
+
+[data-theme="goyo-light"] .feature-icon { color: #7c3aed; }
+[data-theme="goyo-light"] .feature-title {
+    background: none !important;
+    background-image: none !important;
+    -webkit-background-clip: initial !important;
+    background-clip: initial !important;
+    -webkit-text-fill-color: #1e1b4b !important;
+    color: #1e1b4b;
+}
+[data-theme="goyo-light"] .feature-description { color: #475569; }
+
+[data-theme="goyo-light"] .trust-section-title { color: #475569; }
+
+[data-theme="goyo-light"] .trust-section-logo { filter: brightness(0); opacity: 0.4; }
+
+[data-theme="goyo-light"] .testimonial-card {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(109, 40, 217, 0.12);
+    box-shadow: 0 2px 12px rgba(109, 40, 217, 0.06);
+}
+
+[data-theme="goyo-light"] .testimonial-card:hover {
+    border-color: rgba(109, 40, 217, 0.3);
+}
+
+[data-theme="goyo-light"] .testimonial-avatar-border { border-color: rgba(109, 40, 217, 0.3); }
+[data-theme="goyo-light"] .testimonial-author { color: #1e1b4b; }
+[data-theme="goyo-light"] .testimonial-role { color: #7c3aed; }
+[data-theme="goyo-light"] .testimonial-quote { color: #475569; }
+
+[data-theme="goyo-light"] .btn-final-cta-section {
+    background: linear-gradient(135deg, #7c3aed, #4f46e5) !important;
+    color: #fff !important;
+    box-shadow: 0 8px 32px rgba(109, 40, 217, 0.25);
+}

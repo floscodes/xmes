@@ -24,6 +24,45 @@ self.addEventListener('activate', event => {
   );
 });
 
+// ── Push notifications ──────────────────────────────────────────────────────
+
+self.addEventListener('push', event => {
+  let title = 'xmes';
+  let body  = 'New message';
+  let data  = {};
+
+  if (event.data) {
+    try {
+      data  = event.data.json();
+      title = data.title ?? title;
+      body  = data.body  ?? body;
+    } catch (_) {}
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      icon:   '/assets/icons/icon-192x192.png',
+      badge:  '/assets/icons/icon-96x96.png',
+      tag:    'xmes-message',
+      renotify: true,
+      data,
+    })
+  );
+});
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      for (const client of list) {
+        if ('focus' in client) return client.focus();
+      }
+      if (clients.openWindow) return clients.openWindow('/');
+    })
+  );
+});
+
 // Fetch: network-first for navigation, cache-first for assets
 self.addEventListener('fetch', event => {
   const { request } = event;
