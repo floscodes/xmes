@@ -1,13 +1,13 @@
 +++
 template = "landing.html"
 title = "xmes"
-description = "Decentralized messaging powered by XMTP. No account, no installation — just open your browser."
+description = "Decentralized messaging powered by XMTP. No account, no installation — just open your browser and add it to your homescreen."
 
 [extra]
-section_order = ["hero", "features", "trust", "showcase", "final_cta"]
+section_order = ["hero", "features", "showcase", "final_cta"]
 
 [extra.hero]
-title = "Chat without a provider"
+title = "Chat privately. No signup."
 badge = "Early Development"
 description = "Xmes is an open-source decentralized messenger built on XMTP. No app store, no signup, no phone number. Privacy first."
 gradient_opacity = 30
@@ -45,16 +45,9 @@ title = "Open Source"
 desc = "The entire codebase is publicly available and auditable. No black boxes, no hidden telemetry — just open code."
 icon = "code"
 
-[extra.trust_section]
-title = "Powered By"
-logos = [
-    { src = "/images/xmtp.svg", alt = "XMTP" },
-    { src = "/images/ethereum.svg", alt = "Ethereum" },
-    { src = "/images/rust.svg", alt = "Rust" },
-]
-
-[extra.final_cta]
+[extra.final_cta_section]
 title = "Buy me a Coffee ☕"
-description = ""
-
+description = """ETH: 0x416ED009B66D931761174787953B6aEe431D8478,
+SOL: 3PnUznaXk7uGSwqnzv2wvqy9xYMmCa5gRbCQN5CWjLz
+"""
 +++
