@@ -12,7 +12,7 @@ theme = "catppuccin-mocha"
 
 [extra]
 enable_custom_css = true
-footer_html = "© 2026 xmes &nbsp;·&nbsp; <a href='https://github.com/floscodes/xmes' class='font-medium text-base-content/70 hover:text-base-content transition-colors duration-200'>Open Source</a> &nbsp;·&nbsp; Powered by <a href='https://xmtp.org' class='font-medium text-base-content/70 hover:text-base-content transition-colors duration-200'>XMTP</a> &nbsp;·&nbsp; <a href='/impressum' class='font-medium text-base-content/70 hover:text-base-content transition-colors duration-200'>Imprint</a>"
+footer_html = "© 2026 xmes &nbsp;·&nbsp; <a href='https://github.com/floscodes/xmes' class='font-medium text-base-content/70 hover:text-base-content transition-colors duration-200'>Open Source</a> &nbsp;·&nbsp; Powered by <a href='https://xmtp.org' class='font-medium text-base-content/70 hover:text-base-content transition-colors duration-200'>XMTP</a> &nbsp;·&nbsp; <a href='/impressum' class='font-medium text-base-content/70 hover:text-base-content transition-colors duration-200'>Imprint</a> &nbsp;·&nbsp; Built with <a href='https://www.getzola.org' class='font-medium text-base-content/70 hover:text-base-content transition-colors duration-200'>Zola</a> &amp; <a href='https://github.com/hahwul/goyo' class='font-medium text-base-content/70 hover:text-base-content transition-colors duration-200'>Goyo</a>"
 
 [extra.theme]
 colorset = "light"
