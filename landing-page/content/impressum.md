@@ -9,9 +9,10 @@ template = "simple.html"
 
 **Responsible for the content of this website:**
 
-Florian Petautschnig  
-Vienna, Austria  
-E-Mail: mail@floscodes.net
+Florian Petautschnig<br>
+Vienna, Austria<br>
+E-Mail: mail@floscodes.net<br>
+GitHub: https://github.com/floscodes
 
 ---
 
