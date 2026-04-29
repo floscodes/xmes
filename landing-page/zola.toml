@@ -1,5 +1,5 @@
 base_url = "https://xmes.org"
-title = "xmes"
+title = "Xmes"
 description = "Decentralized messaging powered by XMTP. No account, no installation — just open your browser."
 compile_sass = true
 build_search_index = false
