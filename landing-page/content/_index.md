@@ -15,6 +15,7 @@ cta_buttons = [
     { text = "Open App", url = "https://app.xmes.org", style = "primary" },
     { text = "View on GitHub", url = "https://github.com/floscodes/xmes", style = "secondary" },
 ]
+screenshot = "/images/chat_screenshot.PNG"
 
 [extra.features_section]
 title = "Why xmes?"

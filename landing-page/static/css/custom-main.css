@@ -4,12 +4,48 @@
 
 /* ── Navbar: logo spacing from top edge ── */
 .navbar {
-    padding-top: 0.6rem;
-    padding-bottom: 0.6rem;
+    padding-top: 1.8rem;
+    padding-bottom: 1.8rem;
 }
 .navbar a.btn-ghost img {
-    height: 2.4rem;
+    height: 4.2rem;
     width: auto;
+}
+
+/* ── Hero text: constrained on desktop so it doesn't overlap screenshot ── */
+@media (min-width: 768px) {
+    .hero-text-constrain {
+        padding-right: 42%;
+    }
+}
+
+/* ── Hero screenshot container — absolute overlay, desktop only ── */
+.hero-screenshot-container {
+    display: none;
+}
+@media (min-width: 768px) {
+    .hero-screenshot-container {
+        display: block;
+        position: fixed;
+        top: 8rem;
+        right: 3rem;
+        z-index: 30;
+        pointer-events: none;
+    }
+}
+
+/* ── Hero screenshot — iPhone-style ── */
+.hero-screenshot {
+    width: min(400px, 38vw);
+    border-radius: 2.5rem;
+    box-shadow: 0 32px 80px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255,255,255,0.08);
+    display: block;
+}
+.hero-screenshot-mobile {
+    width: clamp(120px, 32vw, 180px);
+    border-radius: 1.8rem;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255,255,255,0.08);
+    display: block;
 }
 
 /* ── Remove h2 underline decoration from goyo theme ── */
