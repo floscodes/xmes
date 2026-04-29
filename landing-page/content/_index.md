@@ -1,26 +1,20 @@
 +++
-title = "xmes"
-description = "Decentralized messaging powered by XMTP. No account, no installation."
 template = "landing.html"
+title = "xmes"
+description = "Decentralized messaging powered by XMTP. No account, no installation — just open your browser."
 
 [extra]
-section_order = ["hero", "features", "final_cta"]
+section_order = ["hero", "features", "trust", "showcase", "final_cta"]
 
 [extra.hero]
-badge = "⚠ Early Development — Use with caution"
-title = "Chat Without a Server"
-description = "xmes is an open-source decentralized messenger built on XMTP. Your messages are end-to-end encrypted, your identity is a blockchain keypair — and all you need is a browser."
-gradient_opacity = 25
-
-[[extra.hero.cta_buttons]]
-text = "Open App"
-url = "https://app.xmes.org"
-style = "primary"
-
-[[extra.hero.cta_buttons]]
-text = "View on GitHub"
-url = "https://github.com/floscodes/xmes"
-style = "secondary"
+title = "Chat without a provider"
+badge = "Early Development"
+description = "Xmes is an open-source decentralized messenger built on XMTP. No app store, no signup, no phone number. Privacy first."
+gradient_opacity = 30
+cta_buttons = [
+    { text = "Open App", url = "https://app.xmes.org", style = "primary" },
+    { text = "View on GitHub", url = "https://github.com/floscodes/xmes", style = "secondary" },
+]
 
 [extra.features_section]
 title = "Why xmes?"
@@ -38,29 +32,29 @@ icon = "lock"
 
 [[extra.features_section.features]]
 title = "No Installation Needed"
-desc = "xmes is a Progressive Web App. Open it in any modern browser and start messaging immediately — no app store, no download."
+desc = "xmes is a Progressive Web App. Open it in any modern browser and start messaging immediately — no app store, no download. Just add it to your homescreen and use it like any other app."
 icon = "globe"
 
 [[extra.features_section.features]]
 title = "Blockchain Identity"
-desc = "Your identity is an Ethereum keypair generated locally in your browser. No username, no password, no email address required."
+desc = "Your identity is an Ethereum keypair generated locally in your browser. No username, no password, no phone number, no email address required."
 icon = "key"
-
-[[extra.features_section.features]]
-title = "Group Conversations"
-desc = "Create encrypted group chats with multiple participants. Full XMTP group messaging support built in from the start."
-icon = "users"
 
 [[extra.features_section.features]]
 title = "Open Source"
 desc = "The entire codebase is publicly available and auditable. No black boxes, no hidden telemetry — just open code."
 icon = "code"
 
-[extra.final_cta_section]
-title = "Start a Conversation"
-description = "xmes is free and open source. No sign-up, no tracking, no central authority. Open the app and start messaging in seconds."
+[extra.trust_section]
+title = "Powered By"
+logos = [
+    { src = "/images/xmtp.svg", alt = "XMTP" },
+    { src = "/images/ethereum.svg", alt = "Ethereum" },
+    { src = "/images/rust.svg", alt = "Rust" },
+]
 
-[extra.final_cta_section.button]
-text = "Open xmes"
-url = "https://app.xmes.org"
+[extra.final_cta]
+title = "Buy me a Coffee ☕"
+description = ""
+
 +++

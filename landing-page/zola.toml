@@ -12,7 +12,7 @@ theme = "catppuccin-mocha"
 
 [extra]
 enable_custom_css = true
-footer_html = "© 2025 xmes &nbsp;·&nbsp; <a href='https://github.com/floscodes/xmes' class='font-medium text-base-content/70 hover:text-base-content transition-colors duration-200'>Open Source</a> &nbsp;·&nbsp; Powered by <a href='https://xmtp.org' class='font-medium text-base-content/70 hover:text-base-content transition-colors duration-200'>XMTP</a>"
+footer_html = "© 2026 xmes &nbsp;·&nbsp; <a href='https://github.com/floscodes/xmes' class='font-medium text-base-content/70 hover:text-base-content transition-colors duration-200'>Open Source</a> &nbsp;·&nbsp; Powered by <a href='https://xmtp.org' class='font-medium text-base-content/70 hover:text-base-content transition-colors duration-200'>XMTP</a>"
 
 [extra.theme]
 colorset = "dark"
@@ -21,6 +21,8 @@ disable_toggle = false
 
 [extra.logo]
 text = "xmes"
+image_path = "/images/xmes.svg"
+image_padding = "2px"
 
 [[extra.nav]]
 name = "Open App"
