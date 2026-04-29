@@ -36,7 +36,7 @@
 
 /* ── Hero screenshot — iPhone-style ── */
 .hero-screenshot {
-    width: min(400px, 38vw);
+    width: min(220px, 22vw);
     border-radius: 2.5rem;
     box-shadow: 0 32px 80px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255,255,255,0.08);
     display: block;
