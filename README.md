@@ -29,7 +29,7 @@ The project compiles a single Rust codebase to WebAssembly, targeting web (PWA),
 ```
 xmes/
 ├── xmes-xmtp-wasm/   # XMTP integration layer — WASM only, no UI
-└── xmes-pwa/         # Dioxus PWA frontend — WebAssembly
+└── xmes-mobile-pwa/         # Dioxus Mobile PWA frontend — WebAssembly
 ```
 
 ### `xmes-xmtp-wasm`
@@ -42,9 +42,13 @@ The XMTP integration layer, compiled exclusively to WebAssembly. Wraps the `libx
 - **Worker infrastructure** — spawns a Dedicated Worker so the XMTP SQLite database can use the OPFS Sync Access Handle VFS (browser main thread restriction workaround)
 - Environment switching (Local / Dev / Production)
 
-### `xmes-pwa`
+### `xmes-mobile-pwa`
 
-The Progressive Web App frontend built with [Dioxus](https://dioxus.dev) 0.7, compiled to WebAssembly. A pure UI crate: no JS interop, no wasm-bindgen direct dependency — only Dioxus and `xmes-xmtp-wasm`.
+The Progressive Web App frontend fpr mobile devices built with [Dioxus](https://dioxus.dev) 0.7, compiled to WebAssembly. A pure UI crate: no JS interop, no wasm-bindgen direct dependency — only Dioxus and `xmes-xmtp-wasm`.
+
+### `landing-page`
+
+The landing page of [Xmes](https://xmes.org).
 
 ---
 
@@ -60,7 +64,7 @@ The Progressive Web App frontend built with [Dioxus](https://dioxus.dev) 0.7, co
 
 ```bash
 # Start the dev server (PWA) with hot reload
-dx serve --addr 0.0.0.0 --port 9000 --cross-origin-policy
+dx serve --addr 0.0.0.0 --port 9000
 
 # Build for web
 dx build
@@ -71,22 +75,6 @@ cargo clippy
 # Format
 cargo fmt
 ```
-
-> `--cross-origin-policy` sets `Cross-Origin-Opener-Policy: same-origin`, which is required for the OPFS Sync Access Handle VFS used by the XMTP database in the Dedicated Worker.
-
----
-
-## Roadmap
-
-- [x] XMTP identity creation and persistence
-- [x] Conversation list with swipe-to-delete
-- [x] Group creation
-- [x] OPFS-backed persistent MLS state via Dedicated Worker
-- [x] Installable PWA (manifest + service worker)
-- [ ] Send and receive messages
-- [ ] Push notifications
-- [ ] Desktop target (Dioxus desktop renderer)
-- [ ] Mobile target (Dioxus mobile renderer)
 
 ---
 
