@@ -42,6 +42,11 @@ desc = "Your identity is an Ethereum keypair generated locally in your browser. 
 icon = "key"
 
 [[extra.features_section.features]]
+title = "Works with All XMTP Apps"
+desc = "Xmes is built on the open XMTP protocol — so you can message anyone using any XMTP-compatible app connected to the XMTP mainnet, not just Xmes. Your inbox is yours, wherever you use it."
+icon = "link"
+
+[[extra.features_section.features]]
 title = "Open Source"
 desc = "The entire codebase is publicly available and auditable. No black boxes, no hidden telemetry — just open code."
 icon = "code"
