@@ -80,4 +80,4 @@ cargo fmt
 
 ## License
 
-To be determined.
+MIT — see [LICENSE](./LICENSE) for details.

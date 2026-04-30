@@ -1,8 +1,22 @@
 [package]
 name = "xmes-xmtp-wasm"
-authors = ["flopetautschnig (floscodes) <mail@floscodes.net>"]
 version = "0.1.0"
 edition = "2024"
+authors = ["Florian Petautschnig <mail@floscodes.net>"]
+description = "WebAssembly library for XMTP-based decentralized group messaging — identity management, conversations, and a Dedicated Worker infrastructure for non-blocking browser operation."
+license = "MIT"
+repository = "https://github.com/floscodes/xmes"
+homepage = "https://xmes.org"
+readme = "README.md"
+keywords = ["xmtp", "wasm", "messaging", "web3", "decentralized"]
+categories = ["wasm", "cryptography::cryptocurrencies", "web-programming"]
+exclude = [".github", "*.PNG", "*.png"]
+
+# NOTE: bindings_wasm is currently sourced from the libxmtp git repository
+# (https://github.com/xmtp/libxmtp, subdir bindings/wasm) because it is not
+# yet published to crates.io. Publishing this crate to crates.io requires that
+# bindings_wasm (or a compatible replacement) is available there first.
+# Track upstream: https://github.com/xmtp/libxmtp/issues
 
 [dependencies]
 alloy = { version = "1", features = ["signers", "signer-local"] }
