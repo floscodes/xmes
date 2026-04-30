@@ -35,20 +35,6 @@ fn short_addr(s: &str) -> String {
     else { format!("{}…{}", &s[..6], &s[s.len()-4..]) }
 }
 
-/// Fire-and-forget push notify. URL read at runtime from window.XMES_PUSH_WORKER_URL.
-fn notify_push(member_inbox_ids: &[String], exclude_inbox_ids: &[String], sender_inbox_id: &str, group_name: &str) {
-    let ids = member_inbox_ids.iter()
-        .filter(|id| !exclude_inbox_ids.contains(id))
-        .map(|id| format!("\"{}\"", id.replace('"', "\\\"").replace('\\', "\\\\")))
-        .collect::<Vec<_>>()
-        .join(",");
-    let sender = sender_inbox_id.replace('"', "");
-    let name   = group_name.replace('"', "").replace('\\', "");
-    let _ = js_sys::eval(&format!(
-        r#"(function(){{var u=window.XMES_PUSH_WORKER_URL;if(!u)return;fetch(u+"/notify",{{method:"POST",headers:{{"content-type":"application/json"}},body:JSON.stringify({{member_inbox_ids:[{ids}],sender_inbox_id:"{sender}",group_name:"{name}"}})}}).catch(()=>{{}})}})()"#,
-        ids=ids, sender=sender, name=name
-    ));
-}
 
 /// Load pending-push-exclusion list for a conversation from localStorage.
 fn pending_load(conv_id: &str) -> Vec<String> {
@@ -744,11 +730,8 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                                 m.set(list);
                                 if let Some(h) = xmtp.read().as_ref() {
                                     h.request_send_message(&conv_id, &text);
+                                    let _ = js_sys::eval("window.__xmes_push_pending = (window.__xmes_push_pending || 0) + 1");
                                 }
-                                let ids: Vec<String> = group_members.read().iter()
-                                    .map(|m| m.inbox_id.clone()).collect();
-                                let excl = pending_members.read().clone();
-                                notify_push(&ids, &excl, &own_inbox2, &conv_name.peek());
                             }
                         }
                     },
@@ -777,11 +760,8 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                             m.set(list);
                             if let Some(h) = xmtp.read().as_ref() {
                                 h.request_send_message(&conv_id, &text);
+                                let _ = js_sys::eval("window.__xmes_push_pending = (window.__xmes_push_pending || 0) + 1");
                             }
-                            let ids: Vec<String> = group_members.read().iter()
-                                .map(|m| m.inbox_id.clone()).collect();
-                            let excl = pending_members.read().clone();
-                            notify_push(&ids, &excl, &own_inbox3, &conv_name.peek());
                         }
                     },
                     svg {

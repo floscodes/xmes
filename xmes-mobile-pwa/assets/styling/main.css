@@ -112,7 +112,7 @@ body {
     border: 1.5px solid var(--border);
     border-radius: var(--radius-full);
     padding: 0.625rem 1rem 0.625rem 2.625rem;
-    font-size: 0.875rem;
+    font-size: 0.9375rem;
     font-family: var(--font);
     color: var(--text-1);
     outline: none;
@@ -215,7 +215,7 @@ body {
 }
 
 .convo-name {
-    font-size: 0.9375rem;
+    font-size: 1rem;
     font-weight: 600;
     color: var(--text-1);
     white-space: nowrap;
@@ -226,7 +226,7 @@ body {
 
 .convo-sub {
     display: block;
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
     color: var(--text-2);
     margin-top: 0.2rem;
     white-space: nowrap;
@@ -436,7 +436,7 @@ body {
 }
 
 .identity-label {
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
     font-weight: 600;
     color: var(--text-1);
 }
@@ -452,7 +452,7 @@ body {
 }
 
 .identity-address {
-    font-size: 0.9rem;
+    font-size: 0.9375rem;
     color: var(--text-1);
     font-family: ui-monospace, 'Cascadia Code', 'Fira Mono', monospace;
     font-weight: 700;
@@ -611,7 +611,7 @@ body {
 }
 
 .chat-header-name {
-    font-size: 0.9375rem;
+    font-size: 1rem;
     font-weight: 600;
     color: var(--text-1);
     white-space: nowrap;
@@ -620,7 +620,7 @@ body {
 }
 
 .chat-header-sub {
-    font-size: 0.75rem;
+    font-size: 0.8125rem;
     color: var(--text-2);
 }
 
@@ -683,7 +683,7 @@ body {
 .bubble {
     padding: 0.625rem 0.875rem;
     border-radius: 1.25rem;
-    font-size: 0.9375rem;
+    font-size: 1.0625rem;
     line-height: 1.45;
     word-break: break-word;
 }
@@ -712,7 +712,7 @@ body {
 .bubble-row.other .bubble-meta { justify-content: flex-start; }
 
 .bubble-time {
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
     color: var(--text-3);
 }
 
@@ -793,7 +793,7 @@ body {
     border: 1.5px solid var(--border);
     border-radius: var(--radius-full);
     padding: 0.625rem 1rem;
-    font-size: 0.9375rem;
+    font-size: 1rem;
     font-family: var(--font);
     color: var(--text-1);
     outline: none;

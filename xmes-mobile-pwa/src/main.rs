@@ -274,7 +274,60 @@ fn App() -> Element {
                 let mut c = conversations;
                 c.set(Some(convos));
             },
-            move |_conv_id, msgs| {
+            move |conv_id, msgs| {
+                // Fire push only when a pending own message is confirmed delivered.
+                // Strategy:
+                //   - Send handler increments window.__xmes_push_pending (a counter).
+                //   - Here we maintain a per-conversation seen-set of delivered own msg IDs.
+                //   - First call: initialise the set (no push, avoids spurious pushes for
+                //     historical messages already present on open).
+                //   - Subsequent calls: for each newly-delivered own message, if
+                //     __xmes_push_pending > 0, fire push once and decrement the counter.
+                let own = identity_info.peek()
+                    .as_ref()
+                    .map(|i| i.inbox_id.clone())
+                    .unwrap_or_default();
+                if !own.is_empty() {
+                    let delivered_own_ids = msgs.iter()
+                        .filter(|msg| msg.delivered && msg.sender_inbox_id == own)
+                        .map(|msg| msg.id.clone())
+                        .collect::<Vec<_>>();
+                    if !delivered_own_ids.is_empty() {
+                        let ids_js = delivered_own_ids.iter()
+                            .map(|id| format!("\"{}\"", id.replace('"', "\\\"")))
+                            .collect::<Vec<_>>()
+                            .join(",");
+                        let conv_key = conv_id.replace(|c: char| !c.is_alphanumeric(), "_");
+                        let cname = conversations.peek()
+                            .as_ref()
+                            .and_then(|cs| cs.iter().find(|c| c.id == conv_id))
+                            .map(|c| c.name.clone())
+                            .unwrap_or_default();
+                        let members_js = group_members.peek().iter()
+                            .filter(|m| m.inbox_id != own)
+                            .map(|m| format!("\"{}\"", m.inbox_id.replace('"', "\\\"")))
+                            .collect::<Vec<_>>()
+                            .join(",");
+                        let sender = own.replace('"', "");
+                        let name   = cname.replace('"', "").replace('\\', "");
+                        let _ = js_sys::eval(&format!(
+                            r#"(function(){{
+                                var k='__xmes_seen_{conv_key}';
+                                var ids=[{ids_js}];
+                                if(!window[k]){{ window[k]=new Set(ids); return; }}
+                                ids.forEach(function(id){{
+                                    if(window[k].has(id))return;
+                                    window[k].add(id);
+                                    if(!(window.__xmes_push_pending>0))return;
+                                    window.__xmes_push_pending--;
+                                    var u=window.XMES_PUSH_WORKER_URL;
+                                    if(!u)return;
+                                    fetch(u+"/notify",{{method:"POST",headers:{{"content-type":"application/json"}},body:JSON.stringify({{member_inbox_ids:[{members_js}],sender_inbox_id:"{sender}",group_name:"{name}"}})}}).catch(()=>{{}});
+                                }});
+                            }})()"#
+                        ));
+                    }
+                }
                 let mut m = messages;
                 m.set(msgs);
             },
