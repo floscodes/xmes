@@ -39,5 +39,5 @@ public/
 ### Running
 
 ```bash
-dx serve --addr 0.0.0.0 --port 9000 --cross-origin-policy
+dx serve --addr 0.0.0.0 --port 9000
 ```
