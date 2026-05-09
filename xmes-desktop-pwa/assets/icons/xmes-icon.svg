@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bubbleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#4338CA"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Speech bubble with bottom-left tail -->
+  <path
+    d="M76,20 Q20,20 20,76 L20,388 Q20,444 76,444 L100,444 L68,502 L188,444 L436,444 Q492,444 492,388 L492,76 Q492,20 436,20 Z"
+    fill="url(#bubbleGrad)"
+  />
+
+  <!-- Subtle glass highlight at top -->
+  <path
+    d="M76,20 Q20,20 20,76 L20,210 Q150,165 256,162 Q362,159 492,190 L492,76 Q492,20 436,20 Z"
+    fill="rgba(255,255,255,0.07)"
+  />
+
+  <!-- X mark from Xmes-new.svg, scaled and centered in bubble body -->
+  <!-- Original viewBox 228x194 → scaled 1.404×, centered at (256,228) -->
+  <g transform="translate(96, 92) scale(1.404)">
+    <!-- M: top path at full opacity — the M letterform -->
+    <path
+      d="M0,1 L85,92 L120,129 L228,0"
+      fill="none"
+      stroke="white"
+      stroke-opacity="1"
+      stroke-width="30"
+      stroke-linejoin="round"
+      stroke-linecap="round"
+    />
+    <!-- X bottom legs at reduced opacity — readable as X when combined with M top -->
+    <path
+      d="M155,91 L216,194"
+      fill="none"
+      stroke="white"
+      stroke-opacity="0.7"
+      stroke-width="30"
+      stroke-linecap="round"
+    />
+    <path
+      d="M73,91 L12,194"
+      fill="none"
+      stroke="white"
+      stroke-opacity="0.7"
+      stroke-width="30"
+      stroke-linecap="round"
+    />
+  </g>
+</svg>

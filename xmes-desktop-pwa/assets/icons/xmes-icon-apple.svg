@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bubbleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#4338CA"/>
+    </linearGradient>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F5F5F7"/>
+      <stop offset="100%" stop-color="#E8E8EC"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Solid white-gray background (required for Apple touch icons) -->
+  <rect width="512" height="512" fill="url(#bgGrad)"/>
+
+  <!-- Speech bubble — scaled to 76% and centered, leaving padding for iOS rounding -->
+  <g transform="translate(61, 56) scale(0.76)">
+    <path
+      d="M76,20 Q20,20 20,76 L20,388 Q20,444 76,444 L100,444 L68,502 L188,444 L436,444 Q492,444 492,388 L492,76 Q492,20 436,20 Z"
+      fill="url(#bubbleGrad)"
+    />
+    <path
+      d="M76,20 Q20,20 20,76 L20,210 Q150,165 256,162 Q362,159 492,190 L492,76 Q492,20 436,20 Z"
+      fill="rgba(255,255,255,0.07)"
+    />
+    <g transform="translate(96, 92) scale(1.404)">
+      <path
+        d="M0,1 L85,92 L120,129 L228,0"
+        fill="none"
+        stroke="white"
+        stroke-opacity="1"
+        stroke-width="30"
+        stroke-linejoin="round"
+        stroke-linecap="round"
+      />
+      <path
+        d="M155,91 L216,194"
+        fill="none"
+        stroke="white"
+        stroke-opacity="0.7"
+        stroke-width="30"
+        stroke-linecap="round"
+      />
+      <path
+        d="M73,91 L12,194"
+        fill="none"
+        stroke="white"
+        stroke-opacity="0.7"
+        stroke-width="30"
+        stroke-linecap="round"
+      />
+    </g>
+  </g>
+</svg>

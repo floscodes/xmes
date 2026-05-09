@@ -10417,6 +10417,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9cc00251562a284751c9973bace760d86c0276c471b4be569fe6b068ee97a56"
 
 [[package]]
+name = "xmes-desktop-pwa"
+version = "0.1.0"
+dependencies = [
+ "aes-gcm",
+ "base64",
+ "dioxus",
+ "dioxus-sdk",
+ "getrandom 0.2.17",
+ "gloo-timers 0.3.0",
+ "image",
+ "js-sys",
+ "qrcode",
+ "rqrr",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "xmes-xmtp-wasm",
+]
+
+[[package]]
 name = "xmes-mobile-pwa"
 version = "0.1.0"
 dependencies = [

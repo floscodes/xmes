@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["xmes-xmtp-wasm", "xmes-mobile-pwa"]
+members = ["xmes-xmtp-wasm", "xmes-mobile-pwa", "xmes-desktop-pwa"]
 
 [workspace.dependencies]
 xmes-xmtp-wasm = { path = "xmes-xmtp-wasm" }
