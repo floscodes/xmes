@@ -20,6 +20,20 @@
     --shadow-md:      0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.05);
     --shadow-fab:     0 8px 24px -4px rgb(79 70 229 / 0.45);
     --font:           'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --active-hover:         #E0E7FF;
+    --danger-soft:          #FEF2F2;
+    --role-member-bg:       #F3F4F6;
+    --role-member-color:    #6B7280;
+    --role-admin-bg:        #EFF6FF;
+    --role-admin-color:     #2563EB;
+    --role-super-bg:        #FFF7ED;
+    --role-super-color:     #EA580C;
+    --warn-bg:              #fef2f2;
+    --warn-border:          #fecaca;
+    --warn-color:           #dc2626;
+    --qr-scan-border:       #C7D2FE;
+    --scrollbar-thumb:      #D1D5DB;
+    --scrollbar-track:      transparent;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -408,7 +422,7 @@ body {
 .identity-card:hover { background: var(--surface-subtle); }
 
 .identity-card.active { background: var(--primary-light); }
-.identity-card.active:hover { background: #E0E7FF; }
+.identity-card.active:hover { background: var(--active-hover); }
 
 .identity-avatar {
     flex-shrink: 0;
@@ -1109,9 +1123,9 @@ body {
     white-space: nowrap;
 }
 
-.role-member     { background: #F3F4F6; color: #6B7280; }
-.role-admin      { background: #EFF6FF; color: #2563EB; }
-.role-superadmin { background: #FFF7ED; color: #EA580C; }
+.role-member     { background: var(--role-member-bg);  color: var(--role-member-color); }
+.role-admin      { background: var(--role-admin-bg);   color: var(--role-admin-color); }
+.role-superadmin { background: var(--role-super-bg);   color: var(--role-super-color); }
 
 .member-menu-wrap {
     position: relative;
@@ -1166,7 +1180,7 @@ body {
 }
 .member-dropdown-item:hover { background: var(--border-subtle); }
 .member-dropdown-danger { color: var(--danger); }
-.member-dropdown-danger:hover { background: #FEF2F2; }
+.member-dropdown-danger:hover { background: var(--danger-soft); }
 
 .addr-primary-badge {
     font-size: 0.6875rem;
@@ -1659,10 +1673,10 @@ body {
     gap: 0.6rem;
     margin: 0 0.75rem 0.9rem;
     padding: 0.75rem 0.9rem;
-    background: #fef2f2;
-    border: 1px solid #fecaca;
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-border);
     border-radius: var(--radius-sm);
-    color: #dc2626;
+    color: var(--warn-color);
     font-size: 0.78rem;
     line-height: 1.45;
 }
@@ -1770,7 +1784,7 @@ body {
 .qr-scanner-error {
     margin: 20px 16px;
     padding: 12px 14px;
-    background: #FEF2F2;
+    background: var(--danger-soft);
     color: var(--danger);
     border-radius: var(--radius-sm);
     font-size: 0.84rem;
@@ -1797,7 +1811,7 @@ body {
     border-radius: var(--radius-sm);
     background: var(--primary-light);
     color: var(--primary);
-    border: 1.5px solid #C7D2FE;
+    border: 1.5px solid var(--qr-scan-border);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1805,4 +1819,105 @@ body {
     transition: background 0.15s;
 }
 
-.qr-scan-btn:hover { background: #E0E7FF; }
+.qr-scan-btn:hover { background: var(--active-hover); }
+
+/* ── Dark mode toggle button ───────────────────────────────────── */
+
+.dark-toggle-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
+    border: none;
+    background: none;
+    color: var(--text-3);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s, background 0.15s;
+    flex-shrink: 0;
+    padding: 0;
+}
+
+.dark-toggle-btn:hover {
+    color: var(--text-2);
+    background: var(--surface-subtle);
+}
+
+.dark-toggle-btn svg {
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s;
+}
+
+/* ── Dark mode variable overrides ──────────────────────────────── */
+
+@media (prefers-color-scheme: dark) {
+    html:not([data-theme="light"]) {
+        --bg:               #0D0D14;
+        --surface:          #181824;
+        --surface-subtle:   #1E1E2C;
+        --primary:          #818CF8;
+        --primary-hover:    #A5B4FC;
+        --primary-light:    #1e1b4b;
+        --danger:           #F87171;
+        --danger-hover:     #FCA5A5;
+        --text-1:           #F3F4F6;
+        --text-2:           #9CA3AF;
+        --text-3:           #4B5563;
+        --border:           #2A2A3C;
+        --border-subtle:    #1C1C28;
+        --shadow-sm:        0 1px 2px 0 rgb(0 0 0 / 0.3);
+        --shadow-md:        0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.25);
+        --active-hover:     #2d2b52;
+        --danger-soft:      #2d1212;
+        --role-member-bg:   #1F2937;
+        --role-member-color:#9CA3AF;
+        --role-admin-bg:    #1e3a5f;
+        --role-admin-color: #60A5FA;
+        --role-super-bg:    #431407;
+        --role-super-color: #FB923C;
+        --warn-bg:          #2d1212;
+        --warn-border:      #7f1d1d;
+        --warn-color:       #fca5a5;
+        --qr-scan-border:   #3730a3;
+        --scrollbar-thumb:  #2A2A3C;
+        --scrollbar-track:  transparent;
+    }
+}
+
+html[data-theme="dark"] {
+    --bg:               #0D0D14;
+    --surface:          #181824;
+    --surface-subtle:   #1E1E2C;
+    --primary:          #818CF8;
+    --primary-hover:    #A5B4FC;
+    --primary-light:    #1e1b4b;
+    --danger:           #F87171;
+    --danger-hover:     #FCA5A5;
+    --text-1:           #F3F4F6;
+    --text-2:           #9CA3AF;
+    --text-3:           #4B5563;
+    --border:           #2A2A3C;
+    --border-subtle:    #1C1C28;
+    --shadow-sm:        0 1px 2px 0 rgb(0 0 0 / 0.3);
+    --shadow-md:        0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.25);
+    --active-hover:     #2d2b52;
+    --danger-soft:      #2d1212;
+    --role-member-bg:   #1F2937;
+    --role-member-color:#9CA3AF;
+    --role-admin-bg:    #1e3a5f;
+    --role-admin-color: #60A5FA;
+    --role-super-bg:    #431407;
+    --role-super-color: #FB923C;
+    --warn-bg:          #2d1212;
+    --warn-border:      #7f1d1d;
+    --warn-color:       #fca5a5;
+    --qr-scan-border:   #3730a3;
+    --scrollbar-thumb:  #2A2A3C;
+    --scrollbar-track:  transparent;
+}
+
+/* Scrollbar styling */
+.convo-list, .chat-messages, .identity-list, .sheet-addr-list, .members-sheet-list {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}

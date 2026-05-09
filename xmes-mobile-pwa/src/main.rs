@@ -44,6 +44,9 @@ pub enum View {
     Chat(ConversationSummary),
 }
 
+#[derive(Clone, PartialEq)]
+pub struct DarkMode(pub bool);
+
 fn main() {
     if is_worker_context() {
         init_worker_mode();
@@ -128,6 +131,23 @@ fn App() -> Element {
     let unread_ids:   Signal<std::collections::HashSet<String>>       = use_storage::<LocalStorage, _>("unread_ids".to_string(),   || std::collections::HashSet::new());
     let last_seen_ns: Signal<std::collections::HashMap<String, i64>> = use_storage::<LocalStorage, _>("last_seen_ns".to_string(), || std::collections::HashMap::new());
 
+    let dark_mode: Signal<DarkMode> = use_signal(|| {
+        let is_dark = js_sys::eval(
+            "var s=localStorage.getItem('xmes-theme');\
+             s==='dark'||(s===null&&window.matchMedia&&window.matchMedia('(prefers-color-scheme:dark)').matches)"
+        ).ok().and_then(|v| v.as_bool()).unwrap_or(false);
+        DarkMode(is_dark)
+    });
+
+    use_effect(move || {
+        let theme = if dark_mode.read().0 { "dark" } else { "light" };
+        let _ = js_sys::eval(&format!(
+            "document.documentElement.setAttribute('data-theme','{}');\
+             localStorage.setItem('xmes-theme','{}')",
+            theme, theme
+        ));
+    });
+
     use_context_provider(|| xmtp_handle);
     use_context_provider(|| conversations);
     use_context_provider(|| identity_ready);
@@ -140,6 +160,7 @@ fn App() -> Element {
     use_context_provider(|| messages);
     use_context_provider(|| group_members);
     use_context_provider(|| unread_ids);
+    use_context_provider(|| dark_mode);
 
     // Keep app-icon badge in sync with unread conversation count.
     use_effect(move || {

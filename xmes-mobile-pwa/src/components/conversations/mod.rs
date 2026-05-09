@@ -2,7 +2,7 @@ use dioxus::prelude::*;
 
 const LOGO: Asset = asset!("/assets/icons/xmes-icon.svg");
 use xmes_xmtp_wasm::{ConversationSummary, XmtpHandle};
-use crate::View;
+use crate::{DarkMode, View};
 
 mod conversation;
 
@@ -20,6 +20,7 @@ pub fn Conversations() -> Element {
     let mut unread_ids = use_context::<Signal<std::collections::HashSet<String>>>();
 
     // Pull-to-refresh
+    let dark_mode = use_context::<Signal<DarkMode>>();
     let mut ptr_offset   = use_signal(|| 0.0f64);
     let mut ptr_start_y  = use_signal(|| 0.0f64);
     let mut ptr_dragging = use_signal(|| false);
@@ -93,6 +94,31 @@ pub fn Conversations() -> Element {
                 div { class: "app-logo",
                     img { class: "app-logo-mark", src: LOGO, alt: "xmes logo" }
                     span { class: "app-logo-name", "xmes" }
+                }
+                button {
+                    class: "dark-toggle-btn",
+                    title: if dark_mode.read().0 { "Switch to light mode" } else { "Switch to dark mode" },
+                    onclick: move |_| {
+                        let curr = dark_mode.peek().0;
+                        let mut dm = dark_mode;
+                        dm.set(DarkMode(!curr));
+                    },
+                    if dark_mode.read().0 {
+                        svg {
+                            xmlns: "http://www.w3.org/2000/svg", width: "18", height: "18",
+                            view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
+                            stroke_width: "2", stroke_linecap: "round", stroke_linejoin: "round",
+                            circle { cx: "12", cy: "12", r: "4" }
+                            path { d: "M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" }
+                        }
+                    } else {
+                        svg {
+                            xmlns: "http://www.w3.org/2000/svg", width: "18", height: "18",
+                            view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
+                            stroke_width: "2", stroke_linecap: "round", stroke_linejoin: "round",
+                            path { d: "M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" }
+                        }
+                    }
                 }
             }
 
