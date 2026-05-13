@@ -17,5 +17,5 @@ export PRODUCTION=1
 export PUSH_WORKER_URL="https://push-worker.xmes.org"
 dx build --release --web
 
-mkdir -p target/dx/xmes-mobile-pwa/release/web
-mv /opt/buildhome/repo/target/dx/xmes-mobile-pwa/release/web/public target/dx/xmes-mobile-pwa/release/web/public
+mkdir -p target/dx/xmes-desktop-pwa/release/web
+mv /opt/buildhome/repo/target/dx/xmes-desktop-pwa/release/web/public target/dx/xmes-desktop-pwa/release/web/public
