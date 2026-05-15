@@ -12,7 +12,7 @@ badge = "Early Development"
 description = "Xmes is an open-source decentralized messenger built on XMTP. No app store, no signup, no central server, no phone number. Privacy first."
 gradient_opacity = 30
 cta_buttons = [
-    { text = "Open Xmes", url = "https://mobile.Xmes.org", style = "primary" },
+    { text = "Open Xmes", url = "https://app.Xmes.org", style = "primary" },
     { text = "View on GitHub", url = "https://github.com/floscodes/Xmes", style = "secondary" },
 ]
 screenshot = "/images/chat_screenshot.PNG"
