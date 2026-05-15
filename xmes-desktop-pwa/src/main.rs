@@ -403,7 +403,7 @@ fn App() -> Element {
                 match view.read().clone() {
                     View::Welcome => rsx! { components::sidebar::WelcomePanel {} },
                     View::Chat(conversation) => rsx! {
-                        components::chat::Chat { conversation }
+                        components::chat::Chat { key: "{conversation.id}", conversation }
                     },
                 }
             }
