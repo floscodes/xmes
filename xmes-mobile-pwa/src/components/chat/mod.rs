@@ -695,6 +695,7 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                         r#type: "text",
                         placeholder: "Search conversation…",
                         value: "{search_query}",
+                        autofocus: true,
                         oninput: move |e| search_query.set(e.value()),
                     }
                     button {

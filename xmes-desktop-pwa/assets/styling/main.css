@@ -1648,7 +1648,7 @@ html[data-theme="dark"] {
     flex-shrink: 0;
 }
 
-.chat-search-input {
+.chat-search-bar input.chat-search-input {
     -webkit-appearance: none;
     appearance: none;
     flex: 1;
@@ -1661,7 +1661,7 @@ html[data-theme="dark"] {
     outline: none;
     transition: border-color 0.15s;
 }
-.chat-search-input:focus { border-color: var(--color-primary); }
+.chat-search-bar input.chat-search-input:focus { border-color: var(--color-primary); }
 
 .chat-search-clear {
     background: none;
