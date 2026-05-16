@@ -109,6 +109,42 @@ pub fn WelcomePanel() -> Element {
     }
 }
 
+// ── HighlightedText ───────────────────────────────────────────────────────────
+
+#[component]
+fn HighlightedText(text: String, query: String) -> Element {
+    if query.is_empty() {
+        return rsx! { "{text}" };
+    }
+    let t_lower = text.to_lowercase();
+    let q_lower = query.to_lowercase();
+    let mut segments: Vec<(String, bool)> = Vec::new();
+    let mut last = 0usize;
+    loop {
+        match t_lower[last..].find(&*q_lower) {
+            None => {
+                if last < text.len() { segments.push((text[last..].to_string(), false)); }
+                break;
+            }
+            Some(rel) => {
+                let abs = last + rel;
+                if abs > last { segments.push((text[last..abs].to_string(), false)); }
+                segments.push((text[abs..abs + q_lower.len()].to_string(), true));
+                last = abs + q_lower.len();
+            }
+        }
+    }
+    rsx! {
+        for (seg, highlighted) in segments {
+            if highlighted {
+                span { class: "search-highlight", "{seg}" }
+            } else {
+                span { "{seg}" }
+            }
+        }
+    }
+}
+
 // ── Conversation row ──────────────────────────────────────────────────────────
 
 #[component]
@@ -116,6 +152,7 @@ fn ConvoRow(
     summary: ConversationSummary,
     is_active: bool,
     has_unread: bool,
+    search_query: String,
     on_open: EventHandler<ConversationSummary>,
 ) -> Element {
     let mut show_add  = use_signal(|| false);
@@ -152,10 +189,12 @@ fn ConvoRow(
                 div { class: "convo-info",
                     span {
                         class: if has_unread { "convo-name convo-name-unread" } else { "convo-name" },
-                        "{summary.name}"
+                        HighlightedText { text: summary.name.clone(), query: search_query.clone() }
                     }
                     if let Some(ref sender) = summary.last_sender {
-                        span { class: "convo-sub", "{short(sender, 6)}" }
+                        span { class: "convo-sub",
+                            HighlightedText { text: short(sender, 6), query: search_query.clone() }
+                        }
                     }
                 }
 
@@ -237,6 +276,7 @@ fn ConversationsPanel() -> Element {
     let view          = use_context::<Signal<View>>();
     let pending_open  = use_context::<Signal<Option<()>>>();
     let mut unread_ids = use_context::<Signal<std::collections::HashSet<String>>>();
+    let mut search_query = use_signal(|| String::new());
 
     let active_id = match view.read().clone() {
         View::Chat(c) => Some(c.id),
@@ -261,6 +301,8 @@ fn ConversationsPanel() -> Element {
                         class: "search-input",
                         r#type: "text",
                         placeholder: "Search conversations…",
+                        value: "{search_query}",
+                        oninput: move |e| search_query.set(e.value()),
                     }
                 }
             }
@@ -269,48 +311,69 @@ fn ConversationsPanel() -> Element {
 
             // List
             div { class: "convo-list",
-                match conversations.read().as_ref() {
-                    None => rsx! {
-                        div { class: "spinner-wrap",
-                            div { class: "spinner" }
-                            span { class: "spinner-label", "Connecting…" }
-                        }
-                    },
-                    Some(convos) if convos.is_empty() => rsx! {
-                        div { class: "empty-state",
-                            div { class: "empty-icon-wrap",
-                                svg {
-                                    xmlns: "http://www.w3.org/2000/svg", width: "22", height: "22",
-                                    view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
-                                    stroke_width: "1.8", stroke_linecap: "round", stroke_linejoin: "round",
-                                    path { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" }
+                {
+                    let q = search_query.read().trim().to_lowercase();
+                    match conversations.read().as_ref() {
+                        None => rsx! {
+                            div { class: "spinner-wrap",
+                                div { class: "spinner" }
+                                span { class: "spinner-label", "Connecting…" }
+                            }
+                        },
+                        Some(convos) if convos.is_empty() => rsx! {
+                            div { class: "empty-state",
+                                div { class: "empty-icon-wrap",
+                                    svg {
+                                        xmlns: "http://www.w3.org/2000/svg", width: "22", height: "22",
+                                        view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
+                                        stroke_width: "1.8", stroke_linecap: "round", stroke_linejoin: "round",
+                                        path { d: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" }
+                                    }
+                                }
+                                p { class: "empty-title", "No conversations yet" }
+                                p { class: "empty-sub",
+                                    "Click the button below to start your first encrypted conversation."
                                 }
                             }
-                            p { class: "empty-title", "No conversations yet" }
-                            p { class: "empty-sub",
-                                "Click the button below to start your first encrypted conversation."
-                            }
-                        }
-                    },
-                    Some(convos) => rsx! {
-                        for summary in convos.clone() {
-                            {
-                                let has_unread = unread_ids.read().contains(&summary.id);
-                                let is_active  = active_id.as_deref() == Some(&summary.id);
-                                rsx! {
-                                    ConvoRow {
-                                        summary: summary.clone(),
-                                        is_active,
-                                        has_unread,
-                                        on_open: move |s: ConversationSummary| {
-                                            unread_ids.write().remove(&s.id);
-                                            let mut v = view; v.set(View::Chat(s));
-                                        },
+                        },
+                        Some(convos) => {
+                            let filtered: Vec<ConversationSummary> = convos.iter()
+                                .filter(|s| {
+                                    q.is_empty()
+                                        || s.name.to_lowercase().contains(&*q)
+                                        || s.id.to_lowercase().contains(&*q)
+                                        || s.last_sender.as_deref()
+                                            .map(|a| a.to_lowercase().contains(&*q))
+                                            .unwrap_or(false)
+                                        || s.last_sender_inbox_id.as_deref()
+                                            .map(|a| a.to_lowercase().contains(&*q))
+                                            .unwrap_or(false)
+                                })
+                                .cloned()
+                                .collect();
+                            rsx! {
+                                for summary in filtered {
+                                    {
+                                        let has_unread = unread_ids.read().contains(&summary.id);
+                                        let is_active  = active_id.as_deref() == Some(&summary.id);
+                                        let sq = search_query.read().trim().to_string();
+                                        rsx! {
+                                            ConvoRow {
+                                                summary: summary.clone(),
+                                                is_active,
+                                                has_unread,
+                                                search_query: sq,
+                                                on_open: move |s: ConversationSummary| {
+                                                    unread_ids.write().remove(&s.id);
+                                                    let mut v = view; v.set(View::Chat(s));
+                                                },
+                                            }
+                                        }
                                     }
                                 }
                             }
-                        }
-                    },
+                        },
+                    }
                 }
             }
 

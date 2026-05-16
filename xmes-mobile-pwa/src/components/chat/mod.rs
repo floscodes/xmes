@@ -606,6 +606,8 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                     || m.system_text.as_deref()
                         .map(|t| t.to_lowercase().contains(&q))
                         .unwrap_or(false)
+                    || m.sender_inbox_id.to_lowercase().contains(&q)
+                    || m.sender_address.to_lowercase().contains(&q)
             })
             .cloned()
             .collect()
@@ -646,7 +648,11 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                     onclick: move |_| {
                         let next = !show_search();
                         show_search.set(next);
-                        if !next { search_query.set(String::new()); }
+                        if !next {
+                            search_query.set(String::new());
+                        } else {
+                            let _ = js_sys::eval("document.querySelector('.chat-search-input')?.focus()");
+                        }
                     },
                     svg {
                         xmlns: "http://www.w3.org/2000/svg", width: "20", height: "20",
@@ -688,30 +694,27 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
             }
 
             // ── Search bar ───────────────────────────────────────
-            if show_search() {
-                div { class: "chat-search-bar",
-                    input {
-                        class: "chat-search-input",
-                        r#type: "text",
-                        placeholder: "Search conversation…",
-                        value: "{search_query}",
-                        autofocus: true,
-                        oninput: move |e| search_query.set(e.value()),
-                    }
-                    button {
-                        class: "chat-search-clear",
-                        title: "Close search",
-                        onclick: move |_| {
-                            show_search.set(false);
-                            search_query.set(String::new());
-                        },
-                        svg {
-                            xmlns: "http://www.w3.org/2000/svg", width: "16", height: "16",
-                            view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
-                            stroke_width: "2.2", stroke_linecap: "round", stroke_linejoin: "round",
-                            line { x1: "18", y1: "6", x2: "6", y2: "18" }
-                            line { x1: "6", y1: "6", x2: "18", y2: "18" }
-                        }
+            div { class: if show_search() { "chat-search-bar" } else { "chat-search-bar chat-search-bar--hidden" },
+                input {
+                    class: "chat-search-input",
+                    r#type: "text",
+                    placeholder: "Search conversation…",
+                    value: "{search_query}",
+                    oninput: move |e| search_query.set(e.value()),
+                }
+                button {
+                    class: "chat-search-clear",
+                    title: "Close search",
+                    onclick: move |_| {
+                        show_search.set(false);
+                        search_query.set(String::new());
+                    },
+                    svg {
+                        xmlns: "http://www.w3.org/2000/svg", width: "16", height: "16",
+                        view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
+                        stroke_width: "2.2", stroke_linecap: "round", stroke_linejoin: "round",
+                        line { x1: "18", y1: "6", x2: "6", y2: "18" }
+                        line { x1: "6", y1: "6", x2: "18", y2: "18" }
                     }
                 }
             }
@@ -779,7 +782,9 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                                 }
                                 div { class: "bubble-col",
                                     if let Some(ref addr) = sender_addr {
-                                        span { class: "bubble-sender", "{addr}" }
+                                        span { class: "bubble-sender",
+                                            HighlightedText { text: addr.clone(), query: search_q.clone() }
+                                        }
                                     }
                                     div { class: if is_own { "bubble own" } else { "bubble other" },
                                         HighlightedText { text, query: search_q.clone() }
@@ -834,6 +839,7 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                                     text:            text.clone(),
                                     system_text:     None,
                                     sender_inbox_id: own_inbox2.clone(),
+                                    sender_address:  String::new(),
                                     sent_at_ns:      (Date::now() * 1_000_000.0) as i64,
                                     delivered:       false,
                                 });
@@ -863,6 +869,7 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                                 id:              format!("pending-{}", Date::now() as i64),
                                 text:            text.clone(),
                                 sender_inbox_id: own_inbox3.clone(),
+                                sender_address:  String::new(),
                                 sent_at_ns:      (Date::now() * 1_000_000.0) as i64,
                                 delivered:       false,
                                 system_text:     None,

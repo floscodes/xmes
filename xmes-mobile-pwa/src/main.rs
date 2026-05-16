@@ -428,8 +428,8 @@ fn App() -> Element {
         document::Meta { name: "apple-mobile-web-app-status-bar-style", content: "default" }
         document::Meta { name: "apple-mobile-web-app-title",     content: "xmes" }
         document::Script { src: "/register-sw.js" }
-        document::Link { rel: "stylesheet", href: MAIN_CSS }
         document::Link { rel: "stylesheet", href: TAILWIND_CSS }
+        document::Link { rel: "stylesheet", href: MAIN_CSS }
 
         match view.read().clone() {
             View::Conversations => rsx! {
