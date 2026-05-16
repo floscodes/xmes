@@ -487,6 +487,8 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
     let mut initial_scroll_done = use_signal(|| false);
     let mut user_scrolled_up   = use_signal(|| false);
     let mut loading            = use_signal(|| true);
+    let mut show_search        = use_signal(|| false);
+    let mut search_query       = use_signal(String::new);
     // Members excluded from message push until they send their first message
     // (proof they have synced the group welcome). Persisted in localStorage.
     let conv_id_for_pending = conversation.id.clone();
@@ -560,6 +562,20 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
         }
     });
 
+    let visible_msgs: Vec<MessageInfo> = {
+        let q = search_query.read().trim().to_lowercase();
+        messages.read().iter()
+            .filter(|m| {
+                q.is_empty()
+                    || m.text.to_lowercase().contains(&q)
+                    || m.system_text.as_deref()
+                        .map(|t| t.to_lowercase().contains(&q))
+                        .unwrap_or(false)
+            })
+            .cloned()
+            .collect()
+    };
+
     rsx! {
         div { class: "app-shell chat-shell",
 
@@ -586,6 +602,23 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                     div { class: "chat-header-info",
                         span { class: "chat-header-name", "{conv_name()}" }
                         span { class: "chat-header-sub", "{member_label}" }
+                    }
+                }
+                // Search button
+                button {
+                    class: if show_search() { "chat-search-btn active" } else { "chat-search-btn" },
+                    title: "Search in conversation",
+                    onclick: move |_| {
+                        let next = !show_search();
+                        show_search.set(next);
+                        if !next { search_query.set(String::new()); }
+                    },
+                    svg {
+                        xmlns: "http://www.w3.org/2000/svg", width: "20", height: "20",
+                        view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
+                        stroke_width: "2", stroke_linecap: "round", stroke_linejoin: "round",
+                        circle { cx: "11", cy: "11", r: "8" }
+                        path { d: "m21 21-4.35-4.35" }
                     }
                 }
                 // Three-dots → members sheet
@@ -619,6 +652,34 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                 }
             }
 
+            // ── Search bar ───────────────────────────────────────
+            if show_search() {
+                div { class: "chat-search-bar",
+                    input {
+                        class: "chat-search-input",
+                        r#type: "text",
+                        placeholder: "Search conversation…",
+                        value: "{search_query}",
+                        oninput: move |e| search_query.set(e.value()),
+                    }
+                    button {
+                        class: "chat-search-clear",
+                        title: "Close search",
+                        onclick: move |_| {
+                            show_search.set(false);
+                            search_query.set(String::new());
+                        },
+                        svg {
+                            xmlns: "http://www.w3.org/2000/svg", width: "16", height: "16",
+                            view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
+                            stroke_width: "2.2", stroke_linecap: "round", stroke_linejoin: "round",
+                            line { x1: "18", y1: "6", x2: "6", y2: "18" }
+                            line { x1: "6", y1: "6", x2: "18", y2: "18" }
+                        }
+                    }
+                }
+            }
+
             // ── Messages ─────────────────────────────────────────
             div {
                 class: "chat-messages",
@@ -646,8 +707,21 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                         }
                         span { "No messages yet" }
                     }
+                } else if visible_msgs.is_empty() {
+                    div { class: "chat-empty",
+                        svg {
+                            xmlns: "http://www.w3.org/2000/svg",
+                            width: "32", height: "32",
+                            view_box: "0 0 24 24", fill: "none",
+                            stroke: "currentColor", stroke_width: "1.5",
+                            stroke_linecap: "round", stroke_linejoin: "round",
+                            circle { cx: "11", cy: "11", r: "8" }
+                            path { d: "m21 21-4.35-4.35" }
+                        }
+                        span { "No results" }
+                    }
                 }
-                for msg in messages.read().iter() {
+                for msg in visible_msgs.iter() {
                     {
                         let system_text = msg.system_text.clone();
                         let is_own  = msg.sender_inbox_id == own_inbox;
