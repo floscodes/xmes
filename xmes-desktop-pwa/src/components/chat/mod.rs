@@ -459,6 +459,40 @@ fn ChatGroupSettingsPanel(
 }
 
 #[component]
+fn HighlightedText(text: String, query: String) -> Element {
+    if query.is_empty() {
+        return rsx! { "{text}" };
+    }
+    let t_lower = text.to_lowercase();
+    let q_lower = query.to_lowercase();
+    let mut segments: Vec<(String, bool)> = Vec::new();
+    let mut last = 0usize;
+    loop {
+        match t_lower[last..].find(&*q_lower) {
+            None => {
+                if last < text.len() { segments.push((text[last..].to_string(), false)); }
+                break;
+            }
+            Some(rel) => {
+                let abs = last + rel;
+                if abs > last { segments.push((text[last..abs].to_string(), false)); }
+                segments.push((text[abs..abs + q_lower.len()].to_string(), true));
+                last = abs + q_lower.len();
+            }
+        }
+    }
+    rsx! {
+        for (seg, highlighted) in segments {
+            if highlighted {
+                span { class: "search-highlight", "{seg}" }
+            } else {
+                span { "{seg}" }
+            }
+        }
+    }
+}
+
+#[component]
 pub fn Chat(conversation: ConversationSummary) -> Element {
     let mut text_input          = use_signal(|| String::new());
     let view                    = use_context::<Signal<View>>();
@@ -538,8 +572,9 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
         }
     });
 
+    let search_q = search_query.read().trim().to_string();
     let visible_msgs: Vec<MessageInfo> = {
-        let q = search_query.read().trim().to_lowercase();
+        let q = search_q.to_lowercase();
         messages.read().iter()
             .filter(|m| {
                 q.is_empty()
@@ -698,7 +733,7 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                                         span { class: "bubble-sender", "{addr}" }
                                     }
                                     div { class: if is_own { "bubble own" } else { "bubble other" },
-                                        "{text}"
+                                        HighlightedText { text, query: search_q.clone() }
                                     }
                                     div { class: "bubble-meta",
                                         span { class: "bubble-time", "{time}" }
