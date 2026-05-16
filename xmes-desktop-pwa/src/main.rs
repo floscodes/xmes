@@ -393,8 +393,8 @@ fn App() -> Element {
         document::Meta { name: "viewport", content: "width=device-width, initial-scale=1.0" }
         document::Meta { name: "theme-color", content: "#4F46E5" }
         document::Script { src: "/register-sw.js" }
-        document::Link { rel: "stylesheet", href: MAIN_CSS }
         document::Link { rel: "stylesheet", href: TAILWIND_CSS }
+        document::Link { rel: "stylesheet", href: MAIN_CSS }
 
         // ── Two-column desktop layout ─────────────────────────────
         div { class: "desktop-shell",

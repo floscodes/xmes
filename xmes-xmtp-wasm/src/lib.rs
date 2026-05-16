@@ -30,6 +30,7 @@ pub struct MessageInfo {
     pub text:             String,
     pub system_text:      Option<String>, // join/leave notification; None for regular messages
     pub sender_inbox_id:  String,
+    pub sender_address:   String,
     pub sent_at_ns:       i64,
     pub delivered:        bool,
 }
@@ -370,14 +371,32 @@ impl Identity {
         convo.sync().await.map_err(|e| Error::msg(format!("{e:?}")))?;
         let msgs: Vec<DecodedMessage> = convo.find_enriched_messages(None).await
             .map_err(|e| Error::msg(format!("{e:?}")))?;
+        // Batch-resolve sender inbox IDs → wallet addresses
+        let inbox_ids: Vec<String> = msgs.iter()
+            .map(|m| m.sender_inbox_id.clone())
+            .collect::<std::collections::HashSet<_>>()
+            .into_iter()
+            .collect();
+        let mut addr_map: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+        if !inbox_ids.is_empty() {
+            if let Ok(states) = self.client.inbox_state_from_inbox_ids(inbox_ids, false).await {
+                for state in states {
+                    if let Some(id) = state.account_identifiers.into_iter().next() {
+                        addr_map.insert(state.inbox_id, id.identifier);
+                    }
+                }
+            }
+        }
+
         let result = msgs.into_iter().filter_map(|m| {
             let delivered = matches!(m.delivery_status, DeliveryStatus::Published);
+            let sender_address = addr_map.get(&m.sender_inbox_id).cloned().unwrap_or_default();
             match m.content {
                 DecodedMessageContent::Text { content } => {
                     if content.is_empty() { return None; }
                     Some(MessageInfo {
                         id: m.id, text: content, system_text: None,
-                        sender_inbox_id: m.sender_inbox_id,
+                        sender_inbox_id: m.sender_inbox_id, sender_address,
                         sent_at_ns: m.sent_at_ns, delivered,
                     })
                 }
@@ -387,11 +406,10 @@ impl Identity {
                         Some(MessageInfo {
                             id: m.id, text: String::new(),
                             system_text: Some(format!("{label} left the group")),
-                            sender_inbox_id: m.sender_inbox_id,
+                            sender_inbox_id: m.sender_inbox_id, sender_address,
                             sent_at_ns: m.sent_at_ns, delivered: true,
                         })
                     } else if !content.added_inboxes.is_empty() {
-                        // Only show notification for voluntary joins (initiator == joined person)
                         let voluntary = content.added_inboxes.iter()
                             .any(|i| i.inbox_id == content.initiated_by_inbox_id);
                         if voluntary {
@@ -399,7 +417,7 @@ impl Identity {
                             Some(MessageInfo {
                                 id: m.id, text: String::new(),
                                 system_text: Some(format!("{label} joined the group")),
-                                sender_inbox_id: m.sender_inbox_id,
+                                sender_inbox_id: m.sender_inbox_id, sender_address,
                                 sent_at_ns: m.sent_at_ns, delivered: true,
                             })
                         } else { None }

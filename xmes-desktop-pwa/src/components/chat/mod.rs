@@ -582,6 +582,8 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                     || m.system_text.as_deref()
                         .map(|t| t.to_lowercase().contains(&q))
                         .unwrap_or(false)
+                    || m.sender_inbox_id.to_lowercase().contains(&q)
+                    || m.sender_address.to_lowercase().contains(&q)
             })
             .cloned()
             .collect()
@@ -731,7 +733,9 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                                 }
                                 div { class: "bubble-col",
                                     if let Some(ref addr) = sender_addr {
-                                        span { class: "bubble-sender", "{addr}" }
+                                        span { class: "bubble-sender",
+                                            HighlightedText { text: addr.clone(), query: search_q.clone() }
+                                        }
                                     }
                                     div { class: if is_own { "bubble own" } else { "bubble other" },
                                         HighlightedText { text, query: search_q.clone() }
@@ -786,6 +790,7 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                                     text:            text.clone(),
                                     system_text:     None,
                                     sender_inbox_id: own_inbox2.clone(),
+                                    sender_address:  String::new(),
                                     sent_at_ns:      (Date::now() * 1_000_000.0) as i64,
                                     delivered:       false,
                                 });
@@ -815,6 +820,7 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                                 id:              format!("pending-{}", Date::now() as i64),
                                 text:            text.clone(),
                                 sender_inbox_id: own_inbox3.clone(),
+                                sender_address:  String::new(),
                                 sent_at_ns:      (Date::now() * 1_000_000.0) as i64,
                                 delivered:       false,
                                 system_text:     None,

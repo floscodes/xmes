@@ -36,11 +36,47 @@ fn initials(name: &str) -> String {
 }
 
 #[component]
+fn HighlightedText(text: String, query: String) -> Element {
+    if query.is_empty() {
+        return rsx! { "{text}" };
+    }
+    let t_lower = text.to_lowercase();
+    let q_lower = query.to_lowercase();
+    let mut segments: Vec<(String, bool)> = Vec::new();
+    let mut last = 0usize;
+    loop {
+        match t_lower[last..].find(&*q_lower) {
+            None => {
+                if last < text.len() { segments.push((text[last..].to_string(), false)); }
+                break;
+            }
+            Some(rel) => {
+                let abs = last + rel;
+                if abs > last { segments.push((text[last..abs].to_string(), false)); }
+                segments.push((text[abs..abs + q_lower.len()].to_string(), true));
+                last = abs + q_lower.len();
+            }
+        }
+    }
+    rsx! {
+        for (seg, highlighted) in segments {
+            if highlighted {
+                span { class: "search-highlight", "{seg}" }
+            } else {
+                span { "{seg}" }
+            }
+        }
+    }
+}
+
+#[component]
 pub fn Convo(
     summary: ConversationSummary,
     on_open: EventHandler<ConversationSummary>,
     #[props(default = false)]
     has_unread: bool,
+    #[props(default = String::new())]
+    search_query: String,
 ) -> Element {
     let mut show_add  = use_signal(|| false);
     let mut offset   = use_signal(|| 0.0f64);
@@ -153,9 +189,13 @@ pub fn Convo(
                     }
                     div {
                         class: "convo-info",
-                        span { class: if has_unread { "convo-name convo-name-unread" } else { "convo-name" }, "{summary.name}" }
+                        span { class: if has_unread { "convo-name convo-name-unread" } else { "convo-name" },
+                            HighlightedText { text: summary.name.clone(), query: search_query.clone() }
+                        }
                         if let Some(sender) = &summary.last_sender {
-                            span { class: "convo-sub", "{short_addr(sender)}" }
+                            span { class: "convo-sub",
+                                HighlightedText { text: short_addr(sender), query: search_query.clone() }
+                            }
                         }
                     }
                     button {

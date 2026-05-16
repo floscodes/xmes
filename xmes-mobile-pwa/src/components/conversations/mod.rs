@@ -208,8 +208,12 @@ pub fn Conversations() -> Element {
                         let filtered: Vec<ConversationSummary> = convos.iter().filter(|c| {
                             if q.is_empty() { return true; }
                             c.name.to_lowercase().contains(&q)
+                                || c.id.to_lowercase().contains(&q)
                                 || c.last_sender.as_deref()
                                     .map(|s| s.to_lowercase().contains(&q))
+                                    .unwrap_or(false)
+                                || c.last_sender_inbox_id.as_deref()
+                                    .map(|a| a.to_lowercase().contains(&q))
                                     .unwrap_or(false)
                         }).cloned().collect();
 
@@ -244,6 +248,7 @@ pub fn Conversations() -> Element {
                                                 key: "{summary.id}",
                                                 summary: summary.clone(),
                                                 has_unread,
+                                                search_query: search_query.read().trim().to_string(),
                                                 on_open: move |s: ConversationSummary| {
                                                     unread_ids.write().remove(&s.id);
                                                     let mut a = anim; a.set("slide-in-right");

@@ -843,6 +843,7 @@ pub fn spawn_xmtp_worker(
                         text:            str_field(&item, "text"),
                         system_text,
                         sender_inbox_id: str_field(&item, "sender_inbox_id"),
+                        sender_address:  str_field(&item, "sender_address"),
                         sent_at_ns,
                         delivered,
                     }
@@ -983,6 +984,7 @@ fn post_messages(scope: &web_sys::DedicatedWorkerGlobalScope, conversation_id: &
         set_str(&item, "id",              &m.id);
         set_str(&item, "text",            &m.text);
         set_str(&item, "sender_inbox_id", &m.sender_inbox_id);
+        set_str(&item, "sender_address",  &m.sender_address);
         Reflect::set(&item, &"sent_at_ns".into(), &JsValue::from_f64(m.sent_at_ns as f64)).unwrap_throw();
         Reflect::set(&item, &"delivered".into(),  &JsValue::from_bool(m.delivered)).unwrap_throw();
         if let Some(ref st) = m.system_text {
