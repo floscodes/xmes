@@ -19,8 +19,11 @@ pub fn Conversations() -> Element {
     let pending_open = use_context::<Signal<Option<()>>>();
     let mut unread_ids = use_context::<Signal<std::collections::HashSet<String>>>();
 
-    // Pull-to-refresh
+    // Search
     let dark_mode = use_context::<Signal<DarkMode>>();
+    let mut search_query = use_signal(String::new);
+
+    // Pull-to-refresh
     let mut ptr_offset   = use_signal(|| 0.0f64);
     let mut ptr_start_y  = use_signal(|| 0.0f64);
     let mut ptr_dragging = use_signal(|| false);
@@ -143,6 +146,8 @@ pub fn Conversations() -> Element {
                         class: "search-input",
                         r#type: "text",
                         placeholder: "Search conversations…",
+                        value: "{search_query}",
+                        oninput: move |e| search_query.set(e.value()),
                     }
                 }
             }
@@ -198,20 +203,54 @@ pub fn Conversations() -> Element {
                         }
                     },
 
-                    Some(convos) => rsx! {
-                        for summary in convos.clone() {
-                            {
-                                let has_unread = unread_ids.read().contains(&summary.id);
-                                rsx! {
-                                    conversation::Convo {
-                                        summary: summary.clone(),
-                                        has_unread,
-                                        on_open: move |s: ConversationSummary| {
-                                            // Clear unread when opening
-                                            unread_ids.write().remove(&s.id);
-                                            let mut a = anim; a.set("slide-in-right");
-                                            let mut v = view; v.set(View::Chat(s));
-                                        },
+                    Some(convos) => {
+                        let q = search_query.read().trim().to_lowercase();
+                        let filtered: Vec<ConversationSummary> = convos.iter().filter(|c| {
+                            if q.is_empty() { return true; }
+                            c.name.to_lowercase().contains(&q)
+                                || c.last_sender.as_deref()
+                                    .map(|s| s.to_lowercase().contains(&q))
+                                    .unwrap_or(false)
+                        }).cloned().collect();
+
+                        if filtered.is_empty() && !q.is_empty() {
+                            rsx! {
+                                div { class: "empty-state",
+                                    div { class: "empty-icon-wrap",
+                                        svg {
+                                            xmlns: "http://www.w3.org/2000/svg",
+                                            width: "26", height: "26",
+                                            view_box: "0 0 24 24",
+                                            fill: "none",
+                                            stroke: "currentColor",
+                                            stroke_width: "1.8",
+                                            stroke_linecap: "round",
+                                            stroke_linejoin: "round",
+                                            circle { cx: "11", cy: "11", r: "8" }
+                                            path { d: "m21 21-4.35-4.35" }
+                                        }
+                                    }
+                                    p { class: "empty-title", "No results" }
+                                    p { class: "empty-sub", "No conversations match your search." }
+                                }
+                            }
+                        } else {
+                            rsx! {
+                                for summary in filtered {
+                                    {
+                                        let has_unread = unread_ids.read().contains(&summary.id);
+                                        rsx! {
+                                            conversation::Convo {
+                                                key: "{summary.id}",
+                                                summary: summary.clone(),
+                                                has_unread,
+                                                on_open: move |s: ConversationSummary| {
+                                                    unread_ids.write().remove(&s.id);
+                                                    let mut a = anim; a.set("slide-in-right");
+                                                    let mut v = view; v.set(View::Chat(s));
+                                                },
+                                            }
+                                        }
                                     }
                                 }
                             }
