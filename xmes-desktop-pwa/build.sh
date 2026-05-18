@@ -6,7 +6,7 @@ rustup target add wasm32-unknown-unknown
 
 cargo install wasm-opt
 
-cargo install dioxus-cli --version 0.7.4
+cargo install dioxus-cli --version 0.7.4 --locked
 
 curl -L https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.6/clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu-22.04.tar.xz | tar -xJ
 export PATH="$PWD/clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu-22.04/bin:$PATH"
