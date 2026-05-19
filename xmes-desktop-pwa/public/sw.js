@@ -1,4 +1,4 @@
-const CACHE = 'xmes-desktop-v2';
+const CACHE = 'xmes-desktop-v1';
 
 const PRECACHE = [
   '/',

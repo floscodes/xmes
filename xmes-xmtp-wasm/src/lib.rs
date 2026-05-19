@@ -457,10 +457,13 @@ impl Identity {
     }
 
     pub async fn list_conversations(&self) -> Result<Vec<ConversationSummary>> {
-        if let Err(e) = self.conversations().sync_all_conversations(None).await {
-            web_sys::console::error_1(&format!("[xmes] sync_all_conversations error: {:?}", e).into());
-            // Don't return early — still list whatever is in the local DB.
-        }
+        self.conversations()
+            .sync_all_conversations(None)
+            .await
+            .map_err(|e| {
+                web_sys::console::error_1(&format!("sync_all_conversations error: {:?}", e).into());
+                Error::msg("Could not sync conversations")
+            })?;
 
         let convos_array = self.conversations()
             .list(Some(
