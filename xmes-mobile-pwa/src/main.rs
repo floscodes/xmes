@@ -343,7 +343,7 @@ fn App() -> Element {
                                     window.__xmes_push_pending--;
                                     var u=window.XMES_PUSH_WORKER_URL;
                                     if(!u)return;
-                                    fetch(u+"/notify",{{method:"POST",headers:{{"content-type":"application/json"}},body:JSON.stringify({{member_inbox_ids:[{members_js}],sender_inbox_id:"{sender}",group_name:"{name}"}})}}).catch(()=>{{}});
+                                    fetch(u+"/notify",{{method:"POST",headers:{{"content-type":"application/json"}},body:JSON.stringify({{member_inbox_ids:[{members_js}],sender_inbox_id:"{sender}",group_name:"{name}",group_id:"{conv_id}"}})}}).catch(()=>{{}});
                                 }});
                             }})()"#
                         ));

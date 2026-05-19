@@ -81,13 +81,34 @@ app.delete('/subscribe', async (c) => {
   return c.json({ ok: true })
 })
 
+// ── POST /block-group ────────────────────────────────────────────────────────
+// Called when a user leaves a group — adds group_id to per-inbox blocklist.
+
+app.post('/block-group', async (c) => {
+  let body: { inbox_id?: string; group_id?: string }
+  try { body = await c.req.json() } catch { return c.json({ error: 'Invalid JSON' }, 400) }
+
+  const { inbox_id, group_id } = body
+  if (!inbox_id || !group_id) return c.json({ error: 'Missing inbox_id or group_id' }, 400)
+
+  const key = `blocked:${inbox_id}`
+  const raw = await c.env.SUBSCRIPTIONS.get(key)
+  let blocked: string[] = []
+  if (raw) { try { blocked = JSON.parse(raw) } catch {} }
+  if (!blocked.includes(group_id)) {
+    blocked.push(group_id)
+    await c.env.SUBSCRIPTIONS.put(key, JSON.stringify(blocked), { expirationTtl: 90 * 24 * 3600 })
+  }
+  return c.json({ ok: true })
+})
+
 // ── POST /notify ─────────────────────────────────────────────────────────────
 
 app.post('/notify', async (c) => {
-  let body: { member_inbox_ids?: string[]; sender_inbox_id?: string; group_name?: string; title?: string; body?: string }
+  let body: { member_inbox_ids?: string[]; sender_inbox_id?: string; group_name?: string; group_id?: string; title?: string; body?: string }
   try { body = await c.req.json() } catch { return c.json({ error: 'Invalid JSON' }, 400) }
 
-  const { member_inbox_ids, sender_inbox_id, group_name } = body
+  const { member_inbox_ids, sender_inbox_id, group_name, group_id } = body
   if (!member_inbox_ids || !Array.isArray(member_inbox_ids)) {
     return c.json({ error: 'Missing member_inbox_ids' }, 400)
   }
@@ -99,7 +120,21 @@ app.post('/notify', async (c) => {
   let failed = 0
 
   await Promise.all(targets.map(async (inbox_id) => {
-    let raw = await c.env.SUBSCRIPTIONS.get(`sub:${inbox_id}`)
+    // Fetch subscription and (if group_id given) blocklist in parallel
+    const [subRaw, blockedRaw] = await Promise.all([
+      c.env.SUBSCRIPTIONS.get(`sub:${inbox_id}`),
+      group_id ? c.env.SUBSCRIPTIONS.get(`blocked:${inbox_id}`) : Promise.resolve(null),
+    ])
+
+    // Skip if this recipient has left the group
+    if (group_id && blockedRaw) {
+      try {
+        const blocked: string[] = JSON.parse(blockedRaw)
+        if (blocked.includes(group_id)) return
+      } catch {}
+    }
+
+    let raw = subRaw
     if (!raw && inbox_id.startsWith('0x')) {
       raw = await c.env.SUBSCRIPTIONS.get(`sub:addr:${inbox_id.toLowerCase()}`)
     }
@@ -109,8 +144,9 @@ app.post('/notify', async (c) => {
     try { subscription = JSON.parse(raw) } catch { return }
 
     const payload = JSON.stringify({
-      title: body.title ?? group_name ?? 'xmes',
-      body:  body.body  ?? 'New message',
+      title:              body.title ?? group_name ?? 'xmes',
+      body:               body.body  ?? 'New message',
+      recipient_inbox_id: inbox_id,
     })
 
     try {
@@ -118,7 +154,6 @@ app.post('/notify', async (c) => {
       sent++
     } catch (err) {
       console.error(`Push failed for ${inbox_id}:`, err)
-      // If subscription is gone (410/404), clean it up
       if (err instanceof PushGoneError) {
         await c.env.SUBSCRIPTIONS.delete(`sub:${inbox_id}`)
       }

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use dioxus::prelude::*;
-use xmes_xmtp_wasm::{ConversationSummary, XmtpHandle};
+use xmes_xmtp_wasm::{ConversationSummary, IdentityInfo, XmtpHandle};
 use crate::ConfirmAction;
 use crate::components::add_members::AddMembersSheet;
 
@@ -88,6 +88,7 @@ pub fn Convo(
     let confirm       = use_context::<Signal<Option<ConfirmAction>>>();
     let xmtp          = use_context::<Signal<Option<XmtpHandle>>>();
     let conversations = use_context::<Signal<Option<Vec<ConversationSummary>>>>();
+    let identity_info = use_context::<Signal<Option<IdentityInfo>>>();
 
     let av_class = avatar_class(&summary.name);
     let av_text  = initials(&summary.name);
@@ -117,7 +118,9 @@ pub fn Convo(
                     button {
                         class: "delete-btn",
                         onclick: move |_| {
-                            let id = delete_id.clone();
+                            let id       = delete_id.clone();
+                            let inbox_id = identity_info.peek().as_ref()
+                                .map(|i| i.inbox_id.clone()).unwrap_or_default();
                             let mut c = confirm;
                             c.set(Some(ConfirmAction {
                                 title:         "Leave conversation?".into(),
@@ -135,6 +138,11 @@ pub fn Convo(
                                     if let Some(h) = xmtp.peek().as_ref() {
                                         h.request_leave(id.clone());
                                     }
+                                    let inbox_e = inbox_id.replace('\'', "\\'");
+                                    let id_e    = id.replace('\'', "\\'");
+                                    let _ = js_sys::eval(&format!(
+                                        "window.xmesBlockGroup&&window.xmesBlockGroup('{inbox_e}','{id_e}')"
+                                    ));
                                 }),
                             }));
                         },
