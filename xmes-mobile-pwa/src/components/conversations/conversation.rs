@@ -105,6 +105,13 @@ pub fn Convo(
         if summary.is_pending {
             if let Some(h) = xmtp.peek().as_ref() {
                 h.request_accept_invitation(&auto_accept_id);
+                let inbox_id = identity_info.peek().as_ref()
+                    .map(|i| i.inbox_id.clone()).unwrap_or_default();
+                let inbox_e = inbox_id.replace('\'', "\\'");
+                let id_e    = auto_accept_id.replace('\'', "\\'");
+                let _ = js_sys::eval(&format!(
+                    "window.xmesUnblockGroup&&window.xmesUnblockGroup('{inbox_e}','{id_e}')"
+                ));
             }
         }
     });

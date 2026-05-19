@@ -102,6 +102,21 @@ window.xmesRequestPushPermission = async function () {
   }
 };
 
+// ── Called when the user accepts a group invitation ──────────────────────────
+window.xmesUnblockGroup = async function (inboxId, groupId) {
+  const pushUrl = window.XMES_PUSH_WORKER_URL;
+  if (!pushUrl || !inboxId || !groupId) return;
+  try {
+    await fetch(`${pushUrl}/unblock-group`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ inbox_id: inboxId, group_id: groupId }),
+    });
+  } catch (e) {
+    console.warn('[xmes] xmesUnblockGroup failed:', e);
+  }
+};
+
 // ── Called when the user leaves a group ──────────────────────────────────────
 window.xmesBlockGroup = async function (inboxId, groupId) {
   const pushUrl = window.XMES_PUSH_WORKER_URL;

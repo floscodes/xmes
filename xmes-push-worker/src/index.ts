@@ -102,6 +102,32 @@ app.post('/block-group', async (c) => {
   return c.json({ ok: true })
 })
 
+// ── POST /unblock-group ──────────────────────────────────────────────────────
+// Called when a user accepts a group invitation — removes group_id from blocklist.
+
+app.post('/unblock-group', async (c) => {
+  let body: { inbox_id?: string; group_id?: string }
+  try { body = await c.req.json() } catch { return c.json({ error: 'Invalid JSON' }, 400) }
+
+  const { inbox_id, group_id } = body
+  if (!inbox_id || !group_id) return c.json({ error: 'Missing inbox_id or group_id' }, 400)
+
+  const key = `blocked:${inbox_id}`
+  const raw = await c.env.SUBSCRIPTIONS.get(key)
+  if (raw) {
+    try {
+      const blocked: string[] = JSON.parse(raw)
+      const updated = blocked.filter(id => id !== group_id)
+      if (updated.length === 0) {
+        await c.env.SUBSCRIPTIONS.delete(key)
+      } else {
+        await c.env.SUBSCRIPTIONS.put(key, JSON.stringify(updated), { expirationTtl: 90 * 24 * 3600 })
+      }
+    } catch {}
+  }
+  return c.json({ ok: true })
+})
+
 // ── POST /notify ─────────────────────────────────────────────────────────────
 
 app.post('/notify', async (c) => {
