@@ -306,8 +306,9 @@ fn App() -> Element {
                             .map(|m| format!("\"{}\"", m.inbox_id.replace('"', "\\\"")))
                             .collect::<Vec<_>>()
                             .join(",");
-                        let sender = own.replace('"', "");
-                        let name   = cname.replace('"', "").replace('\\', "");
+                        let sender   = own.replace('"', "");
+                        let name     = cname.replace('"', "").replace('\\', "");
+                        let gid      = conv_id.replace('"', "").replace('\\', "");
                         let _ = js_sys::eval(&format!(
                             r#"(function(){{
                                 var k='__xmes_seen_{conv_key}';
@@ -319,8 +320,8 @@ fn App() -> Element {
                                     if(!(window.__xmes_push_pending>0))return;
                                     window.__xmes_push_pending--;
                                     var u=window.XMES_PUSH_WORKER_URL;
-                                    if(!u)return;
-                                    fetch(u+"/notify",{{method:"POST",headers:{{"content-type":"application/json"}},body:JSON.stringify({{member_inbox_ids:[{members_js}],sender_inbox_id:"{sender}",group_name:"{name}",group_id:"{conv_id}"}})}}).catch(()=>{{}});
+                                    if(!u){{ console.warn('[xmes] push: no worker URL'); return; }}
+                                    fetch(u+"/notify",{{method:"POST",headers:{{"content-type":"application/json"}},body:JSON.stringify({{member_inbox_ids:[{members_js}],sender_inbox_id:"{sender}",group_name:"{name}",group_id:"{gid}"}})}}). then(function(r){{if(!r.ok)console.warn('[xmes] push notify status:',r.status);}}).catch(function(e){{console.warn('[xmes] push notify error:',e);}});
                                 }});
                             }})()"#
                         ));
