@@ -457,22 +457,32 @@ impl Identity {
     }
 
     pub async fn list_conversations(&self) -> Result<Vec<ConversationSummary>> {
-        self.conversations()
-            .sync_all_conversations(None)
-            .await
-            .map_err(|e| {
-                web_sys::console::error_1(&format!("sync_all_conversations error: {:?}", e).into());
-                Error::msg("Could not sync conversations")
-            })?;
+        web_sys::console::log_1(&"[xmes] list_conversations: starting sync_all_conversations".into());
+        match self.conversations().sync_all_conversations(None).await {
+            Ok(_) => {
+                web_sys::console::log_1(&"[xmes] list_conversations: sync_all_conversations OK".into());
+            }
+            Err(e) => {
+                web_sys::console::error_1(&format!("[xmes] sync_all_conversations error: {:?}", e).into());
+                return Err(Error::msg("Could not sync conversations"));
+            }
+        }
 
-        let convos_array = self.conversations()
-            .list(Some(
-                ListConversationsOptions {
-                    order_by: Some(ListConversationsOrderBy::LastActivity),
-                    ..Default::default()
-                }
-            ))
-            .map_err(|_| Error::msg("Could not list conversations"))?;
+        let convos_array = match self.conversations().list(Some(
+            ListConversationsOptions {
+                order_by: Some(ListConversationsOrderBy::LastActivity),
+                ..Default::default()
+            }
+        )) {
+            Ok(arr) => {
+                web_sys::console::log_1(&format!("[xmes] conversations().list() OK, len={}", arr.length()).into());
+                arr
+            }
+            Err(e) => {
+                web_sys::console::error_1(&format!("[xmes] conversations().list() error: {:?}", e).into());
+                return Err(Error::msg("Could not list conversations"));
+            }
+        };
 
         let convo_key            = wasm_bindgen::JsValue::from_str("conversation");
         let id_key               = wasm_bindgen::JsValue::from_str("id");
@@ -497,15 +507,29 @@ impl Identity {
             is_pending: bool,
         }
 
+        web_sys::console::log_1(&format!("[xmes] list() returned {} items", convos_array.length()).into());
+
         // Sync pass: extract conversation data + sender inbox IDs
         let mut raw_items: Vec<RawItem> = Vec::new();
         for i in 0..convos_array.length() {
             let item = convos_array.get(i);
-            let Ok(convo) = js_sys::Reflect::get(&item, &convo_key) else { continue };
+            let Ok(convo) = js_sys::Reflect::get(&item, &convo_key) else {
+                web_sys::console::log_1(&format!("[xmes] item[{}]: no 'conversation' field — skipped", i).into());
+                continue;
+            };
 
-            let Ok(id_fn_val) = js_sys::Reflect::get(&convo, &id_key) else { continue };
-            let Ok(id_val) = js_sys::Function::from(id_fn_val).call0(&convo) else { continue };
-            let Some(id) = id_val.as_string() else { continue };
+            let Ok(id_fn_val) = js_sys::Reflect::get(&convo, &id_key) else {
+                web_sys::console::log_1(&format!("[xmes] item[{}]: no id() method — skipped", i).into());
+                continue;
+            };
+            let Ok(id_val) = js_sys::Function::from(id_fn_val).call0(&convo) else {
+                web_sys::console::log_1(&format!("[xmes] item[{}]: id() call failed — skipped", i).into());
+                continue;
+            };
+            let Some(id) = id_val.as_string() else {
+                web_sys::console::log_1(&format!("[xmes] item[{}]: id() not a string — skipped", i).into());
+                continue;
+            };
 
             let name = js_sys::Reflect::get(&convo, &group_name_key)
                 .ok()
@@ -540,20 +564,38 @@ impl Identity {
             // Call membershipState() and consentState() directly on the convo object from list().
             // GroupMembershipState: Allowed=0, Rejected=1, Pending=2, Restored=3, PendingRemove=4
             // ConsentState:         Unknown=0, Allowed=1, Denied=2
-            let membership_state_val = js_sys::Reflect::get(&convo, &membership_state_key)
+            let membership_state_raw = js_sys::Reflect::get(&convo, &membership_state_key)
                 .ok()
-                .and_then(|f| js_sys::Function::from(f).call0(&convo).ok())
+                .and_then(|f| js_sys::Function::from(f).call0(&convo).ok());
+
+            let membership_state_val = membership_state_raw
+                .as_ref()
                 .and_then(|v| v.as_f64())
                 .map(|f| f as u32);
 
-            let Some(ms) = membership_state_val else { continue };
+            web_sys::console::log_1(&format!(
+                "[xmes] item[{}] id={} ms_raw={:?} ms={:?}",
+                i, &id[..8.min(id.len())],
+                membership_state_raw.as_ref().map(|v| format!("{:?}", v)),
+                membership_state_val
+            ).into());
 
-            if ms == 1 || ms == 4 { continue; } // Rejected or PendingRemove
+            let Some(ms) = membership_state_val else {
+                web_sys::console::log_1(&format!("[xmes] item[{}] id={}: ms is None — skipped", i, &id[..8.min(id.len())]).into());
+                continue;
+            };
+
+            if ms == 1 || ms == 4 {
+                web_sys::console::log_1(&format!("[xmes] item[{}] id={}: ms={} (Rejected/PendingRemove) — skipped", i, &id[..8.min(id.len())], ms).into());
+                continue;
+            }
 
             // consentState() can fail for a newly-received conversation; treat failure as Unknown(0).
-            let cs: u32 = js_sys::Reflect::get(&convo, &consent_state_key)
+            let cs_raw = js_sys::Reflect::get(&convo, &consent_state_key)
                 .ok()
-                .and_then(|f| js_sys::Function::from(f).call0(&convo).ok())
+                .and_then(|f| js_sys::Function::from(f).call0(&convo).ok());
+
+            let cs: u32 = cs_raw.as_ref()
                 .and_then(|v| v.as_f64())
                 .map(|f| f as u32)
                 .unwrap_or(0);
@@ -563,8 +605,15 @@ impl Identity {
             // even if membership hasn't been upgraded yet by the next sync.
             let is_pending = ms == 2 && cs != 1;
 
+            web_sys::console::log_1(&format!(
+                "[xmes] item[{}] id={}: ms={} cs={} is_pending={} — included",
+                i, &id[..8.min(id.len())], ms, cs, is_pending
+            ).into());
+
             raw_items.push(RawItem { id, name, sender_inbox_id, last_message_ns, is_pending });
         }
+
+        web_sys::console::log_1(&format!("[xmes] list_conversations: {} items after filtering", raw_items.len()).into());
 
         // Async pass: batch-resolve sender inbox IDs → wallet addresses
         let sender_ids: Vec<String> = raw_items.iter()
