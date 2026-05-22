@@ -133,6 +133,8 @@ fn App() -> Element {
     // Per-inbox unread indicator: inbox_ids that currently have unread messages.
     // Uses BTreeSet (not HashSet) to have a distinct type for Dioxus context lookup.
     let inbox_has_unread: Signal<std::collections::BTreeSet<String>>      = use_storage::<LocalStorage, _>("inbox_has_unread".to_string(), || std::collections::BTreeSet::new());
+    // Persists the inbox_id of the last active identity so it can be restored on next launch.
+    let last_active_inbox: Signal<Option<String>> = use_storage::<LocalStorage, _>("last_active_inbox".to_string(), || None);
     // group_id → inbox_id: block push after leave is confirmed by XMTP
     let mut pending_blocks: Signal<std::collections::HashMap<String, String>> = use_signal(|| std::collections::HashMap::new());
 
@@ -211,6 +213,9 @@ fn App() -> Element {
             Env::Dev(None)
         };
 
+        let is_first_identity_cb = std::rc::Rc::new(std::cell::Cell::new(true));
+        let is_first_identity_cb2 = is_first_identity_cb.clone();
+
         let handle = spawn_xmtp_worker(
             env,
             key_hexes,
@@ -231,8 +236,30 @@ fn App() -> Element {
                     ms.set(Some(encrypted));
                 }
 
-                // Active identity.
-                let active = update.identities.get(update.active_idx).cloned();
+                // Active identity — on the very first callback, restore the inbox saved
+                // from the last session instead of always defaulting to index 0.
+                let active = {
+                    let mut resolved = update.identities.get(update.active_idx).cloned();
+                    if is_first_identity_cb2.get() {
+                        is_first_identity_cb2.set(false);
+                        if let Some(saved) = last_active_inbox.peek().clone() {
+                            if let Some(target_idx) = update.identities.iter().position(|i| i.inbox_id == saved) {
+                                if target_idx != update.active_idx {
+                                    resolved = update.identities.get(target_idx).cloned();
+                                    if let Some(h) = xmtp_handle.peek().as_ref() {
+                                        h.request_switch_identity(target_idx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    resolved
+                };
+                // Persist whichever identity is now active for next launch.
+                if let Some(ref id) = active {
+                    let mut lai = last_active_inbox;
+                    lai.set(Some(id.inbox_id.clone()));
+                }
                 // Expose inbox ID to JS, then auto-subscribe push if already permitted.
                 if let Some(ref id) = active {
                     let escaped_inbox = id.inbox_id.replace('\'', "\\'");
