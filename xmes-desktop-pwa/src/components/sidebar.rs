@@ -423,6 +423,10 @@ fn IdentityCard(
     show_phrase_for: Signal<Option<Vec<String>>>,
     show_qr_for: Signal<Option<String>>,
 ) -> Element {
+    let inbox_has_unread = use_context::<Signal<std::collections::BTreeSet<String>>>();
+    let inbox_id_for_memo = info.inbox_id.clone();
+    let has_unread = use_memo(move || inbox_has_unread.read().contains(&inbox_id_for_memo));
+
     let av          = inbox_avatar(&info.inbox_id);
     let addr_short  = short(&info.primary_address, 8);
     let inbox_short = short(&info.inbox_id, 8);
@@ -437,13 +441,18 @@ fn IdentityCard(
             class: if is_active { "identity-card active" } else { "identity-card" },
 
             // Avatar
-            div { class: "identity-avatar {av}",
-                svg {
-                    xmlns: "http://www.w3.org/2000/svg", width: "20", height: "20",
-                    view_box: "0 0 24 24", fill: "none", stroke: "white",
-                    stroke_width: "2", stroke_linecap: "round", stroke_linejoin: "round",
-                    rect { x: "3", y: "11", width: "18", height: "11", rx: "2", ry: "2" }
-                    path { d: "M7 11V7a5 5 0 0 1 10 0v4" }
+            div { class: "convo-avatar-wrap",
+                div { class: "identity-avatar {av}",
+                    svg {
+                        xmlns: "http://www.w3.org/2000/svg", width: "20", height: "20",
+                        view_box: "0 0 24 24", fill: "none", stroke: "white",
+                        stroke_width: "2", stroke_linecap: "round", stroke_linejoin: "round",
+                        rect { x: "3", y: "11", width: "18", height: "11", rx: "2", ry: "2" }
+                        path { d: "M7 11V7a5 5 0 0 1 10 0v4" }
+                    }
+                }
+                if has_unread() {
+                    div { class: "identity-unread-badge" }
                 }
             }
 
@@ -822,11 +831,34 @@ fn IdentitiesPanel() -> Element {
 
 #[component]
 pub fn Sidebar() -> Element {
-    let sidebar_tab = use_context::<Signal<SidebarTab>>();
-    let dark_mode   = use_context::<Signal<DarkMode>>();
+    let sidebar_tab    = use_context::<Signal<SidebarTab>>();
+    let dark_mode      = use_context::<Signal<DarkMode>>();
+    let inbox_has_unread = use_context::<Signal<std::collections::BTreeSet<String>>>();
+    let identity_info  = use_context::<Signal<Option<IdentityInfo>>>();
+    let unread_ids     = use_context::<Signal<std::collections::HashSet<String>>>();
+    let conversations  = use_context::<Signal<Option<Vec<ConversationSummary>>>>();
 
     let is_convos = *sidebar_tab.read() == SidebarTab::Conversations;
     let is_dark   = dark_mode.read().0;
+
+    let other_identity_unread = use_memo(move || {
+        let ihu = inbox_has_unread.read();
+        let active_inbox = identity_info.read().as_ref()
+            .map(|i| i.inbox_id.clone())
+            .unwrap_or_default();
+        let has_via_ihu = ihu.iter().any(|id| id != &active_inbox);
+        let has_via_unread_ids = {
+            let unreads = unread_ids.read();
+            if let Some(convos) = conversations.read().as_ref() {
+                let active_ids: std::collections::HashSet<&str> =
+                    convos.iter().map(|c| c.id.as_str()).collect();
+                unreads.iter().any(|id| !active_ids.contains(id.as_str()))
+            } else {
+                false
+            }
+        };
+        has_via_ihu || has_via_unread_ids
+    });
 
     rsx! {
         div { class: "sidebar",
@@ -853,13 +885,18 @@ pub fn Sidebar() -> Element {
                         class: if !is_convos { "sidebar-nav-btn active" } else { "sidebar-nav-btn" },
                         title: "Identities",
                         onclick: move |_| { let mut st = sidebar_tab; st.set(SidebarTab::Identities); },
-                        svg {
-                            xmlns: "http://www.w3.org/2000/svg", width: "18", height: "18",
-                            view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
-                            stroke_width: if !is_convos { "2.4" } else { "1.8" },
-                            stroke_linecap: "round", stroke_linejoin: "round",
-                            path { d: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" }
-                            circle { cx: "12", cy: "7", r: "4" }
+                        div { class: "sidebar-nav-icon-wrap",
+                            svg {
+                                xmlns: "http://www.w3.org/2000/svg", width: "18", height: "18",
+                                view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
+                                stroke_width: if !is_convos { "2.4" } else { "1.8" },
+                                stroke_linecap: "round", stroke_linejoin: "round",
+                                path { d: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" }
+                                circle { cx: "12", cy: "7", r: "4" }
+                            }
+                            if other_identity_unread() {
+                                div { class: "nav-unread-badge" }
+                            }
                         }
                     }
                     // ── Dark mode toggle ──────────────────────────

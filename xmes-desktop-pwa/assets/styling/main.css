@@ -113,6 +113,29 @@ body {
     margin-left: auto;
 }
 
+.sidebar-nav-icon-wrap {
+    position: relative;
+    display: inline-flex;
+}
+
+.nav-unread-badge {
+    position: absolute;
+    top: -5px; right: -7px;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--primary);
+    border: 2px solid var(--surface);
+}
+
+.identity-unread-badge {
+    position: absolute;
+    top: -2px; right: -2px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--primary);
+    border: 2.5px solid var(--surface);
+}
+
 .sidebar-nav-btn {
     width: 34px;
     height: 34px;

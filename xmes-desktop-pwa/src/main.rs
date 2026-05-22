@@ -127,6 +127,11 @@ fn App() -> Element {
     let group_members:     Signal<Vec<MemberInfo>>                  = use_signal(|| vec![]);
     let unread_ids:   Signal<std::collections::HashSet<String>>       = use_storage::<LocalStorage, _>("unread_ids".to_string(),   || std::collections::HashSet::new());
     let last_seen_ns: Signal<std::collections::HashMap<String, i64>> = use_storage::<LocalStorage, _>("last_seen_ns".to_string(), || std::collections::HashMap::new());
+    // Per-inbox unread indicator: inbox_ids that currently have unread messages.
+    // Uses BTreeSet (not HashSet) to have a distinct type for Dioxus context lookup.
+    let inbox_has_unread: Signal<std::collections::BTreeSet<String>> = use_storage::<LocalStorage, _>("inbox_has_unread".to_string(), || std::collections::BTreeSet::new());
+    // Persists the inbox_id of the last active identity so it can be restored on next launch.
+    let last_active_inbox: Signal<Option<String>> = use_storage::<LocalStorage, _>("last_active_inbox".to_string(), || None);
     let mut pending_blocks: Signal<std::collections::HashMap<String, String>> = use_signal(|| std::collections::HashMap::new());
 
     // Dark mode — read stored preference (or system preference as fallback).
@@ -150,6 +155,7 @@ fn App() -> Element {
     use_context_provider(|| messages);
     use_context_provider(|| group_members);
     use_context_provider(|| unread_ids);
+    use_context_provider(|| inbox_has_unread);
     use_context_provider(|| dark_mode);
     use_context_provider(|| pending_blocks);
 
@@ -205,6 +211,9 @@ fn App() -> Element {
             Env::Dev(None)
         };
 
+        let is_first_identity_cb = std::rc::Rc::new(std::cell::Cell::new(true));
+        let is_first_identity_cb2 = is_first_identity_cb.clone();
+
         let handle = spawn_xmtp_worker(
             env,
             key_hexes,
@@ -224,7 +233,30 @@ fn App() -> Element {
                     ms.set(Some(encrypted));
                 }
 
-                let active = update.identities.get(update.active_idx).cloned();
+                // Active identity — on the very first callback, restore the inbox saved
+                // from the last session instead of always defaulting to index 0.
+                let active = {
+                    let mut resolved = update.identities.get(update.active_idx).cloned();
+                    if is_first_identity_cb2.get() {
+                        is_first_identity_cb2.set(false);
+                        if let Some(saved) = last_active_inbox.peek().clone() {
+                            if let Some(target_idx) = update.identities.iter().position(|i| i.inbox_id == saved) {
+                                if target_idx != update.active_idx {
+                                    resolved = update.identities.get(target_idx).cloned();
+                                    if let Some(h) = xmtp_handle.peek().as_ref() {
+                                        h.request_switch_identity(target_idx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    resolved
+                };
+                // Persist whichever identity is now active for next launch.
+                if let Some(ref id) = active {
+                    let mut lai = last_active_inbox;
+                    lai.set(Some(id.inbox_id.clone()));
+                }
                 if let Some(ref id) = active {
                     let escaped_inbox = id.inbox_id.replace('\'', "\\'");
                     let escaped_addr  = id.primary_address.replace('\'', "\\'");
@@ -278,6 +310,24 @@ fn App() -> Element {
                         seen.write().insert(conv.id.clone(), ns);
                     }
                 }
+                // Update per-inbox unread indicator for the active identity.
+                {
+                    let active_inbox = identity_info.peek()
+                        .as_ref()
+                        .map(|i| i.inbox_id.clone())
+                        .unwrap_or_default();
+                    if !active_inbox.is_empty() {
+                        let has_unread = convos.iter()
+                            .any(|c| unread_ids.peek().contains(&c.id));
+                        let mut ihu = inbox_has_unread;
+                        if has_unread {
+                            ihu.write().insert(active_inbox);
+                        } else {
+                            ihu.write().remove(&active_inbox);
+                        }
+                    }
+                }
+
                 let convo_ids: std::collections::HashSet<&str> = convos.iter().map(|c| c.id.as_str()).collect();
                 let blocks_snapshot: Vec<(String, String)> = pending_blocks.peek()
                     .iter()
@@ -377,7 +427,7 @@ fn App() -> Element {
         interval.forget();
     });
 
-    // Refresh on tab becoming visible.
+    // Refresh on tab becoming visible; also absorb push inbox IDs from SW.
     use_effect(move || {
         let _ = js_sys::eval(
             "document.addEventListener('visibilitychange',function(){\
@@ -385,6 +435,21 @@ fn App() -> Element {
             })"
         );
         let interval = gloo_timers::callback::Interval::new(1_000, move || {
+            // Absorb any inbox IDs that received a push (set by register-sw.js).
+            let push_list = js_sys::eval("window.XMES_PUSH_INBOX_LIST||''")
+                .ok()
+                .and_then(|v| v.as_string())
+                .unwrap_or_default();
+            if !push_list.is_empty() {
+                let mut ihu = inbox_has_unread;
+                for id in push_list.split(',') {
+                    if !id.is_empty() {
+                        ihu.write().insert(id.to_string());
+                    }
+                }
+                let _ = js_sys::eval("window.XMES_PUSH_INBOX_LIST=''");
+            }
+
             let flagged = js_sys::eval("window.__xmes_became_visible||0")
                 .ok().and_then(|v| v.as_f64()).unwrap_or(0.0) as u8;
             if flagged == 0 { return; }

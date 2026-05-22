@@ -14,6 +14,18 @@
   }
 })();
 
+// Accumulate inbox IDs that received a push while the app is open.
+// Rust reads and clears window.XMES_PUSH_INBOX_LIST in the conversations callback.
+window.XMES_PUSH_INBOX_LIST = '';
+navigator.serviceWorker.addEventListener('message', function (event) {
+  if (event.data && event.data.type === 'xmes-push-inbox' && event.data.inboxId) {
+    var id = event.data.inboxId;
+    if (window.XMES_PUSH_INBOX_LIST.indexOf(id) === -1) {
+      window.XMES_PUSH_INBOX_LIST += (window.XMES_PUSH_INBOX_LIST ? ',' : '') + id;
+    }
+  }
+});
+
 
 // ── Called from Rust on mount when permission is still 'default' ─────────────
 // Registers a one-shot capture-phase listener so the NEXT natural user tap
