@@ -991,24 +991,24 @@ body {
 }
 .nav-unread-badge {
     position: absolute;
-    top: -4px;
-    right: -6px;
-    width: 13px;
-    height: 13px;
+    top: -5px;
+    right: -7px;
+    width: 17px;
+    height: 17px;
     border-radius: 50%;
     background: var(--primary);
-    border: 2px solid var(--surface);
+    border: 2.5px solid var(--surface);
 }
 
 .identity-unread-badge {
     position: absolute;
-    top: -1px;
-    right: -1px;
-    width: 15px;
-    height: 15px;
+    top: -2px;
+    right: -2px;
+    width: 19px;
+    height: 19px;
     border-radius: 50%;
     background: var(--primary);
-    border: 2.5px solid var(--surface);
+    border: 3px solid var(--surface);
 }
 
 /* Lift FAB above the bottom nav (including safe-area) */
