@@ -985,6 +985,21 @@ body {
 .bottom-nav-tab.active { color: var(--primary); }
 .bottom-nav-tab.active:hover { color: var(--primary); }
 
+.bottom-nav-icon-wrap {
+    position: relative;
+    display: inline-flex;
+}
+.nav-unread-badge {
+    position: absolute;
+    top: -2px;
+    right: -4px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--primary);
+    border: 2px solid var(--surface);
+}
+
 /* Lift FAB above the bottom nav (including safe-area) */
 .fab { bottom: calc(1.75rem + 62px + env(safe-area-inset-bottom)); }
 @media (max-width: 480px) { .fab { bottom: calc(1.25rem + 62px + env(safe-area-inset-bottom)); } }

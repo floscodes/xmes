@@ -404,6 +404,10 @@ fn IdentityCard(
     show_phrase_for: Signal<Option<Vec<String>>>,
     show_qr_for: Signal<Option<String>>,
 ) -> Element {
+    let inbox_has_unread = use_context::<Signal<std::collections::BTreeSet<String>>>();
+    let inbox_id_for_memo = info.inbox_id.clone();
+    let has_unread = use_memo(move || inbox_has_unread.read().contains(&inbox_id_for_memo));
+
     let mut offset   = use_signal(|| 0.0f64);
     let mut start_x  = use_signal(|| 0.0f64);
     let mut dragging = use_signal(|| false);
@@ -498,15 +502,20 @@ fn IdentityCard(
                 },
 
                 // Avatar
-                div { class: "identity-avatar {av}",
-                    svg {
-                        xmlns: "http://www.w3.org/2000/svg",
-                        width: "20", height: "20",
-                        view_box: "0 0 24 24", fill: "none",
-                        stroke: "white", stroke_width: "2",
-                        stroke_linecap: "round", stroke_linejoin: "round",
-                        rect { x: "3", y: "11", width: "18", height: "11", rx: "2", ry: "2" }
-                        path { d: "M7 11V7a5 5 0 0 1 10 0v4" }
+                div { class: "convo-avatar-wrap",
+                    div { class: "identity-avatar {av}",
+                        svg {
+                            xmlns: "http://www.w3.org/2000/svg",
+                            width: "20", height: "20",
+                            view_box: "0 0 24 24", fill: "none",
+                            stroke: "white", stroke_width: "2",
+                            stroke_linecap: "round", stroke_linejoin: "round",
+                            rect { x: "3", y: "11", width: "18", height: "11", rx: "2", ry: "2" }
+                            path { d: "M7 11V7a5 5 0 0 1 10 0v4" }
+                        }
+                    }
+                    if has_unread() {
+                        div { class: "unread-badge" }
                     }
                 }
 

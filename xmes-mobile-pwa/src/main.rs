@@ -128,8 +128,11 @@ fn App() -> Element {
     let confirm_action:    Signal<Option<ConfirmAction>>            = use_signal(|| None);
     let messages:          Signal<Vec<MessageInfo>>                 = use_signal(|| vec![]);
     let group_members:     Signal<Vec<MemberInfo>>                  = use_signal(|| vec![]);
-    let unread_ids:   Signal<std::collections::HashSet<String>>       = use_storage::<LocalStorage, _>("unread_ids".to_string(),   || std::collections::HashSet::new());
-    let last_seen_ns: Signal<std::collections::HashMap<String, i64>> = use_storage::<LocalStorage, _>("last_seen_ns".to_string(), || std::collections::HashMap::new());
+    let unread_ids:       Signal<std::collections::HashSet<String>>       = use_storage::<LocalStorage, _>("unread_ids".to_string(),       || std::collections::HashSet::new());
+    let last_seen_ns:     Signal<std::collections::HashMap<String, i64>> = use_storage::<LocalStorage, _>("last_seen_ns".to_string(),     || std::collections::HashMap::new());
+    // Per-inbox unread indicator: inbox_ids that currently have unread messages.
+    // Uses BTreeSet (not HashSet) to have a distinct type for Dioxus context lookup.
+    let inbox_has_unread: Signal<std::collections::BTreeSet<String>>      = use_storage::<LocalStorage, _>("inbox_has_unread".to_string(), || std::collections::BTreeSet::new());
     // group_id → inbox_id: block push after leave is confirmed by XMTP
     let mut pending_blocks: Signal<std::collections::HashMap<String, String>> = use_signal(|| std::collections::HashMap::new());
 
@@ -162,6 +165,7 @@ fn App() -> Element {
     use_context_provider(|| messages);
     use_context_provider(|| group_members);
     use_context_provider(|| unread_ids);
+    use_context_provider(|| inbox_has_unread);
     use_context_provider(|| dark_mode);
     use_context_provider(|| pending_blocks);
 
@@ -295,6 +299,24 @@ fn App() -> Element {
                     }
                 }
 
+                // Update per-inbox unread indicator for the active identity.
+                {
+                    let active_inbox = identity_info.peek()
+                        .as_ref()
+                        .map(|i| i.inbox_id.clone())
+                        .unwrap_or_default();
+                    if !active_inbox.is_empty() {
+                        let has_unread = convos.iter()
+                            .any(|c| unread_ids.peek().contains(&c.id));
+                        let mut ihu = inbox_has_unread;
+                        if has_unread {
+                            ihu.write().insert(active_inbox);
+                        } else {
+                            ihu.write().remove(&active_inbox);
+                        }
+                    }
+                }
+
                 // Fire xmesBlockGroup once the group has left the list (leave confirmed).
                 let convo_ids: std::collections::HashSet<&str> = convos.iter().map(|c| c.id.as_str()).collect();
                 let blocks_snapshot: Vec<(String, String)> = pending_blocks.peek()
@@ -407,6 +429,7 @@ fn App() -> Element {
 
     // Refresh on foreground: register a JS visibilitychange listener that sets a
     // flag, then poll every second and trigger the right request when it fires.
+    // Also absorbs any push inbox IDs accumulated in window.XMES_PUSH_INBOX_LIST.
     use_effect(move || {
         let _ = js_sys::eval(
             "document.addEventListener('visibilitychange',function(){\
@@ -414,6 +437,21 @@ fn App() -> Element {
             })"
         );
         let interval = gloo_timers::callback::Interval::new(1_000, move || {
+            // Absorb any inbox IDs that received a push (set by register-sw.js).
+            let push_list = js_sys::eval("window.XMES_PUSH_INBOX_LIST||''")
+                .ok()
+                .and_then(|v| v.as_string())
+                .unwrap_or_default();
+            if !push_list.is_empty() {
+                let mut ihu = inbox_has_unread;
+                for id in push_list.split(',') {
+                    if !id.is_empty() {
+                        ihu.write().insert(id.to_string());
+                    }
+                }
+                let _ = js_sys::eval("window.XMES_PUSH_INBOX_LIST=''");
+            }
+
             let flagged = js_sys::eval("window.__xmes_became_visible||0")
                 .ok()
                 .and_then(|v| v.as_f64())
@@ -433,6 +471,28 @@ fn App() -> Element {
     });
 
     let in_chat = matches!(*view.read(), View::Chat(_));
+
+    // use_memo ensures Dioxus tracks signal dependencies and re-evaluates reactively.
+    // Case (a): inbox_has_unread — populated by conversations callback & push SW interval.
+    // Case (b): any unread_id not in the active identity's conversations (stale from previous sync).
+    let other_identity_unread = use_memo(move || {
+        let ihu = inbox_has_unread.read();
+        let active_inbox = identity_info.read().as_ref()
+            .map(|i| i.inbox_id.clone())
+            .unwrap_or_default();
+        let has_via_ihu = ihu.iter().any(|id| id != &active_inbox);
+        let has_via_unread_ids = {
+            let unreads = unread_ids.read();
+            if let Some(convos) = conversations.read().as_ref() {
+                let active_ids: std::collections::HashSet<&str> =
+                    convos.iter().map(|c| c.id.as_str()).collect();
+                unreads.iter().any(|id| !active_ids.contains(id.as_str()))
+            } else {
+                false
+            }
+        };
+        has_via_ihu || has_via_unread_ids
+    });
 
     rsx! {
         document::Link { rel: "icon", href: FAVICON }
@@ -507,13 +567,18 @@ fn App() -> Element {
                         let mut a = anim; a.set("slide-in-tab");
                         let mut v = view; v.set(View::Identities);
                     },
-                    svg {
-                        xmlns: "http://www.w3.org/2000/svg", width: "22", height: "22",
-                        view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
-                        stroke_width: if *view.read() == View::Identities { "2.5" } else { "1.8" },
-                        stroke_linecap: "round", stroke_linejoin: "round",
-                        path { d: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" }
-                        circle { cx: "12", cy: "7", r: "4" }
+                    div { class: "bottom-nav-icon-wrap",
+                        svg {
+                            xmlns: "http://www.w3.org/2000/svg", width: "22", height: "22",
+                            view_box: "0 0 24 24", fill: "none", stroke: "currentColor",
+                            stroke_width: if *view.read() == View::Identities { "2.5" } else { "1.8" },
+                            stroke_linecap: "round", stroke_linejoin: "round",
+                            path { d: "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" }
+                            circle { cx: "12", cy: "7", r: "4" }
+                        }
+                        if other_identity_unread() {
+                            div { class: "nav-unread-badge" }
+                        }
                     }
                     span { "Identity" }
                 }

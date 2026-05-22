@@ -1,4 +1,4 @@
-const CACHE = 'xmes-v3';
+const CACHE = 'xmes-v4';
 
 const PRECACHE = [
   '/',
@@ -64,6 +64,8 @@ self.addEventListener('push', event => {
     } catch (_) {}
   }
 
+  const recipientInboxId = data.recipient_inbox_id;
+
   event.waitUntil(
     getBadgeCount().then(count => {
       const next = count + 1;
@@ -76,7 +78,13 @@ self.addEventListener('push', event => {
           renotify: true,
           data:     { ...data, badgeCount: next },
         })
-      );
+      ).then(() => {
+        if (recipientInboxId) {
+          return self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
+            clients.forEach(c => c.postMessage({ type: 'xmes-push-inbox', inboxId: recipientInboxId }));
+          });
+        }
+      });
     })
   );
 });
