@@ -371,12 +371,16 @@ impl Identity {
         convo.sync().await.map_err(|e| Error::msg(format!("{e:?}")))?;
         let msgs: Vec<DecodedMessage> = convo.find_enriched_messages(None).await
             .map_err(|e| Error::msg(format!("{e:?}")))?;
-        // Batch-resolve sender inbox IDs → wallet addresses
-        let inbox_ids: Vec<String> = msgs.iter()
-            .map(|m| m.sender_inbox_id.clone())
-            .collect::<std::collections::HashSet<_>>()
-            .into_iter()
-            .collect();
+        // Batch-resolve all inbox IDs → wallet addresses (senders + join/leave members)
+        let mut all_ids: std::collections::HashSet<String> = std::collections::HashSet::new();
+        for m in &msgs {
+            all_ids.insert(m.sender_inbox_id.clone());
+            if let DecodedMessageContent::GroupUpdated { content } = &m.content {
+                for i in &content.left_inboxes  { all_ids.insert(i.inbox_id.clone()); }
+                for i in &content.added_inboxes { all_ids.insert(i.inbox_id.clone()); }
+            }
+        }
+        let inbox_ids: Vec<String> = all_ids.into_iter().collect();
         let mut addr_map: std::collections::HashMap<String, String> = std::collections::HashMap::new();
         if !inbox_ids.is_empty() {
             if let Ok(states) = self.client.inbox_state_from_inbox_ids(inbox_ids, false).await {
@@ -402,7 +406,10 @@ impl Identity {
                 }
                 DecodedMessageContent::GroupUpdated { content } => {
                     if !content.left_inboxes.is_empty() {
-                        let label = short_inbox(&content.left_inboxes[0].inbox_id);
+                        let member_id = &content.left_inboxes[0].inbox_id;
+                        let label = addr_map.get(member_id)
+                            .map(|a| short_inbox(a))
+                            .unwrap_or_else(|| short_inbox(member_id));
                         Some(MessageInfo {
                             id: m.id, text: String::new(),
                             system_text: Some(format!("{label} left the group")),
@@ -413,7 +420,10 @@ impl Identity {
                         let voluntary = content.added_inboxes.iter()
                             .any(|i| i.inbox_id == content.initiated_by_inbox_id);
                         if voluntary {
-                            let label = short_inbox(&content.added_inboxes[0].inbox_id);
+                            let member_id = &content.added_inboxes[0].inbox_id;
+                            let label = addr_map.get(member_id)
+                                .map(|a| short_inbox(a))
+                                .unwrap_or_else(|| short_inbox(member_id));
                             Some(MessageInfo {
                                 id: m.id, text: String::new(),
                                 system_text: Some(format!("{label} joined the group")),
