@@ -515,7 +515,7 @@ fn IdentityCard(
                         }
                     }
                     if has_unread() {
-                        div { class: "unread-badge" }
+                        div { class: "identity-unread-badge" }
                     }
                 }
 

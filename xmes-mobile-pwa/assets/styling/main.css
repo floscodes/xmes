@@ -991,13 +991,24 @@ body {
 }
 .nav-unread-badge {
     position: absolute;
-    top: -2px;
-    right: -4px;
-    width: 9px;
-    height: 9px;
+    top: -4px;
+    right: -6px;
+    width: 13px;
+    height: 13px;
     border-radius: 50%;
     background: var(--primary);
     border: 2px solid var(--surface);
+}
+
+.identity-unread-badge {
+    position: absolute;
+    top: -1px;
+    right: -1px;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background: var(--primary);
+    border: 2.5px solid var(--surface);
 }
 
 /* Lift FAB above the bottom nav (including safe-area) */
