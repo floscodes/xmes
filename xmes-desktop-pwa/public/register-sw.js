@@ -99,6 +99,21 @@ window.xmesRequestPushPermission = async function () {
   }
 };
 
+// ── Called after leave is confirmed (group gone from list) ───────────────────
+window.xmesBlockGroup = async function (inboxId, groupId) {
+  const pushUrl = window.XMES_PUSH_WORKER_URL;
+  if (!pushUrl || !inboxId || !groupId) return;
+  try {
+    await fetch(`${pushUrl}/block-group`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ inbox_id: inboxId, group_id: groupId }),
+    });
+  } catch (e) {
+    console.warn('[xmes] xmesBlockGroup failed:', e);
+  }
+};
+
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
   const base64  = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');

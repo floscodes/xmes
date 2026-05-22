@@ -127,6 +127,7 @@ fn App() -> Element {
     let group_members:     Signal<Vec<MemberInfo>>                  = use_signal(|| vec![]);
     let unread_ids:   Signal<std::collections::HashSet<String>>       = use_storage::<LocalStorage, _>("unread_ids".to_string(),   || std::collections::HashSet::new());
     let last_seen_ns: Signal<std::collections::HashMap<String, i64>> = use_storage::<LocalStorage, _>("last_seen_ns".to_string(), || std::collections::HashMap::new());
+    let mut pending_blocks: Signal<std::collections::HashMap<String, String>> = use_signal(|| std::collections::HashMap::new());
 
     // Dark mode — read stored preference (or system preference as fallback).
     let dark_mode: Signal<DarkMode> = use_signal(|| {
@@ -150,6 +151,7 @@ fn App() -> Element {
     use_context_provider(|| group_members);
     use_context_provider(|| unread_ids);
     use_context_provider(|| dark_mode);
+    use_context_provider(|| pending_blocks);
 
     // Apply data-theme attribute whenever dark_mode changes.
     use_effect(move || {
@@ -276,6 +278,24 @@ fn App() -> Element {
                         seen.write().insert(conv.id.clone(), ns);
                     }
                 }
+                let convo_ids: std::collections::HashSet<&str> = convos.iter().map(|c| c.id.as_str()).collect();
+                let blocks_snapshot: Vec<(String, String)> = pending_blocks.peek()
+                    .iter()
+                    .filter(|(gid, _)| !convo_ids.contains(gid.as_str()))
+                    .map(|(g, i)| (g.clone(), i.clone()))
+                    .collect();
+                if !blocks_snapshot.is_empty() {
+                    let mut pb = pending_blocks;
+                    for (gid, iid) in &blocks_snapshot {
+                        pb.write().remove(gid);
+                        let g = gid.replace('\'', "\\'");
+                        let i = iid.replace('\'', "\\'");
+                        let _ = js_sys::eval(&format!(
+                            "window.xmesBlockGroup&&window.xmesBlockGroup('{i}','{g}')"
+                        ));
+                    }
+                }
+
                 let mut c = conversations;
                 c.set(Some(convos));
             },

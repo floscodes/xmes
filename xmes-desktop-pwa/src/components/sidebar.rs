@@ -156,9 +156,11 @@ fn ConvoRow(
     on_open: EventHandler<ConversationSummary>,
 ) -> Element {
     let mut show_add  = use_signal(|| false);
-    let confirm       = use_context::<Signal<Option<ConfirmAction>>>();
-    let xmtp          = use_context::<Signal<Option<XmtpHandle>>>();
-    let conversations = use_context::<Signal<Option<Vec<ConversationSummary>>>>();
+    let confirm        = use_context::<Signal<Option<ConfirmAction>>>();
+    let xmtp           = use_context::<Signal<Option<XmtpHandle>>>();
+    let conversations  = use_context::<Signal<Option<Vec<ConversationSummary>>>>();
+    let identity_info  = use_context::<Signal<Option<IdentityInfo>>>();
+    let mut pending_blocks = use_context::<Signal<std::collections::HashMap<String, String>>>();
 
     let av_class  = avatar_class(&summary.name);
     let av_text   = initials(&summary.name);
@@ -239,6 +241,10 @@ fn ConvoRow(
                                     if let Some(h) = xmtp.peek().as_ref() {
                                         h.request_leave(id.clone());
                                     }
+                                    let inbox_id = identity_info.peek().as_ref()
+                                        .map(|i| i.inbox_id.clone()).unwrap_or_default();
+                                    let mut pb = pending_blocks;
+                                    pb.write().insert(id.clone(), inbox_id);
                                 }),
                             }));
                         },
