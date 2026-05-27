@@ -5,35 +5,97 @@ use crate::{components::qr::QrScannerSheet, View};
 
 // ── Link detection & preview ──────────────────────────────────────────────────
 
-fn split_urls(text: &str) -> Vec<(String, bool)> {
-    let mut result: Vec<(String, bool)> = Vec::new();
+fn is_known_tld(tld: &str) -> bool {
+    matches!(tld,
+        "com" | "net" | "org" | "edu" | "gov" | "mil" | "int" | "biz" | "info" | "name" |
+        "io" | "co" | "app" | "dev" | "ai" | "me" | "tv" | "cc" | "so" | "sh" | "gg" | "fm" |
+        "gl" | "ly" | "is" | "to" | "li" | "ac" | "im" | "vc" | "nu" |
+        "online" | "store" | "shop" | "blog" | "news" | "media" | "tech" | "cloud" | "site" |
+        "link" | "page" | "live" | "digital" | "studio" | "design" | "agency" | "space" |
+        "de" | "at" | "ch" | "uk" | "us" | "ca" | "fr" | "es" | "it" | "nl" | "be" | "pt" |
+        "ie" | "se" | "no" | "dk" | "fi" | "ru" | "pl" | "cz" | "hu" | "ro" | "gr" | "hr" |
+        "lt" | "lv" | "ee" | "ua" | "tr" | "il" | "ae" | "za" | "in" | "cn" | "jp" | "kr" |
+        "tw" | "hk" | "sg" | "my" | "id" | "th" | "vn" | "au" | "nz" | "br" | "mx" | "ar"
+    )
+}
+
+fn looks_like_bare_url(s: &str) -> bool {
+    let low = s.to_lowercase();
+    if low.starts_with("http://") || low.starts_with("https://") { return false; }
+    let host = s.split(['/', '?', '#', ':']).next().unwrap_or(s);
+    let parts: Vec<&str> = host.split('.').collect();
+    if parts.len() < 2 { return false; }
+    let tld = parts.last().unwrap().to_lowercase();
+    for part in &parts[..parts.len() - 1] {
+        if part.is_empty() { return false; }
+        if !part.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') { return false; }
+        if part.starts_with('-') || part.ends_with('-') { return false; }
+    }
+    if parts[0].chars().all(|c| c.is_ascii_digit()) { return false; }
+    is_known_tld(&tld)
+}
+
+fn find_bare_url_in(text: &str) -> Option<usize> {
+    let mut pos = 0;
+    while pos < text.len() {
+        let rest = &text[pos..];
+        let ws = rest.find(|c: char| !c.is_ascii_whitespace()).unwrap_or(rest.len());
+        if ws == rest.len() { break; }
+        pos += ws;
+        let rest = &text[pos..];
+        let token_len = rest.find(|c: char| c.is_ascii_whitespace()).unwrap_or(rest.len());
+        let token = &rest[..token_len];
+        let trimmed = token.trim_end_matches(|c| matches!(c, '.' | ',' | '!' | '?' | ';' | ':'));
+        if looks_like_bare_url(trimmed) { return Some(pos); }
+        pos += token_len;
+    }
+    None
+}
+
+fn split_urls(text: &str) -> Vec<(String, Option<String>)> {
+    let mut result: Vec<(String, Option<String>)> = Vec::new();
     let mut remaining = text;
     loop {
         let low = remaining.to_lowercase();
-        let a = low.find("https://");
-        let b = low.find("http://");
-        let start = match (a, b) {
-            (Some(x), Some(y)) => Some(x.min(y)),
-            (Some(x), None) | (None, Some(x)) => Some(x),
-            (None, None) => None,
+        let proto = {
+            let a = low.find("https://");
+            let b = low.find("http://");
+            match (a, b) {
+                (Some(x), Some(y)) => Some(x.min(y)),
+                (Some(x), None) | (None, Some(x)) => Some(x),
+                (None, None) => None,
+            }
         };
-        let Some(i) = start else {
-            if !remaining.is_empty() { result.push((remaining.to_string(), false)); }
+        let bare = find_bare_url_in(remaining);
+        let next = match (proto, bare) {
+            (Some(p), Some(b)) if p <= b => Some((p, true)),
+            (Some(_), Some(b))           => Some((b, false)),
+            (Some(p), None)              => Some((p, true)),
+            (None,    Some(b))           => Some((b, false)),
+            (None,    None)              => None,
+        };
+        let Some((i, is_proto)) = next else {
+            if !remaining.is_empty() { result.push((remaining.to_string(), None)); }
             break;
         };
-        if i > 0 { result.push((remaining[..i].to_string(), false)); }
+        if i > 0 { result.push((remaining[..i].to_string(), None)); }
         let rest = &remaining[i..];
         let raw_end = rest
             .find(|c: char| c.is_ascii_whitespace() || matches!(c, '"' | '\'' | '<' | '>' | ')' | ']' | '}'))
             .unwrap_or(rest.len());
         let raw = &rest[..raw_end];
-        let url = raw.trim_end_matches(|c| matches!(c, '.' | ',' | '!' | '?' | ';' | ':'));
-        if url.len() > 7 {
-            result.push((url.to_string(), true));
-            let trailing = &raw[url.len()..];
-            if !trailing.is_empty() { result.push((trailing.to_string(), false)); }
+        let display = raw.trim_end_matches(|c| matches!(c, '.' | ',' | '!' | '?' | ';' | ':'));
+        let trailing = &raw[display.len()..];
+        let href = if is_proto {
+            if display.len() > 7 { Some(display.to_string()) } else { None }
         } else {
-            result.push((raw.to_string(), false));
+            Some(format!("https://{}", display))
+        };
+        if href.is_some() {
+            result.push((display.to_string(), href));
+            if !trailing.is_empty() { result.push((trailing.to_string(), None)); }
+        } else {
+            result.push((raw.to_string(), None));
         }
         remaining = &remaining[i + raw_end..];
     }
@@ -41,7 +103,7 @@ fn split_urls(text: &str) -> Vec<(String, bool)> {
 }
 
 fn extract_first_url(text: &str) -> Option<String> {
-    split_urls(text).into_iter().find(|(_, is_url)| *is_url).map(|(s, _)| s)
+    split_urls(text).into_iter().find_map(|(_, href)| href)
 }
 
 #[derive(Clone, PartialEq)]
@@ -99,18 +161,18 @@ async fn fetch_preview(url: String) -> Option<LinkPreview> {
 fn MessageText(text: String, query: String) -> Element {
     let segments = split_urls(&text);
     rsx! {
-        for (seg, is_url) in segments {
-            if is_url {
+        for (display, href_opt) in segments {
+            if let Some(href) = href_opt {
                 a {
                     class: "msg-link",
-                    href: "{seg}",
+                    href: "{href}",
                     target: "_blank",
                     rel: "noopener noreferrer",
                     onclick: move |e| e.stop_propagation(),
-                    HighlightedText { text: seg.clone(), query: query.clone() }
+                    HighlightedText { text: display.clone(), query: query.clone() }
                 }
             } else {
-                HighlightedText { text: seg, query: query.clone() }
+                HighlightedText { text: display, query: query.clone() }
             }
         }
     }
