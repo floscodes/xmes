@@ -159,7 +159,7 @@ pub fn Conversations() -> Element {
                     width: "22", height: "22",
                     view_box: "0 0 24 24",
                     fill: "none",
-                    stroke: "var(--color-primary)",
+                    stroke: "var(--primary)",
                     stroke_width: "2.2",
                     stroke_linecap: "round",
                     stroke_linejoin: "round",
