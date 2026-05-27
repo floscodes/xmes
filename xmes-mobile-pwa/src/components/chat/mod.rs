@@ -909,7 +909,7 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                         } else { None };
                         // Extract cached link preview for this message (if any).
                         let preview_data: Option<(String, Option<String>, Option<String>, Option<String>, Option<String>)> = {
-                            let previews = link_previews.peek();
+                            let previews = link_previews.read();
                             extract_first_url(&msg.text).and_then(|u| {
                                 previews.get(&u).and_then(|p| p.as_ref().map(|p| (
                                     p.url.clone(), p.image.clone(), p.title.clone(),
