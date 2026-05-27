@@ -769,20 +769,33 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
 
             // ── Input bar ────────────────────────────────────────
             div { class: "chat-input-bar",
-                input {
+                textarea {
                     class: "chat-input",
-                    r#type: "text",
+                    rows: "1",
                     placeholder: "Message…",
                     value: "{text_input}",
-                    oninput: move |e| text_input.set(e.value()),
+                    oninput: move |e| {
+                        text_input.set(e.value());
+                        let _ = js_sys::eval(
+                            "var el=document.querySelector('.chat-input');\
+                             if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}"
+                        );
+                    },
                     onkeydown: {
-                        let conv_id2    = conversation.id.clone();
+                        let conv_id2   = conversation.id.clone();
                         let own_inbox2 = own_inbox.clone();
                         move |e: Event<KeyboardData>| {
-                            if e.data().code().to_string() == "Enter" {
+                            let is_enter = e.data().code().to_string() == "Enter";
+                            let shift    = e.data().modifiers().shift();
+                            if is_enter && !shift {
+                                e.prevent_default();
                                 let text = text_input.read().trim().to_string();
                                 if text.is_empty() { return; }
                                 text_input.set(String::new());
+                                let _ = js_sys::eval(
+                                    "var el=document.querySelector('.chat-input');\
+                                     if(el){el.style.height='';}"
+                                );
                                 let mut m = messages;
                                 let mut list = m.read().clone();
                                 list.push(MessageInfo {
@@ -814,6 +827,10 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                             let text = text_input.read().trim().to_string();
                             if text.is_empty() { return; }
                             text_input.set(String::new());
+                            let _ = js_sys::eval(
+                                "var el=document.querySelector('.chat-input');\
+                                 if(el){el.style.height='';}"
+                            );
                             let mut m = messages;
                             let mut list = m.read().clone();
                             list.push(MessageInfo {

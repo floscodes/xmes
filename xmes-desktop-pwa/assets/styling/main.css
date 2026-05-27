@@ -720,7 +720,7 @@ body {
 
 .chat-input-bar {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     gap: 0.75rem;
     padding: 1rem 1.5rem;
     background: var(--surface);
@@ -732,12 +732,15 @@ body {
     flex: 1;
     background: var(--bg);
     border: 1.5px solid var(--border);
-    border-radius: var(--radius-full);
+    border-radius: var(--radius-lg);
     padding: 0.625rem 1.25rem;
     font-size: 0.9375rem;
     font-family: var(--font);
     color: var(--text-1);
     outline: none;
+    resize: none;
+    overflow-y: auto;
+    max-height: 120px;
     transition: border-color 0.15s, box-shadow 0.15s;
 }
 

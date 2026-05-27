@@ -818,38 +818,17 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
 
             // ── Input bar ────────────────────────────────────────
             div { class: "chat-input-bar",
-                input {
+                textarea {
                     class: "chat-input",
-                    r#type: "text",
+                    rows: "1",
                     placeholder: "Message…",
                     value: "{text_input}",
-                    oninput: move |e| text_input.set(e.value()),
-                    onkeydown: {
-                        let conv_id   = conversation.id.clone();
-                        let own_inbox2 = own_inbox.clone();
-                        move |e: Event<KeyboardData>| {
-                            if e.data().code().to_string() == "Enter" {
-                                let text = text_input.read().trim().to_string();
-                                if text.is_empty() { return; }
-                                text_input.set(String::new());
-                                let mut m = messages;
-                                let mut list = m.read().clone();
-                                list.push(MessageInfo {
-                                    id:              format!("pending-{}", Date::now() as i64),
-                                    text:            text.clone(),
-                                    system_text:     None,
-                                    sender_inbox_id: own_inbox2.clone(),
-                                    sender_address:  String::new(),
-                                    sent_at_ns:      (Date::now() * 1_000_000.0) as i64,
-                                    delivered:       false,
-                                });
-                                m.set(list);
-                                if let Some(h) = xmtp.read().as_ref() {
-                                    h.request_send_message(&conv_id, &text);
-                                    let _ = js_sys::eval("window.__xmes_push_pending = (window.__xmes_push_pending || 0) + 1");
-                                }
-                            }
-                        }
+                    oninput: move |e| {
+                        text_input.set(e.value());
+                        let _ = js_sys::eval(
+                            "var el=document.querySelector('.chat-input');\
+                             if(el){el.style.height='auto';el.style.height=el.scrollHeight+'px';}"
+                        );
                     },
                 }
                 button {
@@ -863,6 +842,10 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                             let text = text_input.read().trim().to_string();
                             if text.is_empty() { return; }
                             text_input.set(String::new());
+                            let _ = js_sys::eval(
+                                "var el=document.querySelector('.chat-input');\
+                                 if(el){el.style.height='';}"
+                            );
                             let mut m = messages;
                             let mut list = m.read().clone();
                             list.push(MessageInfo {

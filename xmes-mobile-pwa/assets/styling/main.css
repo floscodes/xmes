@@ -792,7 +792,7 @@ body {
 
 .chat-input-bar {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     gap: 0.625rem;
     padding: 0.75rem 1rem;
     padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
@@ -805,12 +805,15 @@ body {
     flex: 1;
     background: var(--bg);
     border: 1.5px solid var(--border);
-    border-radius: var(--radius-full);
+    border-radius: var(--radius-lg);
     padding: 0.625rem 1rem;
     font-size: 1rem;
     font-family: var(--font);
     color: var(--text-1);
     outline: none;
+    resize: none;
+    overflow-y: auto;
+    max-height: 120px;
     transition: border-color 0.15s, box-shadow 0.15s;
 }
 
