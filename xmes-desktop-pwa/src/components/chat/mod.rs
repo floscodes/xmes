@@ -3,6 +3,118 @@ use js_sys::Date;
 use xmes_xmtp_wasm::{ConversationSummary, IdentityInfo, MemberInfo, MessageInfo, XmtpHandle};
 use crate::{components::qr::QrScannerSheet, View};
 
+// ── Link detection & preview ──────────────────────────────────────────────────
+
+fn split_urls(text: &str) -> Vec<(String, bool)> {
+    let mut result: Vec<(String, bool)> = Vec::new();
+    let mut remaining = text;
+    loop {
+        let a = remaining.find("https://");
+        let b = remaining.find("http://");
+        let start = match (a, b) {
+            (Some(x), Some(y)) => Some(x.min(y)),
+            (Some(x), None) | (None, Some(x)) => Some(x),
+            (None, None) => None,
+        };
+        let Some(i) = start else {
+            if !remaining.is_empty() { result.push((remaining.to_string(), false)); }
+            break;
+        };
+        if i > 0 { result.push((remaining[..i].to_string(), false)); }
+        let rest = &remaining[i..];
+        let raw_end = rest
+            .find(|c: char| c.is_ascii_whitespace() || matches!(c, '"' | '\'' | '<' | '>' | ')' | ']' | '}'))
+            .unwrap_or(rest.len());
+        let raw = &rest[..raw_end];
+        let url = raw.trim_end_matches(|c| matches!(c, '.' | ',' | '!' | '?' | ';' | ':'));
+        if url.len() > 7 {
+            result.push((url.to_string(), true));
+            let trailing = &raw[url.len()..];
+            if !trailing.is_empty() { result.push((trailing.to_string(), false)); }
+        } else {
+            result.push((raw.to_string(), false));
+        }
+        remaining = &remaining[i + raw_end..];
+    }
+    result
+}
+
+fn extract_first_url(text: &str) -> Option<String> {
+    split_urls(text).into_iter().find(|(_, is_url)| *is_url).map(|(s, _)| s)
+}
+
+#[derive(Clone, PartialEq)]
+struct LinkPreview {
+    url:         String,
+    title:       Option<String>,
+    description: Option<String>,
+    image:       Option<String>,
+    site_name:   Option<String>,
+}
+
+async fn fetch_preview(url: String) -> Option<LinkPreview> {
+    let escaped = url.replace('\\', "\\\\").replace('"', "\\\"");
+    let js = format!(
+        r#"(async()=>{{try{{
+            const r=await fetch("{}",{{headers:{{"Accept":"text/html,application/xhtml+xml"}}}});
+            if(!r.ok)return null;
+            const ct=r.headers.get("content-type")||"";
+            if(!ct.includes("text/html"))return null;
+            const html=await r.text();
+            const g=(a,v)=>{{
+                const p1=new RegExp('<meta[^>]+'+a+'=["\']'+v+'["\'][^>]+content=["\']([^"\'<>]{{1,400}})["\']','i');
+                const p2=new RegExp('<meta[^>]+content=["\']([^"\'<>]{{1,400}})["\'][^>]+'+a+'=["\']'+v+'["\']','i');
+                const m=html.match(p1)||html.match(p2);
+                return m?m[1].trim():null;
+            }};
+            const title=g('property','og:title')||g('name','twitter:title')||(html.match(/<title[^>]*>([^<]{{1,200}})<\/title>/i)||[])[1]||null;
+            const description=g('property','og:description')||g('name','description')||null;
+            const image=g('property','og:image')||g('name','twitter:image')||null;
+            const site_name=g('property','og:site_name')||null;
+            if(!title&&!description&&!image)return null;
+            return JSON.stringify({{title:title&&title.trim()||null,description:description&&description.trim()||null,image,site_name}});
+        }}catch(e){{return null;}}}})()"#,
+        escaped
+    );
+    let val = js_sys::eval(&js).ok()?;
+    let result = wasm_bindgen_futures::JsFuture::from(js_sys::Promise::from(val)).await.ok()?;
+    let json = result.as_string()?;
+    let obj = js_sys::JSON::parse(&json).ok()?;
+    let get = |k: &str| -> Option<String> {
+        js_sys::Reflect::get(&obj, &wasm_bindgen::JsValue::from_str(k)).ok()
+            .filter(|v| !v.is_null() && !v.is_undefined())
+            .and_then(|v| v.as_string())
+            .filter(|s| !s.is_empty())
+    };
+    let title = get("title");
+    let description = get("description");
+    let image = get("image");
+    let site_name = get("site_name");
+    if title.is_none() && description.is_none() && image.is_none() { return None; }
+    Some(LinkPreview { url, title, description, image, site_name })
+}
+
+#[component]
+fn MessageText(text: String, query: String) -> Element {
+    let segments = split_urls(&text);
+    rsx! {
+        for (seg, is_url) in segments {
+            if is_url {
+                a {
+                    class: "msg-link",
+                    href: "{seg}",
+                    target: "_blank",
+                    rel: "noopener noreferrer",
+                    onclick: move |e| e.stop_propagation(),
+                    HighlightedText { text: seg.clone(), query: query.clone() }
+                }
+            } else {
+                HighlightedText { text: seg, query: query.clone() }
+            }
+        }
+    }
+}
+
 fn av_class(name: &str) -> &'static str {
     let idx = name.bytes().fold(0usize, |a, b| a.wrapping_add(b as usize)) % 8;
     match idx {
@@ -516,6 +628,22 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
     let conv_id          = conversation.id.clone();
     let own_inbox        = identity_info.read().as_ref().map(|i| i.inbox_id.clone()).unwrap_or_default();
 
+    let link_previews: Signal<std::collections::HashMap<String, Option<LinkPreview>>> =
+        use_signal(|| std::collections::HashMap::new());
+
+    use_effect(move || {
+        for msg in messages.read().iter() {
+            let Some(url) = extract_first_url(&msg.text) else { continue };
+            if link_previews.peek().contains_key(&url) { continue; }
+            link_previews.write().insert(url.clone(), None);
+            let mut lp = link_previews;
+            spawn(async move {
+                let preview = fetch_preview(url.clone()).await;
+                lp.write().insert(url, preview);
+            });
+        }
+    });
+
     let member_count  = group_members.read().len();
     let member_label  = if member_count == 1 { "1 Member".to_string() }
                         else { format!("{} Members", member_count) };
@@ -723,6 +851,15 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                                 .find(|m| m.inbox_id == msg.sender_inbox_id)
                                 .map(|m| short_addr(&m.address))
                         } else { None };
+                        let preview_data: Option<(String, Option<String>, Option<String>, Option<String>, Option<String>)> = {
+                            let previews = link_previews.peek();
+                            extract_first_url(&msg.text).and_then(|u| {
+                                previews.get(&u).and_then(|p| p.as_ref().map(|p| (
+                                    p.url.clone(), p.image.clone(), p.title.clone(),
+                                    p.description.clone(), p.site_name.clone()
+                                )))
+                            })
+                        };
                         rsx! {
                             if let Some(ref st) = system_text {
                                 div { class: "system-event", "{st}" }
@@ -738,7 +875,30 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                                         }
                                     }
                                     div { class: if is_own { "bubble own" } else { "bubble other" },
-                                        HighlightedText { text, query: search_q.clone() }
+                                        MessageText { text, query: search_q.clone() }
+                                    }
+                                    if let Some((purl, pimg, ptitle, pdesc, psite)) = preview_data {
+                                        a {
+                                            class: "link-preview",
+                                            href: "{purl}",
+                                            target: "_blank",
+                                            rel: "noopener noreferrer",
+                                            onclick: move |e| e.stop_propagation(),
+                                            if let Some(ref src) = pimg {
+                                                img { class: "link-preview-img", src: "{src}", alt: "" }
+                                            }
+                                            div { class: "link-preview-body",
+                                                if let Some(ref site) = psite {
+                                                    span { class: "link-preview-site", "{site}" }
+                                                }
+                                                if let Some(ref t) = ptitle {
+                                                    p { class: "link-preview-title", "{t}" }
+                                                }
+                                                if let Some(ref d) = pdesc {
+                                                    p { class: "link-preview-desc", "{d}" }
+                                                }
+                                            }
+                                        }
                                     }
                                     div { class: "bubble-meta",
                                         span { class: "bubble-time", "{time}" }
