@@ -428,7 +428,20 @@ fn ChatGroupSettingsPanel(
                         rsx! {
                             div { class: "member-row",
                                 div { class: "addr-primary-pill",
-                                    span { class: "addr-primary-text", "{short_addr(&m.address)}" }
+                                    span { class: "addr-primary-text",
+                                        {
+                                            let suffix = if m.inbox_id == own_inbox_id {
+                                                Some("Me".to_string())
+                                            } else {
+                                                aliases.peek().get(&m.address).cloned()
+                                            };
+                                            if let Some(s) = suffix {
+                                                format!("{} ({})", short_addr(&m.address), s)
+                                            } else {
+                                                short_addr(&m.address)
+                                            }
+                                        }
+                                    }
                                     CopyBtn { text: m.address.clone() }
                                 }
                                 span { class: "{role_class(m.role)}", "{role_label(m.role)}" }
