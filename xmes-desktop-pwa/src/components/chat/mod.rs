@@ -9,8 +9,9 @@ fn split_urls(text: &str) -> Vec<(String, bool)> {
     let mut result: Vec<(String, bool)> = Vec::new();
     let mut remaining = text;
     loop {
-        let a = remaining.find("https://");
-        let b = remaining.find("http://");
+        let low = remaining.to_lowercase();
+        let a = low.find("https://");
+        let b = low.find("http://");
         let start = match (a, b) {
             (Some(x), Some(y)) => Some(x.min(y)),
             (Some(x), None) | (None, Some(x)) => Some(x),

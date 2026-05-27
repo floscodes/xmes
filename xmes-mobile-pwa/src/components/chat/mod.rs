@@ -10,8 +10,9 @@ fn split_urls(text: &str) -> Vec<(String, bool)> {
     let mut result: Vec<(String, bool)> = Vec::new();
     let mut remaining = text;
     loop {
-        let a = remaining.find("https://");
-        let b = remaining.find("http://");
+        let low = remaining.to_lowercase();
+        let a = low.find("https://");
+        let b = low.find("http://");
         let start = match (a, b) {
             (Some(x), Some(y)) => Some(x.min(y)),
             (Some(x), None) | (None, Some(x)) => Some(x),
@@ -651,7 +652,7 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
     let own_inbox         = identity_info.read().as_ref().map(|i| i.inbox_id.clone()).unwrap_or_default();
 
     // Link previews cache: url → None (pending) or Some(preview)
-    let link_previews: Signal<std::collections::HashMap<String, Option<LinkPreview>>> =
+    let mut link_previews: Signal<std::collections::HashMap<String, Option<LinkPreview>>> =
         use_signal(|| std::collections::HashMap::new());
 
     // Trigger a best-effort fetch for every URL found in messages (CORS-permissive sites only).
