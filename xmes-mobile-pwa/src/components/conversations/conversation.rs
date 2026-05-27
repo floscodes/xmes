@@ -89,6 +89,7 @@ pub fn Convo(
     let xmtp            = use_context::<Signal<Option<XmtpHandle>>>();
     let conversations   = use_context::<Signal<Option<Vec<ConversationSummary>>>>();
     let identity_info   = use_context::<Signal<Option<IdentityInfo>>>();
+    let aliases         = use_context::<Signal<std::collections::BTreeMap<String, String>>>();
     let mut pending_blocks = use_context::<Signal<std::collections::HashMap<String, String>>>();
 
     let av_class = avatar_class(&summary.name);
@@ -200,7 +201,11 @@ pub fn Convo(
                         }
                         if let Some(sender) = &summary.last_sender {
                             span { class: "convo-sub",
-                                HighlightedText { text: short_addr(sender), query: search_query.clone() }
+                                {
+                                    let display = aliases.read().get(sender).cloned()
+                                        .unwrap_or_else(|| short_addr(sender));
+                                    rsx! { HighlightedText { text: display, query: search_query.clone() } }
+                                }
                             }
                         }
                     }

@@ -162,6 +162,7 @@ fn ConvoRow(
     let identity_info  = use_context::<Signal<Option<IdentityInfo>>>();
     let mut pending_blocks = use_context::<Signal<std::collections::HashMap<String, String>>>();
     let view           = use_context::<Signal<View>>();
+    let aliases        = use_context::<Signal<std::collections::BTreeMap<String, String>>>();
 
     let av_class  = avatar_class(&summary.name);
     let av_text   = initials(&summary.name);
@@ -196,7 +197,11 @@ fn ConvoRow(
                     }
                     if let Some(ref sender) = summary.last_sender {
                         span { class: "convo-sub",
-                            HighlightedText { text: short(sender, 6), query: search_query.clone() }
+                            {
+                                let display = aliases.read().get(sender).cloned()
+                                    .unwrap_or_else(|| short(sender, 6));
+                                rsx! { HighlightedText { text: display, query: search_query.clone() } }
+                            }
                         }
                     }
                 }
