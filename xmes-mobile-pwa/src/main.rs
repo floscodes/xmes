@@ -558,7 +558,7 @@ fn App() -> Element {
             },
             View::Chat(conversation) => rsx! {
                 div { class: "view-slide {anim}",
-                    components::chat::Chat { conversation }
+                    components::chat::Chat { key: "{conversation.id}", conversation }
                 }
             },
         }

@@ -834,14 +834,13 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
         let is_initial = !*initial_scroll_done.peek();
         let scrolled_up = *user_scrolled_up.peek();
         if is_initial || !scrolled_up {
-            if let Some(window) = web_sys::window() {
-                if let Some(doc) = window.document() {
-                    if let Some(el) = doc.query_selector(".chat-messages").ok().flatten() {
-                        el.set_scroll_top(el.scroll_height());
-                        initial_scroll_done.set(true);
-                    }
-                }
-            }
+            let _ = js_sys::eval(
+                "setTimeout(function(){\
+                    var el=document.querySelector('.chat-messages');\
+                    if(el) el.scrollTop=el.scrollHeight;\
+                },50)"
+            );
+            initial_scroll_done.set(true);
         }
     });
 
