@@ -2031,15 +2031,17 @@ html[data-theme="dark"] {
     flex-direction: column;
     background: var(--bg);
     border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
+    border-radius: 1.25rem;
     overflow: hidden;
     text-decoration: none;
     color: inherit;
-    margin-top: 0.375rem;
     max-width: 280px;
     cursor: pointer;
     transition: opacity 0.15s;
 }
+
+.link-preview.own   { border-bottom-right-radius: 0.375rem; }
+.link-preview.other { border-bottom-left-radius: 0.375rem; }
 
 .link-preview:hover { opacity: 0.85; }
 
@@ -2080,3 +2082,14 @@ html[data-theme="dark"] {
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
+
+.link-preview-message {
+    padding: 0.625rem 0.875rem;
+    font-size: 1.0625rem;
+    line-height: 1.45;
+    word-break: break-word;
+    hyphens: auto;
+}
+
+.link-preview-message.own   { background: var(--primary); color: white; }
+.link-preview-message.other { background: var(--surface); color: var(--text-1); }

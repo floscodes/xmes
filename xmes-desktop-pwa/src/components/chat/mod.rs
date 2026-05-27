@@ -937,12 +937,9 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                                             HighlightedText { text: addr.clone(), query: search_q.clone() }
                                         }
                                     }
-                                    div { class: if is_own { "bubble own" } else { "bubble other" },
-                                        MessageText { text, query: search_q.clone() }
-                                    }
                                     if let Some((purl, pimg, ptitle, pdesc, psite)) = preview_data {
                                         a {
-                                            class: "link-preview",
+                                            class: if is_own { "link-preview own" } else { "link-preview other" },
                                             href: "{purl}",
                                             target: "_blank",
                                             rel: "noopener noreferrer",
@@ -961,6 +958,13 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                                                     p { class: "link-preview-desc", "{d}" }
                                                 }
                                             }
+                                            div { class: if is_own { "link-preview-message own" } else { "link-preview-message other" },
+                                                MessageText { text, query: search_q.clone() }
+                                            }
+                                        }
+                                    } else {
+                                        div { class: if is_own { "bubble own" } else { "bubble other" },
+                                            MessageText { text, query: search_q.clone() }
                                         }
                                     }
                                     div { class: "bubble-meta",
