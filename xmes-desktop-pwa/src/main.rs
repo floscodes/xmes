@@ -132,6 +132,9 @@ fn App() -> Element {
     let inbox_has_unread: Signal<std::collections::BTreeSet<String>> = use_storage::<LocalStorage, _>("inbox_has_unread".to_string(), || std::collections::BTreeSet::new());
     // Persists the inbox_id of the last active identity so it can be restored on next launch.
     let last_active_inbox: Signal<Option<String>> = use_storage::<LocalStorage, _>("last_active_inbox".to_string(), || None);
+    // Persistent address → alias display name map.
+    let mut aliases: Signal<std::collections::BTreeMap<String, String>> =
+        use_storage::<LocalStorage, _>("addr_aliases".to_string(), || std::collections::BTreeMap::new());
     let mut pending_blocks: Signal<std::collections::HashMap<String, String>> = use_signal(|| std::collections::HashMap::new());
 
     // Dark mode — read stored preference (or system preference as fallback).
@@ -158,6 +161,7 @@ fn App() -> Element {
     use_context_provider(|| inbox_has_unread);
     use_context_provider(|| dark_mode);
     use_context_provider(|| pending_blocks);
+    use_context_provider(|| aliases);
 
     // Apply data-theme attribute whenever dark_mode changes.
     use_effect(move || {

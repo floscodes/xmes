@@ -318,6 +318,9 @@ fn ChatGroupSettingsPanel(
     let mut show_rename:  Signal<bool>            = use_signal(|| false);
     let mut rename_input: Signal<String>          = use_signal(move || conv_name.peek().clone());
     let mut show_scanner: Signal<bool>            = use_signal(|| false);
+    let mut aliases = use_context::<Signal<std::collections::BTreeMap<String, String>>>();
+    let mut alias_target: Signal<Option<String>> = use_signal(|| None);
+    let mut alias_input:  Signal<String>         = use_signal(|| String::new());
 
     let own_role = members.iter()
         .find(|m| m.inbox_id == own_inbox_id)
@@ -419,7 +422,7 @@ fn ChatGroupSettingsPanel(
                     {
                         let m = m.clone();
                         let is_menu_open = menu_open.read().as_deref() == Some(&m.inbox_id);
-                        let show_menu_btn = own_role >= 1 && m.role < 2;
+                        let show_menu_btn = true;
                         let conv_id = conversation_id.clone();
                         let iid = m.inbox_id.clone();
                         rsx! {
@@ -455,6 +458,22 @@ fn ChatGroupSettingsPanel(
                                             div { class: "member-dropdown-overlay", onclick: move |_| menu_open.set(None) }
                                             div { class: "member-dropdown",
                                                 onclick: move |e| e.stop_propagation(),
+                                                {
+                                                    let addr_for_alias = m.address.clone();
+                                                    let label = if aliases.peek().contains_key(&m.address) { "Edit alias" } else { "Add alias" };
+                                                    rsx! {
+                                                        button {
+                                                            class: "member-dropdown-item",
+                                                            onclick: move |_| {
+                                                                let current = aliases.peek().get(&addr_for_alias).cloned().unwrap_or_default();
+                                                                alias_input.set(current);
+                                                                alias_target.set(Some(addr_for_alias.clone()));
+                                                                menu_open.set(None);
+                                                            },
+                                                            "{label}"
+                                                        }
+                                                    }
+                                                }
                                                 if own_role == 2 {
                                                     if m.role == 0 {
                                                         button {
@@ -517,19 +536,21 @@ fn ChatGroupSettingsPanel(
                                                         }
                                                     }
                                                 }
-                                                button {
-                                                    class: "member-dropdown-item member-dropdown-danger",
-                                                    onclick: {
-                                                        let cid = conv_id.clone();
-                                                        let mid = m.inbox_id.clone();
-                                                        move |_| {
-                                                            menu_open.set(None);
-                                                            if let Some(h) = xmtp.peek().as_ref() {
-                                                                h.request_remove_member(&cid, &mid);
+                                                if own_role >= 1 {
+                                                    button {
+                                                        class: "member-dropdown-item member-dropdown-danger",
+                                                        onclick: {
+                                                            let cid = conv_id.clone();
+                                                            let mid = m.inbox_id.clone();
+                                                            move |_| {
+                                                                menu_open.set(None);
+                                                                if let Some(h) = xmtp.peek().as_ref() {
+                                                                    h.request_remove_member(&cid, &mid);
+                                                                }
                                                             }
-                                                        }
-                                                    },
-                                                    "Remove from group"
+                                                        },
+                                                        "Remove from group"
+                                                    }
                                                 }
                                             }
                                         }
@@ -630,6 +651,66 @@ fn ChatGroupSettingsPanel(
                 },
             }
         }
+
+        if let Some(ref addr) = alias_target.read().clone() {
+            {
+                let addr = addr.clone();
+                let addr2 = addr.clone();
+                rsx! {
+                    div {
+                        class: "modal-backdrop",
+                        style: "z-index: 210;",
+                        onclick: move |_| alias_target.set(None),
+                    }
+                    div { class: "modal-card", style: "z-index: 211;",
+                        h3 { class: "modal-title", "Add alias" }
+                        p  { class: "modal-message", "Display name for {short_addr(&addr)}" }
+                        input {
+                            class: "add-member-input",
+                            r#type: "text",
+                            placeholder: "Alias\u{2026}",
+                            value: "{alias_input}",
+                            autofocus: true,
+                            oninput: move |e| alias_input.set(e.value()),
+                            onkeydown: {
+                                let addr = addr.clone();
+                                move |e: Event<KeyboardData>| {
+                                    let code = e.data().code().to_string();
+                                    if code == "Enter" {
+                                        let a = alias_input.peek().trim().to_string();
+                                        if a.is_empty() { aliases.write().remove(&addr); }
+                                        else { aliases.write().insert(addr.clone(), a); }
+                                        alias_target.set(None);
+                                    }
+                                    if code == "Escape" { alias_target.set(None); }
+                                }
+                            },
+                        }
+                        div { class: "modal-buttons",
+                            button {
+                                class: "modal-btn modal-cancel",
+                                onclick: move |_| alias_target.set(None),
+                                "Cancel"
+                            }
+                            button {
+                                class: "modal-btn modal-confirm",
+                                style: "background: var(--primary);",
+                                onclick: {
+                                    let addr = addr2.clone();
+                                    move |_| {
+                                        let a = alias_input.peek().trim().to_string();
+                                        if a.is_empty() { aliases.write().remove(&addr); }
+                                        else { aliases.write().insert(addr.clone(), a); }
+                                        alias_target.set(None);
+                                    }
+                                },
+                                "Save"
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -676,6 +757,7 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
     let group_members           = use_context::<Signal<Vec<MemberInfo>>>();
     let identity_info           = use_context::<Signal<Option<IdentityInfo>>>();
     let mut unread_ids          = use_context::<Signal<std::collections::HashSet<String>>>();
+    let aliases                 = use_context::<Signal<std::collections::BTreeMap<String, String>>>();
     let mut initial_scroll_done = use_signal(|| false);
     let mut user_scrolled_up    = use_signal(|| false);
     let mut loading             = use_signal(|| true);
@@ -910,9 +992,10 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                         let text    = msg.text.clone();
                         let deliv   = msg.delivered;
                         let sender_addr = if !is_own {
-                            group_members.read().iter()
+                            let addr = group_members.read().iter()
                                 .find(|m| m.inbox_id == msg.sender_inbox_id)
-                                .map(|m| short_addr(&m.address))
+                                .map(|m| m.address.clone());
+                            addr.map(|a| aliases.read().get(&a).cloned().unwrap_or_else(|| short_addr(&a)))
                         } else { None };
                         let preview_data: Option<(String, Option<String>, Option<String>, Option<String>, Option<String>)> = {
                             let previews = link_previews.read();
