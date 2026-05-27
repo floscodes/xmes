@@ -161,6 +161,7 @@ fn ConvoRow(
     let conversations  = use_context::<Signal<Option<Vec<ConversationSummary>>>>();
     let identity_info  = use_context::<Signal<Option<IdentityInfo>>>();
     let mut pending_blocks = use_context::<Signal<std::collections::HashMap<String, String>>>();
+    let view           = use_context::<Signal<View>>();
 
     let av_class  = avatar_class(&summary.name);
     let av_text   = initials(&summary.name);
@@ -231,6 +232,13 @@ fn ConvoRow(
                                 message:       "You will leave this group permanently.".into(),
                                 confirm_label: "Leave".into(),
                                 on_confirm: Arc::new(move || {
+                                    // Close the chat panel immediately if this conversation is open.
+                                    let mut v = view;
+                                    if let View::Chat(ref open) = v.peek().clone() {
+                                        if open.id == id {
+                                            v.set(View::Welcome);
+                                        }
+                                    }
                                     let mut convos = conversations;
                                     let filtered = convos.peek().as_ref().map(|list| {
                                         list.iter().filter(|c| c.id != id).cloned().collect::<Vec<_>>()
@@ -559,6 +567,8 @@ fn IdentityCard(
                                 if let Some(h) = xmtp.peek().as_ref() {
                                     h.request_remove_identity(idx);
                                 }
+                                // Always go to Welcome — the conversation list changes with the identity.
+                                view.set(View::Welcome);
                             }),
                         }));
                     },

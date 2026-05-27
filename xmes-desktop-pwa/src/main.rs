@@ -347,6 +347,18 @@ fn App() -> Element {
                     }
                 }
 
+                // If the open conversation was removed from the list (left or identity changed),
+                // fall back to the Welcome screen.
+                {
+                    let gone = match view.peek().clone() {
+                        View::Chat(ref c) => !convos.iter().any(|cv| cv.id == c.id),
+                        _ => false,
+                    };
+                    if gone {
+                        view.set(View::Welcome);
+                    }
+                }
+
                 let mut c = conversations;
                 c.set(Some(convos));
             },
