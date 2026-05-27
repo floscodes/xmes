@@ -700,6 +700,7 @@ body {
     font-size: 1.0625rem;
     line-height: 1.45;
     word-break: break-word;
+    hyphens: auto;
 }
 
 .bubble.own {
