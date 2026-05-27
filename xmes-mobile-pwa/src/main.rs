@@ -150,7 +150,7 @@ fn App() -> Element {
         let theme = if dark_mode.read().0 { "dark" } else { "light" };
         let _ = js_sys::eval(&format!(
             "document.documentElement.setAttribute('data-theme','{}');\
-             document.documentElement.setAttribute('lang','de');\
+             document.documentElement.setAttribute('lang',navigator.language||'en');\
              localStorage.setItem('xmes-theme','{}')",
             theme, theme
         ));
