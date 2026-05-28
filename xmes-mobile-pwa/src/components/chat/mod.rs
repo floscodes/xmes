@@ -1,7 +1,7 @@
 use dioxus::prelude::*;
 use js_sys::Date;
 use xmes_xmtp_wasm::{ConversationSummary, IdentityInfo, MemberInfo, MessageInfo, XmtpHandle};
-use crate::{components::qr::QrScannerSheet, View};
+use crate::{components::qr::QrScannerSheet, ConfirmAction, View};
 
 // ── Link detection & preview ──────────────────────────────────────────────────
 
@@ -329,9 +329,14 @@ fn ChatGroupSettingsSheet(
     let mut show_rename:  Signal<bool>           = use_signal(|| false);
     let mut rename_input: Signal<String>         = use_signal(move || conv_name.peek().clone());
     let mut show_scanner: Signal<bool>           = use_signal(|| false);
-    let mut aliases = use_context::<Signal<std::collections::BTreeMap<String, String>>>();
-    let mut alias_target: Signal<Option<String>> = use_signal(|| None);
-    let mut alias_input:  Signal<String>         = use_signal(|| String::new());
+    let mut aliases        = use_context::<Signal<std::collections::BTreeMap<String, String>>>();
+    let mut alias_target:  Signal<Option<String>> = use_signal(|| None);
+    let mut alias_input:   Signal<String>         = use_signal(|| String::new());
+    let mut confirm_action = use_context::<Signal<Option<ConfirmAction>>>();
+    let mut conversations  = use_context::<Signal<Option<Vec<ConversationSummary>>>>();
+    let mut pending_blocks = use_context::<Signal<std::collections::HashMap<String, String>>>();
+    let identity_info      = use_context::<Signal<Option<IdentityInfo>>>();
+    let view               = use_context::<Signal<View>>();
 
     let own_role = members.iter()
         .find(|m| m.inbox_id == own_inbox_id)
@@ -567,7 +572,7 @@ fn ChatGroupSettingsSheet(
                                                         }
                                                     }
                                                 }
-                                                if own_role >= 1 {
+                                                if own_role >= 1 && m.inbox_id != own_inbox_id {
                                                     button {
                                                         class: "member-dropdown-item member-dropdown-danger",
                                                         onclick: {
@@ -581,6 +586,42 @@ fn ChatGroupSettingsSheet(
                                                             }
                                                         },
                                                         "Remove from group"
+                                                    }
+                                                }
+                                                if m.inbox_id == own_inbox_id {
+                                                    button {
+                                                        class: "member-dropdown-item member-dropdown-danger",
+                                                        onclick: {
+                                                            let cid = conv_id.clone();
+                                                            move |_| {
+                                                                menu_open.set(None);
+                                                                let id = cid.clone();
+                                                                confirm_action.set(Some(ConfirmAction {
+                                                                    title:         "Leave conversation?".into(),
+                                                                    message:       "You will leave this group permanently.".into(),
+                                                                    confirm_label: "Leave".into(),
+                                                                    on_confirm: std::sync::Arc::new(move || {
+                                                                        let filtered = conversations.peek().as_ref().map(|list| {
+                                                                            list.iter().filter(|c| c.id != id).cloned().collect::<Vec<_>>()
+                                                                        });
+                                                                        if let Some(f) = filtered {
+                                                                            let mut convos = conversations;
+                                                                            convos.set(Some(f));
+                                                                        }
+                                                                        if let Some(h) = xmtp.peek().as_ref() {
+                                                                            h.request_leave(id.clone());
+                                                                        }
+                                                                        let inbox = identity_info.peek().as_ref()
+                                                                            .map(|i| i.inbox_id.clone()).unwrap_or_default();
+                                                                        let mut pb = pending_blocks;
+                                                                        pb.write().insert(id.clone(), inbox);
+                                                                        let mut v = view;
+                                                                        v.set(View::Conversations);
+                                                                    }),
+                                                                }));
+                                                            }
+                                                        },
+                                                        "Leave conversation"
                                                     }
                                                 }
                                             }
