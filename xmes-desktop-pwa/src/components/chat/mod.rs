@@ -552,7 +552,7 @@ fn ChatGroupSettingsPanel(
                                                         }
                                                     }
                                                 }
-                                                if own_role >= 1 && m.inbox_id != own_inbox_id {
+                                                if m.inbox_id != own_inbox_id && ((m.role == 0 && own_role >= 1) || (m.role == 1 && own_role == 2)) {
                                                     button {
                                                         class: "member-dropdown-item member-dropdown-danger",
                                                         onclick: {
