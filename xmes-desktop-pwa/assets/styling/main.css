@@ -607,16 +607,21 @@ body {
 
 .bubble-avatar {
     flex-shrink: 0;
-    width: 28px;
-    height: 28px;
+    width: 38px;
+    height: 38px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.6875rem;
+    font-size: 0.75rem;
     font-weight: 700;
     color: white;
     margin-bottom: 1.25rem;
+}
+
+.bubble-avatar-addr {
+    font-size: 0.5rem;
+    letter-spacing: -0.02em;
 }
 
 .bubble-col {

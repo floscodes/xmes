@@ -1032,7 +1032,14 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                             } else {
                             div { class: if is_own { "bubble-row own" } else { "bubble-row other" },
                                 if !is_own {
-                                    div { class: "bubble-avatar {av_class(avatar_color)}", "{avatar_label}" }
+                                    div {
+                                        class: if avatar_label.starts_with("0x..") {
+                                            format!("bubble-avatar bubble-avatar-addr {}", av_class(avatar_color))
+                                        } else {
+                                            format!("bubble-avatar {}", av_class(avatar_color))
+                                        },
+                                        "{avatar_label}"
+                                    }
                                 }
                                 div { class: "bubble-col",
                                     if let Some(ref addr) = sender_addr {
