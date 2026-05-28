@@ -198,8 +198,14 @@ fn ConvoRow(
                     if let Some(ref sender) = summary.last_sender {
                         span { class: "convo-sub",
                             {
-                                let display = aliases.read().get(sender).cloned()
-                                    .unwrap_or_else(|| short(sender, 6));
+                                let own_inbox = identity_info.read().as_ref().map(|i| i.inbox_id.clone()).unwrap_or_default();
+                                let is_own = summary.last_sender_inbox_id.as_deref() == Some(own_inbox.as_str());
+                                let display = if is_own {
+                                    "Me".to_string()
+                                } else {
+                                    aliases.read().get(sender).cloned()
+                                        .unwrap_or_else(|| short(sender, 6))
+                                };
                                 rsx! { HighlightedText { text: display, query: search_query.clone() } }
                             }
                         }
