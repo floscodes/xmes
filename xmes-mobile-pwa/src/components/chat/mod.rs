@@ -442,6 +442,8 @@ fn ChatGroupSettingsSheet(
                         let show_menu_btn = true;
                         let conv_id = conversation_id.clone();
                         let iid = m.inbox_id.clone();
+                        let addr_for_alias = m.address.clone();
+                        let alias_label = if aliases.peek().contains_key(&m.address) { "Edit alias" } else { "Add alias" };
                         rsx! {
                             div { class: "addr-row member-row",
                                 div { class: "addr-primary-pill",
@@ -492,19 +494,15 @@ fn ChatGroupSettingsSheet(
                                             div { class: "member-dropdown",
                                                 onclick: move |e| e.stop_propagation(),
                                                 if m.inbox_id != own_inbox_id {
-                                                    let addr_for_alias = m.address.clone();
-                                                    let label = if aliases.peek().contains_key(&m.address) { "Edit alias" } else { "Add alias" };
-                                                    rsx! {
-                                                        button {
-                                                            class: "member-dropdown-item",
-                                                            onclick: move |_| {
-                                                                let current = aliases.peek().get(&addr_for_alias).cloned().unwrap_or_default();
-                                                                alias_input.set(current);
-                                                                alias_target.set(Some(addr_for_alias.clone()));
-                                                                menu_open.set(None);
-                                                            },
-                                                            "{label}"
-                                                        }
+                                                    button {
+                                                        class: "member-dropdown-item",
+                                                        onclick: move |_| {
+                                                            let current = aliases.peek().get(&addr_for_alias).cloned().unwrap_or_default();
+                                                            alias_input.set(current);
+                                                            alias_target.set(Some(addr_for_alias.clone()));
+                                                            menu_open.set(None);
+                                                        },
+                                                        "{alias_label}"
                                                     }
                                                 }
                                                 if own_role == 2 {

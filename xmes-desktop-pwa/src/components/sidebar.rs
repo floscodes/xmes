@@ -244,8 +244,9 @@ fn ConvoRow(
                                 confirm_label: "Leave".into(),
                                 on_confirm: Arc::new(move || {
                                     // Close the chat panel immediately if this conversation is open.
+                                    let peeked: View = view.peek().clone();
                                     let mut v = view;
-                                    if let View::Chat(ref open) = v.peek().clone() {
+                                    if let View::Chat(ref open) = peeked {
                                         if open.id == id {
                                             v.set(View::Welcome);
                                         }
@@ -579,7 +580,8 @@ fn IdentityCard(
                                     h.request_remove_identity(idx);
                                 }
                                 // Always go to Welcome — the conversation list changes with the identity.
-                                view.set(View::Welcome);
+                                let mut v = view;
+                                v.set(View::Welcome);
                             }),
                         }));
                     },
