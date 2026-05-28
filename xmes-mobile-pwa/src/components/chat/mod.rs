@@ -1072,7 +1072,7 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                         let avatar_label = sender_raw_addr.as_ref().map(|a| {
                             aliases.read().get(a)
                                 .and_then(|alias| alias.chars().next().map(|c| c.to_uppercase().to_string()))
-                                .unwrap_or_else(|| a.chars().skip(2).take(2).collect::<String>().to_uppercase())
+                                .unwrap_or_else(|| format!("0x..{}", &a[a.len().saturating_sub(2)..].to_uppercase()))
                         }).unwrap_or_default();
                         let avatar_color = sender_raw_addr.as_deref().unwrap_or("");
                         // Extract cached link preview for this message (if any).
