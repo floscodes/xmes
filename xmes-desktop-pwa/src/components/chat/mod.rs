@@ -1003,12 +1003,20 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                         let time    = format_time_ns(msg.sent_at_ns);
                         let text    = msg.text.clone();
                         let deliv   = msg.delivered;
-                        let sender_addr = if !is_own {
-                            let addr = group_members.read().iter()
+                        let sender_raw_addr = if !is_own {
+                            group_members.read().iter()
                                 .find(|m| m.inbox_id == msg.sender_inbox_id)
-                                .map(|m| m.address.clone());
-                            addr.map(|a| aliases.read().get(&a).cloned().unwrap_or_else(|| short_addr(&a)))
+                                .map(|m| m.address.clone())
                         } else { None };
+                        let sender_addr = sender_raw_addr.as_ref().map(|a| {
+                            aliases.read().get(a).cloned().unwrap_or_else(|| short_addr(a))
+                        });
+                        let avatar_label = sender_raw_addr.as_ref().map(|a| {
+                            aliases.read().get(a)
+                                .and_then(|alias| alias.chars().next().map(|c| c.to_uppercase().to_string()))
+                                .unwrap_or_else(|| a.chars().skip(2).take(2).collect::<String>().to_uppercase())
+                        }).unwrap_or_default();
+                        let avatar_color = sender_raw_addr.as_deref().unwrap_or("");
                         let preview_data: Option<(String, Option<String>, Option<String>, Option<String>, Option<String>)> = {
                             let previews = link_previews.read();
                             extract_first_url(&msg.text).and_then(|u| {
@@ -1024,7 +1032,7 @@ pub fn Chat(conversation: ConversationSummary) -> Element {
                             } else {
                             div { class: if is_own { "bubble-row own" } else { "bubble-row other" },
                                 if !is_own {
-                                    div { class: "bubble-avatar {av_class(&conv_name())}", "{initials(&conv_name())}" }
+                                    div { class: "bubble-avatar {av_class(avatar_color)}", "{avatar_label}" }
                                 }
                                 div { class: "bubble-col",
                                     if let Some(ref addr) = sender_addr {
