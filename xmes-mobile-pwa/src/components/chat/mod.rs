@@ -491,7 +491,7 @@ fn ChatGroupSettingsSheet(
                                             }
                                             div { class: "member-dropdown",
                                                 onclick: move |e| e.stop_propagation(),
-                                                {
+                                                if m.inbox_id != own_inbox_id {
                                                     let addr_for_alias = m.address.clone();
                                                     let label = if aliases.peek().contains_key(&m.address) { "Edit alias" } else { "Add alias" };
                                                     rsx! {
