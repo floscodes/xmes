@@ -34,9 +34,11 @@ pub struct IdentityListUpdate {
 // ── Worker-side state ─────────────────────────────────────────────────────────
 
 struct WorkerState {
-    identities: Vec<Identity>,
-    active: usize,
-    env: Env,
+    identities:     Vec<Identity>,
+    active:         usize,
+    env:            Env,
+    init_key_hexes: Vec<String>,
+    init_mnemonics: Vec<Option<String>>,
 }
 
 impl WorkerState {
@@ -88,9 +90,11 @@ async fn worker_run() {
         js_sys::global().dyn_into().unwrap_throw();
 
     let state: StateRef = Rc::new(RefCell::new(WorkerState {
-        identities: vec![],
-        active: 0,
-        env: Env::Dev(None),
+        identities:     vec![],
+        active:         0,
+        env:            Env::Dev(None),
+        init_key_hexes: vec![],
+        init_mnemonics: vec![],
     }));
 
     let scope_cb  = scope.clone();
@@ -222,6 +226,12 @@ async fn worker_run() {
                 let id = str_field(&data, "id");
                 spawn_local(handle_leave(scope, state, id));
             }
+            "retry" => {
+                let key_hexes = state.borrow().init_key_hexes.clone();
+                let mnemonics = state.borrow().init_mnemonics.clone();
+                let env = state.borrow().env.clone();
+                spawn_local(handle_init(env, scope, state, key_hexes, mnemonics));
+            }
             _ => {}
         }
     }) as Box<dyn Fn(web_sys::MessageEvent)>);
@@ -242,27 +252,49 @@ async fn handle_init(
     key_hexes: Vec<String>,
     mnemonics: Vec<Option<String>>,
 ) {
-    let mut identities: Vec<Identity> = Vec::new();
-    for (i, hex) in key_hexes.into_iter().enumerate() {
-        let mnemonic = mnemonics.get(i).and_then(|m| m.clone());
-        match Identity::from_key_hex(hex, mnemonic, env.clone()).await {
-            Ok(id)  => identities.push(id),
-            Err(_)  => {}
-        }
+    // Persist params so "retry" can re-run this without re-sending from host.
+    {
+        let mut s = state.borrow_mut();
+        s.init_key_hexes = key_hexes.clone();
+        s.init_mnemonics = mnemonics.clone();
+        s.env            = env.clone();
     }
 
-    // Always have at least one identity
-    if identities.is_empty() {
-        if let Some(id) = new_identity(env.clone()).await {
-            identities.push(id);
+    let start        = js_sys::Date::now();
+    let timeout_ms   = 30_000.0_f64;
+    let retry_ms     = 2_000_u32;
+
+    loop {
+        let mut identities: Vec<Identity> = Vec::new();
+
+        for (i, hex) in key_hexes.iter().enumerate() {
+            let mnemonic = mnemonics.get(i).and_then(|m| m.clone());
+            if let Ok(id) = Identity::from_key_hex(hex.clone(), mnemonic, env.clone()).await {
+                identities.push(id);
+            }
         }
+
+        // First run (no stored keys): try to create a fresh identity.
+        if key_hexes.is_empty() && identities.is_empty() {
+            if let Some(id) = new_identity(env.clone()).await {
+                identities.push(id);
+            }
+        }
+
+        if !identities.is_empty() {
+            state.borrow_mut().identities = identities;
+            state.borrow_mut().active     = 0;
+            post_identity_list_async(&scope, &state).await;
+            return;
+        }
+
+        if js_sys::Date::now() - start >= timeout_ms {
+            post_connection_error(&scope);
+            return;
+        }
+
+        gloo_timers::future::TimeoutFuture::new(retry_ms).await;
     }
-
-    state.borrow_mut().env        = env;
-    state.borrow_mut().identities = identities;
-    state.borrow_mut().active     = 0;
-
-    post_identity_list_async(&scope, &state).await;
 }
 
 async fn handle_create_identity(
@@ -729,6 +761,10 @@ impl XmtpHandle {
         self.worker.post_message(&msg).unwrap_throw();
     }
 
+    pub fn request_retry(&self) {
+        self.send("retry");
+    }
+
     fn send(&self, msg_type: &str) {
         self.worker.post_message(&typed_obj(msg_type)).unwrap_throw();
     }
@@ -747,6 +783,7 @@ pub fn spawn_xmtp_worker(
     on_conversations:   impl Fn(Vec<ConversationSummary>) + 'static,
     on_messages:        impl Fn(String, Vec<MessageInfo>) + 'static,
     on_group_members:   impl Fn(Vec<MemberInfo>) + 'static,
+    on_error:           impl Fn() + 'static,
 ) -> XmtpHandle {
     let arr = js_sys::Array::of1(&JsValue::from_str(WORKER_BOOTSTRAP));
     let props = web_sys::BlobPropertyBag::new();
@@ -866,6 +903,9 @@ pub fn spawn_xmtp_worker(
                     Some(MemberInfo { inbox_id, address, role })
                 }).collect();
                 on_group_members(members);
+            }
+            "connection_error" => {
+                on_error();
             }
             _ => {}
         }
@@ -1031,6 +1071,10 @@ fn post_error(scope: &web_sys::DedicatedWorkerGlobalScope, msg: &str) {
     let o = typed_obj("error");
     set_str(&o, "msg", msg);
     scope.post_message(&o).unwrap_throw();
+}
+
+fn post_connection_error(scope: &web_sys::DedicatedWorkerGlobalScope) {
+    scope.post_message(&typed_obj("connection_error")).unwrap_throw();
 }
 
 

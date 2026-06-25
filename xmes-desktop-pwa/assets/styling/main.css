@@ -832,6 +832,45 @@ body {
 .modal-confirm { background: var(--danger); color: white; }
 .modal-confirm:hover { background: var(--danger-hover); }
 
+/* ── Connection error overlay ──────────────────────────────── */
+
+.conn-error-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    padding: 2rem;
+}
+
+.conn-error-title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--text-1);
+    text-align: center;
+    margin: 0;
+}
+
+.conn-error-retry {
+    padding: 0.625rem 2rem;
+    border-radius: var(--radius-md);
+    background: var(--primary);
+    color: #fff;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    font-family: var(--font);
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+}
+
+.conn-error-retry:hover  { background: var(--primary-hover, var(--primary)); filter: brightness(1.1); }
+.conn-error-retry:active { transform: scale(0.96); }
+
 /* ── Identity panel (in sidebar) ──────────────────────────────── */
 
 .identity-panel {

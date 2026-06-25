@@ -117,11 +117,12 @@ fn App() -> Element {
     // Empty string means no mnemonic for that identity.
     let mnemonics_storage: Signal<Option<String>> = use_storage::<LocalStorage, _>("mnemonics_v1".to_string(), || None);
 
-    let mut xmtp_handle:   Signal<Option<XmtpHandle>>              = use_signal(|| None);
-    let conversations:     Signal<Option<Vec<ConversationSummary>>> = use_signal(|| None);
-    let identity_ready:    Signal<bool>                             = use_signal(|| false);
-    let identity_info:     Signal<Option<IdentityInfo>>             = use_signal(|| None);
-    let all_identities:    Signal<Vec<IdentityInfo>>                = use_signal(|| vec![]);
+    let mut xmtp_handle:    Signal<Option<XmtpHandle>>              = use_signal(|| None);
+    let mut connection_error: Signal<bool>                          = use_signal(|| false);
+    let conversations:      Signal<Option<Vec<ConversationSummary>>> = use_signal(|| None);
+    let identity_ready:     Signal<bool>                             = use_signal(|| false);
+    let identity_info:      Signal<Option<IdentityInfo>>             = use_signal(|| None);
+    let all_identities:     Signal<Vec<IdentityInfo>>                = use_signal(|| vec![]);
     let view:              Signal<View>                             = use_signal(|| View::Conversations);
     let anim:              Signal<&'static str>                     = use_signal(|| "");
     let pending_open:      Signal<Option<()>>                       = use_signal(|| None);
@@ -432,6 +433,10 @@ fn App() -> Element {
                 let mut gm = group_members;
                 gm.set(members);
             },
+            move || {
+                let mut ce = connection_error;
+                ce.set(true);
+            },
         );
 
         xmtp_handle.set(Some(handle));
@@ -587,6 +592,23 @@ fn App() -> Element {
                         },
                         "{action.confirm_label}"
                     }
+                }
+            }
+        }
+
+        if *connection_error.read() {
+            div { class: "conn-error-overlay",
+                p { class: "conn-error-title", "Connection error" }
+                button {
+                    class: "conn-error-retry",
+                    onclick: move |_| {
+                        let mut ce = connection_error;
+                        ce.set(false);
+                        if let Some(h) = xmtp_handle.peek().as_ref() {
+                            h.request_retry();
+                        }
+                    },
+                    "Retry"
                 }
             }
         }

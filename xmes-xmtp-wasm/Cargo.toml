@@ -24,6 +24,7 @@ anyhow = "1.0.102"
 bindings_wasm = { git = "https://github.com/xmtp/libxmtp", subdir = "bindings/wasm" }
 bip39 = "2.2.2"
 hex = "0.4"
+gloo-timers = { version = "0.3", features = ["futures"] }
 js-sys = { version = "=0.3.91" }
 k256 = "0.13.4"
 sha3 = "0.10.8"
