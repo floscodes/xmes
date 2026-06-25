@@ -410,7 +410,9 @@ fn IdentityCard(
 
     let mut offset   = use_signal(|| 0.0f64);
     let mut start_x  = use_signal(|| 0.0f64);
+    let mut start_y  = use_signal(|| 0.0f64);
     let mut dragging = use_signal(|| false);
+    let mut v_locked = use_signal(|| false); // true = vertical scroll detected, block swipe
 
     let av          = inbox_avatar(&info.inbox_id);
     let addr_short  = short(&info.primary_address, 8);
@@ -474,16 +476,29 @@ fn IdentityCard(
                 style: "{row_style}",
                 onpointerdown: move |e| {
                     start_x.set(e.client_coordinates().x);
+                    start_y.set(e.client_coordinates().y);
                     dragging.set(true);
+                    v_locked.set(false);
                 },
                 onpointermove: move |e| {
                     if !*dragging.read() { return; }
-                    let dx = (start_x() - e.client_coordinates().x)
-                        .max(0.0).min(DELETE_WIDTH);
-                    offset.set(dx);
+                    if *v_locked.read() { return; }
+                    let dx  = start_x() - e.client_coordinates().x;
+                    let dy  = (e.client_coordinates().y - start_y()).abs();
+                    let adx = dx.abs();
+                    if adx < 6.0 && dy < 6.0 { return; }
+                    if dy > adx {
+                        v_locked.set(true);
+                        offset.set(0.0);
+                        return;
+                    }
+                    offset.set(dx.max(0.0).min(DELETE_WIDTH));
                 },
                 onpointerup: move |_| {
+                    let was_v_locked = *v_locked.read();
                     dragging.set(false);
+                    v_locked.set(false);
+                    if was_v_locked { offset.set(0.0); return; }
                     let cur = *offset.read();
                     if cur < SWIPE_THRESHOLD {
                         offset.set(0.0);
@@ -498,6 +513,7 @@ fn IdentityCard(
                 },
                 onpointercancel: move |_| {
                     dragging.set(false);
+                    v_locked.set(false);
                     offset.set(0.0);
                 },
 
