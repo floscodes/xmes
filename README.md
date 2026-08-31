@@ -1,3 +1,5 @@
+
+
 <p align="center">
   <img src="./Xmes.svg" alt="xmes" width="96" height="96" />
 </p>
@@ -44,7 +46,7 @@ The XMTP integration layer, compiled exclusively to WebAssembly. Wraps the `libx
 
 ### `xmes-mobile-pwa`
 
-The Progressive Web App frontend fpr mobile devices built with [Dioxus](https://dioxus.dev) 0.7, compiled to WebAssembly. A pure UI crate: no JS interop, no wasm-bindgen direct dependency — only Dioxus and `xmes-xmtp-wasm`.
+The Progressive Web App frontend for mobile devices built with [Dioxus](https://dioxus.dev) 0.7, compiled to WebAssembly. A pure UI crate: no JS interop, no wasm-bindgen direct dependency — only Dioxus and `xmes-xmtp-wasm`.
 
 ### `landing-page`
 
